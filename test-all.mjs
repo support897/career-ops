@@ -3353,6 +3353,158 @@ try {
   fail(`tracker-link normalization tests crashed: ${e.message}`);
 }
 
+// ── RESERVE-REPORT-NUM RANGE RESERVATION (#1426) ────────────────
+// Manual multi-agent fan-outs need N report numbers up front. --count N
+// reserves a contiguous range (per-slot atomic sentinels); tests run against
+// a temp dir via the CAREER_OPS_REPORTS_DIR override.
+console.log('\n🧪 Testing reserve-report-num env override and range reservation...');
+try {
+  const RESERVE = join(ROOT, 'reserve-report-num.mjs');
+  const reserveRun = (args, dir) => execFileSync(NODE, [RESERVE, ...args], {
+    encoding: 'utf-8',
+    env: { ...process.env, CAREER_OPS_REPORTS_DIR: dir },
+  }).trim();
+
+  const reserveTmp = mkdtempSync(join(tmpdir(), 'career-ops-reserve-'));
+  const single = reserveRun([], reserveTmp);
+  if (single === '001' && existsSync(join(reserveTmp, '001-RESERVED.md'))) {
+    pass('CAREER_OPS_REPORTS_DIR override redirects sentinel to temp dir');
+  } else {
+    fail(`env override failed: stdout=${single}, sentinel in tmp=${existsSync(join(reserveTmp, '001-RESERVED.md'))}`);
+  }
+  rmSync(reserveTmp, { recursive: true, force: true });
+
+  // --count N: contiguous range from an empty dir.
+  const rangeTmp = mkdtempSync(join(tmpdir(), 'career-ops-reserve-range-'));
+  const range = reserveRun(['--count', '3'], rangeTmp);
+  const rangeSentinels = ['001', '002', '003']
+    .every(n => existsSync(join(rangeTmp, `${n}-RESERVED.md`)));
+  if (range === '001-003' && rangeSentinels) {
+    pass('--count 3 reserves contiguous range and prints START-END');
+  } else {
+    fail(`--count 3 produced stdout=${range}, all sentinels=${rangeSentinels}`);
+  }
+
+  // --count N continues after existing reports.
+  writeFileSync(join(rangeTmp, '007-acme-2026-07-02.md'), '# stub');
+  const afterExisting = reserveRun(['--count', '2'], rangeTmp);
+  if (afterExisting === '008-009') {
+    pass('--count starts range after highest existing slot');
+  } else {
+    fail(`--count after existing report produced ${afterExisting}, expected 008-009`);
+  }
+
+  // --count 1 keeps the single-number output format (backwards compatible).
+  const countOne = reserveRun(['--count', '1'], rangeTmp);
+  if (countOne === '010') {
+    pass('--count 1 prints single number without dash');
+  } else {
+    fail(`--count 1 produced ${countOne}, expected 010`);
+  }
+  rmSync(rangeTmp, { recursive: true, force: true });
+
+  // Collision mid-range: pre-place a sentinel at 007 with existing max 005.
+  // maxSlot() counts RESERVED sentinels as occupied, so a foreign sentinel at
+  // 007 bases the range past it (008-) — no slot below is ever attempted.
+  // (The rollback path is exercised by the next test, not this one.)
+  const collideTmp = mkdtempSync(join(tmpdir(), 'career-ops-reserve-collide-'));
+  writeFileSync(join(collideTmp, '005-acme-2026-07-02.md'), '# stub');
+  writeFileSync(join(collideTmp, '007-RESERVED.md'), '');
+  const collided = reserveRun(['--count', '3'], collideTmp);
+  const leaked006 = existsSync(join(collideTmp, '006-RESERVED.md'));
+  const foreign007 = existsSync(join(collideTmp, '007-RESERVED.md'));
+  if (collided === '008-010' && !leaked006 && foreign007) {
+    pass('--count treats a foreign sentinel as occupied and bases the range past it');
+  } else {
+    fail(`sentinel-as-occupied: stdout=${collided} (want 008-010), 006 sentinel=${leaked006}, foreign 007 kept=${foreign007}`);
+  }
+  rmSync(collideTmp, { recursive: true, force: true });
+
+  // Mid-range collision → rollback. reserveRange must claim a partial range,
+  // fail on a later slot, release the partial claims, and restart past the
+  // collision. A blocker visible to maxSlot() can't trigger this (it bumps the
+  // base instead, as the previous test pins), so plant one maxSlot() can't
+  // see: its /^(\d{3})-/ regex skips 4-digit names, while claimSlot's
+  // occupancy check matches any numeric prefix. Seeding max=999 puts the base
+  // at 1000; "1001-taken.md" then collides mid-range exactly like a slot
+  // claimed by a racing process after the base was computed.
+  const rollbackTmp = mkdtempSync(join(tmpdir(), 'career-ops-reserve-rollback-'));
+  writeFileSync(join(rollbackTmp, '999-acme-2026-07-02.md'), '# stub');
+  writeFileSync(join(rollbackTmp, '1001-taken.md'), '# stub');
+  const rolledBack = reserveRun(['--count', '3'], rollbackTmp);
+  const released1000 = !existsSync(join(rollbackTmp, '1000-RESERVED.md'));
+  const blocker1001 = existsSync(join(rollbackTmp, '1001-taken.md'));
+  const restarted = ['1002', '1003', '1004']
+    .every(n => existsSync(join(rollbackTmp, `${n}-RESERVED.md`)));
+  if (rolledBack === '1002-1004' && released1000 && blocker1001 && restarted) {
+    pass('mid-range collision releases partially claimed slots and restarts past it');
+  } else {
+    fail(`rollback: stdout=${rolledBack} (want 1002-1004), 1000 released=${released1000}, blocker kept=${blocker1001}, restarted sentinels=${restarted}`);
+  }
+  rmSync(rollbackTmp, { recursive: true, force: true });
+
+  // Range-vs-range: two concurrent --count 4 reservations must not overlap.
+  // Terminates by construction: each restart strictly advances the base.
+  const concTmp = mkdtempSync(join(tmpdir(), 'career-ops-reserve-conc-'));
+  const spawnReserve = () => new Promise(resolve => {
+    const child = spawn(NODE, [RESERVE, '--count', '4'], {
+      env: { ...process.env, CAREER_OPS_REPORTS_DIR: concTmp },
+    });
+    let stdout = '';
+    child.stdout.on('data', chunk => { stdout += chunk; });
+    child.on('close', () => resolve(stdout.trim()));
+  });
+  const [rangeX, rangeY] = await Promise.all([spawnReserve(), spawnReserve()]);
+  const toNums = r => {
+    const [s, e] = r.split('-').map(Number);
+    return Array.from({ length: e - s + 1 }, (_, i) => s + i);
+  };
+  const overlap = toNums(rangeX).filter(n => toNums(rangeY).includes(n));
+  if (rangeX && rangeY && overlap.length === 0) {
+    pass(`concurrent --count 4 reservations are disjoint (${rangeX} vs ${rangeY})`);
+  } else {
+    fail(`concurrent ranges overlap: ${rangeX} vs ${rangeY} share [${overlap}]`);
+  }
+  rmSync(concTmp, { recursive: true, force: true });
+
+  // --release with a range deletes every sentinel in it.
+  const reserveRunFail = (args, dir) => {
+    try {
+      execFileSync(NODE, [RESERVE, ...args], {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env, CAREER_OPS_REPORTS_DIR: dir },
+      });
+      return null;
+    } catch (err) {
+      return err.status;
+    }
+  };
+  const relTmp = mkdtempSync(join(tmpdir(), 'career-ops-reserve-release-'));
+  reserveRun(['--count', '4'], relTmp); // reserves 001-004
+  reserveRun(['--release', '001-004'], relTmp);
+  const anyLeft = ['001', '002', '003', '004']
+    .some(n => existsSync(join(relTmp, `${n}-RESERVED.md`)));
+  if (!anyLeft) {
+    pass('--release NNN-MMM deletes all sentinels in range');
+  } else {
+    fail('--release range left sentinels behind');
+  }
+
+  // Invalid inputs exit non-zero.
+  const badCount = reserveRunFail(['--count', '0'], relTmp);
+  const hugeCount = reserveRunFail(['--count', '999'], relTmp);
+  const badRelease = reserveRunFail(['--release', '009-004'], relTmp);
+  if (badCount === 1 && hugeCount === 1 && badRelease === 1) {
+    pass('invalid --count and inverted --release range exit 1');
+  } else {
+    fail(`validation exits: count0=${badCount}, count999=${hugeCount}, inverted=${badRelease}`);
+  }
+  rmSync(relTmp, { recursive: true, force: true });
+} catch (e) {
+  fail(`reserve-report-num tests crashed: ${e.message}`);
+}
+
 // ── VERIFY-PIPELINE REPORT CHECKS (#1425) ───────────────────────
 // Parallel evaluators can write two reports for the same company+role, and
 // tracker dedup can leave a report file with no tracker row. verify-pipeline
