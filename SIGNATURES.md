@@ -54,3 +54,4 @@ public commit with a stated reason.
 - @llwp | Adam John | 2026-07-14 | "Privacy is a right. And rights are what communities defend together ... Privacy is not a feature that a vendor grants us. A human decides. & Local-first. These are necessary building blocks for…" | id:9566542 | src:https://github.com/santifer/career-ops/discussions/1880
 - @felipequentino | Felipe Quentino | 2026-07-14 | "_'if it is hostile, you kill it'_" | id:100160215 | src:https://github.com/santifer/career-ops/discussions/1885
 - @21BPS1591 | Anurag Singh | 2026-07-14 | id:91667749 | src:https://github.com/santifer/career-ops/discussions/1887
+- @brnomt | Bruno Moraga | 2026-07-14 | id:104028922 | src:https://github.com/santifer/career-ops/discussions/1888
