@@ -68,3 +68,4 @@ public commit with a stated reason.
 - @NapaDude | 2026-07-15 | id:278759596 | src:https://github.com/santifer/career-ops/discussions/1919
 - @reykiit | Rey Kingham-Italia | 2026-07-15 | "this made applying more intentional" | id:14134425 | src:https://github.com/santifer/career-ops/discussions/1925
 - @danielh-official | Daniel (Haven) Hotyanov | 2026-07-15 | id:49914607 | src:https://github.com/santifer/career-ops/discussions/1930
+- @Blaze212 | Barton Holdridge | 2026-07-15 | "AI for everyone" | id:9421673 | src:https://github.com/santifer/career-ops/discussions/1934
