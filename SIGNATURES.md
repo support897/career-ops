@@ -62,3 +62,4 @@ public commit with a stated reason.
 - @semil007 | Semil Periyasamy | 2026-07-15 | "Talent over pedigree, please." | id:87702420 | src:https://github.com/santifer/career-ops/discussions/1900
 - @SPerekrestova | Svetlana Perekrestova | 2026-07-15 | "Let engineers find the job without leaving their terminal" | id:32782746 | src:https://github.com/santifer/career-ops/discussions/1901
 - @saiHub108 | Sai Burgula | 2026-07-15 | "career-ops is a gateway for companies to recognize talent" | id:43947426 | src:https://github.com/santifer/career-ops/discussions/1902
+- @yanchies | 2026-07-15 | "career-ops supercharged my job search, application, and interview process and I hope many others benefit from it too!" | id:122583060 | src:https://github.com/santifer/career-ops/discussions/1908
