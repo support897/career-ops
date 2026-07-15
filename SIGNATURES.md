@@ -60,3 +60,4 @@ public commit with a stated reason.
 - @darkpandawarrior | Siddharth Pandalai | 2026-07-15 | "In the oceans of the job sea, let us find our island of automation" | id:31278912 | src:https://github.com/santifer/career-ops/discussions/1898
 - @alaaalsaban | Alaa Alsaban | 2026-07-15 | "Forcing automated recruiting systems to meet human standards" | id:214480204 | src:https://github.com/santifer/career-ops/discussions/1899
 - @semil007 | Semil Periyasamy | 2026-07-15 | "Talent over pedigree, please." | id:87702420 | src:https://github.com/santifer/career-ops/discussions/1900
+- @SPerekrestova | Svetlana Perekrestova | 2026-07-15 | "Let engineers find the job without leaving their terminal" | id:32782746 | src:https://github.com/santifer/career-ops/discussions/1901
