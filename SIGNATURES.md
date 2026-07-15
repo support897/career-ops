@@ -58,3 +58,4 @@ public commit with a stated reason.
 - @mchelen | Mike Chelen | 2026-07-14 | "Let the robots talk to robots. Let the humans talk to humans." | id:30691 | src:https://github.com/santifer/career-ops/discussions/1891
 - @TeBrick | 2026-07-15 | id:191656207 | src:https://github.com/santifer/career-ops/discussions/1892
 - @darkpandawarrior | Siddharth Pandalai | 2026-07-15 | "In the oceans of the job sea, let us find our island of automation" | id:31278912 | src:https://github.com/santifer/career-ops/discussions/1898
+- @alaaalsaban | Alaa Alsaban | 2026-07-15 | "Forcing automated recruiting systems to meet human standards" | id:214480204 | src:https://github.com/santifer/career-ops/discussions/1899
