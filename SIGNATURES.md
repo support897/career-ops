@@ -73,3 +73,4 @@ public commit with a stated reason.
 - @Blaze212 | Barton Holdridge | 2026-07-15 | "AI for everyone" | id:9421673 | src:https://github.com/santifer/career-ops/discussions/1934 | n:25
 - @Aymara037 | 2026-07-16 | "Eficiencia propulsada por la IA a la hora de buscar chamba!" | id:16401840 | src:https://github.com/santifer/career-ops/discussions/1945 | n:26
 - @drpoutine | 2026-07-16 | "my way to navigate the chaos and land interviews without leaving the terminal" | id:11738103 | src:https://github.com/santifer/career-ops/discussions/1946 | n:27
+- @kriptodonz | 2026-07-16 | "Thanks for helping me in searching, filtering, and applying for jobs. Help me a lot!" | id:208021320 | src:https://github.com/santifer/career-ops/discussions/1949 | n:28
