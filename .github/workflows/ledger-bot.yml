@@ -95,8 +95,14 @@ jobs:
             const displayName = (u.name || '').normalize('NFC').replace(/[|"]/g, ' ')
               .replace(INVIS, '').replace(/\s+/g, ' ').trim().slice(0, 80);
             const today = new Date().toISOString().slice(0, 10);
+            // n: ordinal INMUTABLE (v2.5) = max(n existentes)+1 — nunca count+1:
+            // los removals dejan hueco y jamas se renumera. Fallback pre-backfill:
+            // si el ledger aun no tiene n:, cuenta las lineas de firma existentes.
+            const maxN = Math.max(0, ...[...body.matchAll(/\| n:(\d+)\b/g)].map(m => +m[1]));
+            const sigCount = (body.match(/^- @/gm) || []).length;
+            const seq = (maxN > 0 ? maxN : sigCount) + 1;
             const line = `- @${login}` + (displayName ? ` | ${displayName}` : '') + ` | ${today}`
-              + (phrase ? ` | "${phrase}"` : '') + ` | id:${u.id} | src:${d.html_url}`;
+              + (phrase ? ` | "${phrase}"` : '') + ` | id:${u.id} | src:${d.html_url} | n:${seq}`;
             const { data: saved } = await github.rest.repos.createOrUpdateFileContents({
               ...context.repo, path: 'SIGNATURES.md',
               message: `docs(signatures): add @${login} (discussion #${d.number})\n\nCo-authored-by: ${login} <${u.id}+${login}@users.noreply.github.com>`,
@@ -131,6 +137,40 @@ jobs:
             }
             await say(`merged. you are in the ledger: ${ledgerUrl}\nyour certificate: https://career-ops.org/manifesto/s/${login}?fresh=1`);
             await close();
+            // first-public-contribution (deteccion best-effort, doble condicion:
+            // contadores lifetime == 0 Y contribution graph vacio hasta ayer — la
+            // doble condicion evita falsos positivos tipo cuentas antiguas con
+            // repos pero graph vacio). Positivo -> pregunta gateada; el yes lo
+            // procesa el job confirm-first. Un fallo aqui NUNCA rompe la firma.
+            try {
+              const life = await github.graphql(
+                'query($l:String!){user(login:$l){issues{totalCount} pullRequests{totalCount} gists{totalCount} repositories(privacy:PUBLIC, isFork:false){totalCount}}}',
+                { l: login });
+              const lu = life.user;
+              const lifetime = lu.issues.totalCount + lu.pullRequests.totalCount + lu.gists.totalCount + lu.repositories.totalCount;
+              if (lifetime === 0) {
+                const created = new Date(u.created_at);
+                const cutoff = new Date(Date.now() - 86400000);
+                const parts = [];
+                for (let y = created.getUTCFullYear(), i = 0; y <= cutoff.getUTCFullYear(); y++, i++) {
+                  const from = new Date(Math.max(+created, Date.UTC(y, 0, 1)));
+                  const to = new Date(Math.min(+cutoff, Date.UTC(y, 11, 31, 23, 59, 59)));
+                  if (from > to) continue;
+                  parts.push(`y${i}: contributionsCollection(from:"${from.toISOString()}", to:"${to.toISOString()}"){totalCommitContributions totalIssueContributions totalPullRequestContributions totalPullRequestReviewContributions totalRepositoryContributions}`);
+                }
+                let clean = true;
+                if (parts.length) {
+                  const cc = await github.graphql(`query($l:String!){user(login:$l){${parts.join(' ')}}}`, { l: login });
+                  for (const k of Object.keys(cc.user)) {
+                    const v = cc.user[k];
+                    if (v && Object.values(v).reduce((a, b) => a + b, 0) > 0) { clean = false; break; }
+                  }
+                }
+                if (clean) {
+                  await say("one more thing: this signature looks like it might be your first public contribution on GitHub. if that's right and you'd like your certificate to mark it, reply yes here. if not, no reply needed.");
+                }
+              }
+            } catch (e) { core.warning('first-contribution detection skipped: ' + e.message); }
 
   # Vía PR orgánica: un maintainer/diputado comenta /approve sobre el PR validado
   # por signature-ci; la línea canónica se construye desde METADATOS del PR.
@@ -191,8 +231,11 @@ jobs:
             const displayName = (u.name || '').normalize('NFC').replace(/[|"]/g, ' ')
               .replace(INVIS, '').replace(/\s+/g, ' ').trim().slice(0, 80);
             const today = new Date().toISOString().slice(0, 10);
+            const maxN = Math.max(0, ...[...body.matchAll(/\| n:(\d+)\b/g)].map(m => +m[1]));
+            const sigCount = (body.match(/^- @/gm) || []).length;
+            const seq = (maxN > 0 ? maxN : sigCount) + 1;
             const line = `- @${login}` + (displayName ? ` | ${displayName}` : '') + ` | ${today}`
-              + (phrase ? ` | "${phrase}"` : '') + ` | id:${u.id} | src:${pr.html_url}`;
+              + (phrase ? ` | "${phrase}"` : '') + ` | id:${u.id} | src:${pr.html_url} | n:${seq}`;
             const { data: savedPr } = await github.rest.repos.createOrUpdateFileContents({
               ...context.repo, path: 'SIGNATURES.md',
               message: `docs(signatures): add @${login} (#${prNumber})`,
