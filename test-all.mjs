@@ -24,7 +24,7 @@
  */
 
 
-import { execSync, execFileSync, spawn } from 'child_process';
+import { execSync, execFileSync, spawn, spawnSync } from 'child_process';
 import { readFileSync, existsSync, readdirSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, statSync, unlinkSync, realpathSync, symlinkSync } from 'fs';
 import { join, dirname, basename, delimiter } from 'path';
 import { tmpdir } from 'os';
@@ -4175,10 +4175,81 @@ try {
 console.log('\n🧪 Testing reserve-report-num env override and range reservation...');
 try {
   const RESERVE = join(ROOT, 'reserve-report-num.mjs');
-  const reserveRun = (args, dir) => execFileSync(NODE, [RESERVE, ...args], {
+  const reserveRun = (args, dir, tracker = join(dir, 'applications.md')) => execFileSync(NODE, [RESERVE, ...args], {
     encoding: 'utf-8',
-    env: { ...process.env, CAREER_OPS_REPORTS_DIR: dir },
+    env: { ...process.env, CAREER_OPS_REPORTS_DIR: dir, CAREER_OPS_TRACKER: tracker },
   }).trim();
+
+  // Importing the module must expose the same allocator used by the CLI,
+  // without running the CLI as an import side effect.
+  const apiTmp = mkdtempSync(join(tmpdir(), 'career-ops-reserve-api-'));
+  const apiTracker = join(apiTmp, 'applications.md');
+  const apiProbe = execFileSync(NODE, ['--input-type=module', '--eval', `
+    const api = await import(${JSON.stringify(pathToFileURL(RESERVE).href)});
+    const { existsSync, readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const nums = await api.reserveReportNumbers(1, {
+      reportsDir: process.env.CAREER_OPS_REPORTS_DIR,
+      trackerPath: process.env.CAREER_OPS_TRACKER,
+    });
+    const sentinel = join(process.env.CAREER_OPS_REPORTS_DIR, '001-RESERVED.md');
+    let firstToken = null;
+    try { firstToken = JSON.parse(readFileSync(sentinel, 'utf-8')).token; } catch {}
+    await api.releaseReportNumbers(nums, {
+      reportsDir: process.env.CAREER_OPS_REPORTS_DIR,
+      trackerPath: process.env.CAREER_OPS_TRACKER,
+    });
+    const replacement = await api.reserveReportNumbers(1, {
+      reportsDir: process.env.CAREER_OPS_REPORTS_DIR,
+      trackerPath: process.env.CAREER_OPS_TRACKER,
+    });
+    let replacementToken = null;
+    try { replacementToken = JSON.parse(readFileSync(sentinel, 'utf-8')).token; } catch {}
+    await api.releaseReportNumbers(nums, {
+      reportsDir: process.env.CAREER_OPS_REPORTS_DIR,
+      trackerPath: process.env.CAREER_OPS_TRACKER,
+    });
+    const replacementPreserved = existsSync(sentinel);
+    await api.releaseReportNumbers(replacement, {
+      reportsDir: process.env.CAREER_OPS_REPORTS_DIR,
+      trackerPath: process.env.CAREER_OPS_TRACKER,
+    });
+    console.log(JSON.stringify({
+      nums,
+      formatted: api.formatReportNumber(nums[0]),
+      firstToken,
+      replacementToken,
+      replacementPreserved,
+      replacementCleaned: !existsSync(sentinel),
+    }));
+  `], {
+    encoding: 'utf-8',
+    env: { ...process.env, CAREER_OPS_REPORTS_DIR: apiTmp, CAREER_OPS_TRACKER: apiTracker },
+  }).trim();
+  let apiResult = null;
+  try { apiResult = JSON.parse(apiProbe); } catch {}
+  if (apiResult?.nums?.[0] === 1 && apiResult.formatted === '001'
+      && apiResult.firstToken && apiResult.replacementToken
+      && apiResult.firstToken !== apiResult.replacementToken
+      && apiResult.replacementPreserved && apiResult.replacementCleaned) {
+    pass('reserve-report-num token ownership prevents stale cleanup from deleting a replacement claim');
+  } else {
+    fail(`reserve-report-num import API failed: ${apiProbe}`);
+  }
+  rmSync(apiTmp, { recursive: true, force: true });
+
+  const trackerParseApi = await import(pathToFileURL(join(ROOT, 'tracker-parse.mjs')).href);
+  const complexLinkNums = trackerParseApi.extractTrackerReportNumbers(
+    '[22](../reports/021-acme_(us)-2026-07-15.md "US role")',
+  );
+  const angleLinkNums = trackerParseApi.extractTrackerReportNumbers(
+    '[23](<../reports/023-acme role-(eu)-2026-07-15.md> \'EU role\')',
+  );
+  if (complexLinkNums.join(',') === '22,21' && angleLinkNums.join(',') === '23') {
+    pass('tracker report-link parsing supports balanced parentheses, spaces, and optional titles');
+  } else {
+    fail(`complex tracker report links parsed incorrectly: ${complexLinkNums} / ${angleLinkNums}`);
+  }
 
   const reserveTmp = mkdtempSync(join(tmpdir(), 'career-ops-reserve-'));
   const single = reserveRun([], reserveTmp);
@@ -4188,6 +4259,79 @@ try {
     fail(`env override failed: stdout=${single}, sentinel in tmp=${existsSync(join(reserveTmp, '001-RESERVED.md'))}`);
   }
   rmSync(reserveTmp, { recursive: true, force: true });
+
+  // Tracker IDs and linked report IDs are occupied even when their report
+  // files are missing (for example after a partial sync or manual archive).
+  const trackerTmp = mkdtempSync(join(tmpdir(), 'career-ops-reserve-tracker-'));
+  const trackerFile = join(trackerTmp, 'applications.md');
+  writeFileSync(trackerFile,
+    '# Applications Tracker\n\n' +
+    '| # | Date | Company | Role | Score | Status | PDF | Report | Notes |\n' +
+    '|---|------|---------|------|-------|--------|-----|--------|-------|\n' +
+    '| 7 | 2026-01-01 | Acme | Engineer | 4.0/5 | Evaluated | ❌ | [12](../reports/012-acme-2026-01-01.md) | fixture |\n');
+  const afterTracker = reserveRun([], join(trackerTmp, 'reports'), trackerFile);
+  if (afterTracker === '013') {
+    pass('reservation accounts for tracker row IDs and linked report IDs');
+  } else {
+    fail(`tracker-aware reservation produced ${afterTracker}, expected 013`);
+  }
+  rmSync(trackerTmp, { recursive: true, force: true });
+
+  // Formatting is a minimum width, not a three-digit ceiling.
+  const fourDigitTmp = mkdtempSync(join(tmpdir(), 'career-ops-reserve-4digit-'));
+  const fourDigitTracker = join(fourDigitTmp, 'applications.md');
+  writeFileSync(fourDigitTracker,
+    '# Applications Tracker\n\n' +
+    '| # | Date | Company | Role | Score | Status | PDF | Report | Notes |\n' +
+    '|---|------|---------|------|-------|--------|-----|--------|-------|\n' +
+    '| 1000 | 2026-01-01 | Acme | Engineer | 4.0/5 | Evaluated | ❌ | — | fixture |\n');
+  const fourDigit = reserveRun([], join(fourDigitTmp, 'reports'), fourDigitTracker);
+  if (fourDigit === '1001' && existsSync(join(fourDigitTmp, 'reports', '1001-RESERVED.md'))) {
+    pass('reservation continues beyond 999 without truncation or reset');
+  } else {
+    fail(`four-digit reservation produced ${fourDigit}, expected 1001`);
+  }
+  rmSync(fourDigitTmp, { recursive: true, force: true });
+
+  const unsafeRangeTmp = mkdtempSync(join(tmpdir(), 'career-ops-reserve-unsafe-range-'));
+  const unsafeRangeReports = join(unsafeRangeTmp, 'reports');
+  const unsafeRangeTracker = join(unsafeRangeTmp, 'applications.md');
+  mkdirSync(unsafeRangeReports);
+  writeFileSync(
+    join(unsafeRangeReports, `${Number.MAX_SAFE_INTEGER - 1}-existing.md`),
+    '# fixture',
+  );
+  const allocatorApi = await import(`${pathToFileURL(RESERVE).href}?unsafe-range=${Date.now()}`);
+  let unsafeRangeError = null;
+  try {
+    await allocatorApi.reserveReportNumbers(2, {
+      reportsDir: unsafeRangeReports,
+      trackerPath: unsafeRangeTracker,
+    });
+  } catch (err) {
+    unsafeRangeError = err;
+  }
+  const unsafeRangeLeaked = readdirSync(unsafeRangeReports)
+    .some(name => name.endsWith('-RESERVED.md'));
+  if (unsafeRangeError instanceof RangeError && !unsafeRangeLeaked) {
+    pass('unsafe report-number ranges fail before creating a partial sentinel');
+  } else {
+    fail(`unsafe range guard failed: error=${unsafeRangeError?.message}, leaked=${unsafeRangeLeaked}`);
+  }
+  rmSync(unsafeRangeTmp, { recursive: true, force: true });
+
+  const evaluatorSources = ['ollama-eval.mjs', 'openai-eval.mjs', 'gemini-eval.mjs', 'openrouter-runner.mjs']
+    .map(name => [name, readFile(name)]);
+  const unmigratedEvaluators = evaluatorSources
+    .filter(([, source]) => !/reservedNumbers\s*=\s*await\s+reserveReportNumbers\s*\(/.test(source)
+      || !/await\s+releaseReportNumbers\s*\(\s*reservedNumbers\b/.test(source)
+      || /function\s+nextReport(?:Number|Num)\s*\(/.test(source))
+    .map(([name]) => name);
+  if (unmigratedEvaluators.length === 0) {
+    pass('all headless evaluators use the shared atomic report allocator');
+  } else {
+    fail(`headless evaluators still carry private max+1 allocators: ${unmigratedEvaluators.join(', ')}`);
+  }
 
   // --count N: contiguous range from an empty dir.
   const rangeTmp = mkdtempSync(join(tmpdir(), 'career-ops-reserve-range-'));
@@ -4235,28 +4379,21 @@ try {
   }
   rmSync(collideTmp, { recursive: true, force: true });
 
-  // Mid-range collision → rollback. reserveRange must claim a partial range,
-  // fail on a later slot, release the partial claims, and restart past the
-  // collision. A blocker visible to maxSlot() can't trigger this (it bumps the
-  // base instead, as the previous test pins), so plant one maxSlot() can't
-  // see: its /^(\d{3})-/ regex skips 4-digit names, while claimSlot's
-  // occupancy check matches any numeric prefix. Seeding max=999 puts the base
-  // at 1000; "1001-taken.md" then collides mid-range exactly like a slot
-  // claimed by a racing process after the base was computed.
-  const rollbackTmp = mkdtempSync(join(tmpdir(), 'career-ops-reserve-rollback-'));
-  writeFileSync(join(rollbackTmp, '999-acme-2026-07-02.md'), '# stub');
-  writeFileSync(join(rollbackTmp, '1001-taken.md'), '# stub');
-  const rolledBack = reserveRun(['--count', '3'], rollbackTmp);
-  const released1000 = !existsSync(join(rollbackTmp, '1000-RESERVED.md'));
-  const blocker1001 = existsSync(join(rollbackTmp, '1001-taken.md'));
-  const restarted = ['1002', '1003', '1004']
-    .every(n => existsSync(join(rollbackTmp, `${n}-RESERVED.md`)));
-  if (rolledBack === '1002-1004' && released1000 && blocker1001 && restarted) {
-    pass('mid-range collision releases partially claimed slots and restarts past it');
+  // Existing four-digit report names participate in the same occupancy scan.
+  const highRangeTmp = mkdtempSync(join(tmpdir(), 'career-ops-reserve-high-range-'));
+  writeFileSync(join(highRangeTmp, '999-acme-2026-07-02.md'), '# stub');
+  writeFileSync(join(highRangeTmp, '1001-taken.md'), '# stub');
+  const highRange = reserveRun(['--count', '3'], highRangeTmp);
+  const skipped1000 = !existsSync(join(highRangeTmp, '1000-RESERVED.md'));
+  const blocker1001 = existsSync(join(highRangeTmp, '1001-taken.md'));
+  const reservedHighRange = ['1002', '1003', '1004']
+    .every(n => existsSync(join(highRangeTmp, `${n}-RESERVED.md`)));
+  if (highRange === '1002-1004' && skipped1000 && blocker1001 && reservedHighRange) {
+    pass('four-digit report files advance a contiguous range without truncation');
   } else {
-    fail(`rollback: stdout=${rolledBack} (want 1002-1004), 1000 released=${released1000}, blocker kept=${blocker1001}, restarted sentinels=${restarted}`);
+    fail(`four-digit range: stdout=${highRange} (want 1002-1004), 1000 skipped=${skipped1000}, blocker kept=${blocker1001}, sentinels=${reservedHighRange}`);
   }
-  rmSync(rollbackTmp, { recursive: true, force: true });
+  rmSync(highRangeTmp, { recursive: true, force: true });
 
   // Range-vs-range: two concurrent --count 4 reservations must not overlap.
   // Terminates by construction: each restart strictly advances the base.
@@ -4288,7 +4425,7 @@ try {
       execFileSync(NODE, [RESERVE, ...args], {
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: { ...process.env, CAREER_OPS_REPORTS_DIR: dir },
+        env: { ...process.env, CAREER_OPS_REPORTS_DIR: dir, CAREER_OPS_TRACKER: join(dir, 'applications.md') },
       });
       return null;
     } catch (err) {
@@ -4310,10 +4447,13 @@ try {
   const badCount = reserveRunFail(['--count', '0'], relTmp);
   const hugeCount = reserveRunFail(['--count', '999'], relTmp);
   const badRelease = reserveRunFail(['--release', '009-004'], relTmp);
-  if (badCount === 1 && hugeCount === 1 && badRelease === 1) {
-    pass('invalid --count and inverted --release range exit 1');
+  const hugeRelease = reserveRunFail(['--release', '1-9007199254740992'], relTmp);
+  const wideRelease = reserveRunFail(['--release', '1-51'], relTmp);
+  if (badCount === 1 && hugeCount === 1 && badRelease === 1
+      && hugeRelease === 1 && wideRelease === 1) {
+    pass('invalid counts and unsafe, inverted, or oversized release ranges exit 1');
   } else {
-    fail(`validation exits: count0=${badCount}, count999=${hugeCount}, inverted=${badRelease}`);
+    fail(`validation exits: count0=${badCount}, count999=${hugeCount}, inverted=${badRelease}, unsafe=${hugeRelease}, wide=${wideRelease}`);
   }
   rmSync(relTmp, { recursive: true, force: true });
 } catch (e) {
@@ -5190,6 +5330,60 @@ try {
   }
 } catch (e) {
   fail(`merge-tracker stale-number collision test crashed: ${e.message}`);
+}
+
+// ── MERGE-TRACKER RESERVED-NUMBER FIDELITY (#1733) ──────────────
+// Parallel workers may reserve numbers in order but finish out of order. A
+// free reserved number remains valid even when a later number has already
+// reached the tracker; merge-tracker must preserve it, and only renumber on a
+// real collision (with a visible warning).
+console.log('\n🧪 Testing merge-tracker reserved-number fidelity (#1733)...');
+try {
+  const reservedTmp = mkdtempSync(join(tmpdir(), 'career-ops-merge-reserved-'));
+  try {
+    mkdirSync(join(reservedTmp, 'data'));
+    const reservedAdditions = join(reservedTmp, 'additions');
+    mkdirSync(reservedAdditions);
+    const reservedTracker = join(reservedTmp, 'data', 'applications.md');
+    writeFileSync(reservedTracker,
+      '# Applications Tracker\n\n' +
+      '| # | Date | Company | Role | Score | Status | PDF | Report | Notes |\n' +
+      '|---|------|---------|------|-------|--------|-----|--------|-------|\n' +
+      '| 10 | 2026-01-10 | LaterCo | Engineer | 4.0/5 | Evaluated | ❌ | — | finished first |\n');
+
+    writeFileSync(join(reservedAdditions, '005-early.tsv'),
+      '5\t2026-01-05\tEarlyCo\tEngineer\tEvaluated\t4.1/5\t❌\t[5](reports/005-early-2026-01-05.md)\treserved first\n');
+    const preserveResult = run(NODE, ['merge-tracker.mjs'], {
+      env: { ...process.env, CAREER_OPS_TRACKER: reservedTracker, CAREER_OPS_ADDITIONS: reservedAdditions },
+    });
+    const afterPreserve = readFileSync(reservedTracker, 'utf-8');
+    if (preserveResult !== null && /^\| 5 \|[^\n]*\| EarlyCo \|/m.test(afterPreserve)) {
+      pass('merge-tracker preserves a free reserved ID below the current maximum');
+    } else {
+      fail(`merge-tracker renumbered a free reserved ID\n${afterPreserve}`);
+    }
+
+    writeFileSync(join(reservedAdditions, '005-collision.tsv'),
+      '5\t2026-01-11\tCollisionCo\tAnalyst\tEvaluated\t3.8/5\t❌\t—\tstale reservation\n');
+    const collisionResult = spawnSync(NODE, [join(ROOT, 'merge-tracker.mjs')], {
+      cwd: ROOT,
+      encoding: 'utf-8',
+      env: { ...process.env, CAREER_OPS_TRACKER: reservedTracker, CAREER_OPS_ADDITIONS: reservedAdditions },
+    });
+    const afterCollision = readFileSync(reservedTracker, 'utf-8');
+    const collisionOutput = `${collisionResult.stdout || ''}\n${collisionResult.stderr || ''}`;
+    if (collisionResult.status === 0
+        && /^\| 11 \|[^\n]*\| CollisionCo \|/m.test(afterCollision)
+        && /#5[^\n]*(?:already|collision)[^\n]*#11/i.test(collisionOutput)) {
+      pass('merge-tracker renumbers only a real collision and warns with both IDs');
+    } else {
+      fail(`merge-tracker collision fallback was not loud and deterministic\n${collisionOutput}\n${afterCollision}`);
+    }
+  } finally {
+    rmSync(reservedTmp, { recursive: true, force: true });
+  }
+} catch (e) {
+  fail(`merge-tracker reserved-number fidelity test crashed: ${e.message}`);
 }
 
 // ── MERGE-TRACKER REQ/JOB-NUMBER DEDUP GUARD (#1524) ─────────────────────
