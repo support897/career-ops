@@ -84,7 +84,7 @@ Check, per session:
 
 Flag **Scope/Compensation Mismatch** only when all conditions hold for the same session: the session's role is confirmed to match the supplied JD (condition 0), an off-JD topic surfaced (condition 1), during a JD-labeled entry-level/junior/associate/coordinator-tier role with an explicit low-band pay benchmark (condition 2).
 
-**This signal is corroboration-sensitive, not a count-and-threshold signal like the four above.** A single instance is a data point, not a pattern — say so plainly in the output. If the user has a coffee chat note or other independent source for the same company (see #1940 / PR #1941, the coffee-chat cross-reference feature — a sibling to this one), check whether it corroborates that the off-JD topic is something the company consistently screens for. Corroboration changes the framing from "isolated tangent" to "observed pattern" — reflect that distinction explicitly rather than folding it into a score.
+**This signal is corroboration-sensitive, not a count-and-threshold signal like the four above.** A single instance is a data point, not a pattern — say so plainly in the output. If the user has a coffee chat note or other independent source for the same company (the Coffee Chat Cross-Reference in modes/interview-prep.md — a sibling to this one), check whether it corroborates that the off-JD topic is something the company consistently screens for. Corroboration changes the framing from "isolated tangent" to "observed pattern" — reflect that distinction explicitly rather than folding it into a score.
 
 **Multiple sessions may qualify.** Evaluate every session independently against conditions 0–2; do not stop at the first match. Carry forward every qualifying session (round, date, off-JD topic, JD context including the seniority label actually captured, evidence strength) into Step 5/6 — see the aggregation rule there.
 
@@ -170,7 +170,7 @@ Write the following structure:
 
 {1–2 sentences, descriptive not accusatory: what was asked, and how it sits outside the JD's stated scope and pay level. E.g. "The interviewer asked directly about workflow automation experience — a skill not mentioned anywhere in the JD, which is posted as a coordinator-tier, non-technical role at the low end of its stated band."}
 
-**Evidence strength:** {"Single instance — one data point, not yet a pattern. Treat as an open question, not a conclusion." OR, if a coffee chat or other independent source corroborates it: "Corroborated by [coffee chat note / other source] (see #1940 / PR #1941) — this reads as something the company consistently screens for, not an isolated tangent."}
+**Evidence strength:** {"Single instance — one data point, not yet a pattern. Treat as an open question, not a conclusion." OR, if a coffee chat or other independent source corroborates it: "Corroborated by [coffee chat note / other source] — this reads as something the company consistently screens for, not an isolated tangent."}
 
 {repeat the #### block above for each additional qualifying session}
 
@@ -191,7 +191,7 @@ Signals:
   • {signal}: {n}/{total} sessions {(pattern) if 2+}
   ...
 {If Step 2b flagged one or more sessions, list all of them here, most recent first — one bullet per qualifying session, do not collapse into a single line:
-  • Scope/Compensation Mismatch: {round} ({date}) — {off-JD topic} asked at {the actual seniority label captured in Step 2b, e.g. junior/associate/coordinator-tier/entry-level} pay [{exact JD pay figure/band, or exact user-notes below-market benchmark/classification that qualified condition 2}] — {"single-instance observation" OR "corroborated by [coffee chat note / other source, e.g. see #1940 / PR #1941]"}
+  • Scope/Compensation Mismatch: {round} ({date}) — {off-JD topic} asked at {the actual seniority label captured in Step 2b, e.g. junior/associate/coordinator-tier/entry-level} pay [{exact JD pay figure/band, or exact user-notes below-market benchmark/classification that qualified condition 2}] — {"single-instance observation" OR "corroborated by [coffee chat note / other source]"}
   ...}
 
 → Full analysis written to interview-prep/{company-slug}-redflags.md
