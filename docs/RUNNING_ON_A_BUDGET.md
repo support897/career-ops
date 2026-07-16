@@ -1,6 +1,6 @@
 # Running Career-Ops on a Budget
 
-Token usage costs and rate limits are the most common bottlenecks when setting up a high-volume job search pipeline. Since Career-Ops processes full job descriptions, evaluates them against your CV across 10 dimensions, and tailors resumes/cover letters, the context size can grow quickly.
+Token usage costs and rate limits are the most common bottlenecks when setting up a high-volume job search pipeline. Since Career-Ops processes full job descriptions, evaluates them against your CV across five weighted dimensions, and tailors resumes/cover letters, the context size can grow quickly.
 
 Fortunately, **Career-Ops is completely AI-agnostic.** The pipeline relies on the AI coding CLI (or standalone scripts) to process prompt files under `modes/`. This means you can point your CLI to cheaper API providers or local models with **zero code changes** in Career-Ops.
 
