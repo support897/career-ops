@@ -10,17 +10,21 @@ name: ledger-bot
 on:
   discussion:
     types: [created]
+  discussion_comment:
+    types: [created]
   issue_comment:
     types: [created]
 
-concurrency:
-  group: ledger
-  cancel-in-progress: false
-
+# La concurrencia vive a nivel de JOB: los dos jobs que escriben SIGNATURES.md
+# comparten el grupo 'ledger' (serializan entre sí); confirm-first usa grupo
+# propio para que un "yes" nunca desplace de la cola al run de una firma.
 jobs:
   sign-discussion:
     if: github.event_name == 'discussion' && github.event.discussion.category.slug == 'signatures'
     runs-on: ubuntu-latest
+    concurrency:
+      group: ledger
+      cancel-in-progress: false
     permissions:
       contents: read
       discussions: write
@@ -136,6 +140,9 @@ jobs:
       github.event.issue.pull_request &&
       github.event.comment.body == '/approve'
     runs-on: ubuntu-latest
+    concurrency:
+      group: ledger
+      cancel-in-progress: false
     permissions:
       contents: read
       pull-requests: write
@@ -208,3 +215,60 @@ jobs:
             await github.rest.issues.createComment({ ...context.repo, issue_number: prNumber,
               body: `merged. you are in the ledger: ${ledgerUrlPr}\nyour certificate: https://career-ops.org/manifesto/s/${login}?fresh=1` });
             await github.rest.pulls.update({ ...context.repo, pull_number: prNumber, state: 'closed' });
+
+  # first-public-contribution: el firmante confirma con un "yes" en su propia
+  # discussion (la pregunta la publico el maintainer). Solo afirmativo claro;
+  # cualquier otra respuesta se ignora ('if not, no reply needed'). La label es
+  # SIEMPRE estado confirmado por el firmante, nunca especulacion del detector.
+  confirm-first:
+    if: >
+      github.event_name == 'discussion_comment' &&
+      github.event.discussion.category.slug == 'signatures' &&
+      github.event.comment.user.login == github.event.discussion.user.login
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ledger-confirm
+      cancel-in-progress: false
+    permissions:
+      discussions: write
+    steps:
+      - name: Confirm first-public-contribution
+        uses: actions/github-script@v7
+        env:
+          REVALIDATE_SECRET: ${{ secrets.SIGNATURES_REVALIDATE_SECRET }}
+        with:
+          github-token: ${{ secrets.LEDGER_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const d = context.payload.discussion;
+            const login = d.user.login;
+            const INVIS = /[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff\u0000-\u0008\u000b-\u001f]/g;
+            const body = (context.payload.comment.body || '').replace(INVIS, '').trim().toLowerCase();
+            if (!/^(yes|yep|yeah|sure|ok|okay|correct|si|s\u00ed|that'?s right)[.!\s]*$/.test(body)) return;
+            // La pregunta DEBE existir en el hilo y haberla puesto el maintainer
+            // (identidad del ledger): sin ella, un 'yes' suelto no etiqueta nada.
+            const MARKER = 'first public contribution on GitHub';
+            const info = await github.graphql(
+              `query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){
+                 label(name:"first-public-contribution"){id}
+                 discussion(number:$n){id labels(first:20){nodes{name}}
+                   comments(first:100){nodes{author{login} body}}}}}`,
+              { o: context.repo.owner, r: context.repo.repo, n: d.number });
+            const disc = info.repository.discussion;
+            const asked = disc.comments.nodes.some(c =>
+              c.author && c.author.login === 'santifer' && c.body.includes(MARKER));
+            if (!asked) return;
+            if (disc.labels.nodes.some(l => l.name === 'first-public-contribution')) return;
+            await github.graphql(
+              'mutation($l:[ID!]!,$d:ID!){addLabelsToLabelable(input:{labelIds:$l,labelableId:$d}){clientMutationId}}',
+              { l: [info.repository.label.id], d: disc.id });
+            for (let i = 1; i <= 3; i++) {
+              try {
+                const r = await fetch('https://career-ops.org/api/revalidate-signatures',
+                  { method: 'POST', headers: { 'x-revalidate-secret': process.env.REVALIDATE_SECRET } });
+                if (r.ok) break;
+              } catch (e) { /* red caida: reintento */ }
+              if (i < 3) await new Promise(res => setTimeout(res, 5000));
+            }
+            await github.graphql(
+              'mutation($id:ID!,$b:String!){addDiscussionComment(input:{discussionId:$id,body:$b}){comment{id}}}',
+              { id: disc.id, b: `done. your certificate now marks it: https://career-ops.org/manifesto/s/${login}?fresh=1` });
