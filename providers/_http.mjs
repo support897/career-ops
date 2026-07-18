@@ -54,10 +54,11 @@ export async function fetchText(url, opts = {}) {
   return await res.text();
 }
 
-export function makeHttpCtx() {
+export function makeHttpCtx(userId) {
   return {
     transport: 'http',
     fetchJson,
     fetchText,
+    userId: userId || null,
   };
 }
