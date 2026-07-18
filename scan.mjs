@@ -45,6 +45,10 @@ import { fingerprintText, findCrossListings } from './fingerprint-core.mjs';
 import { resolveColumns, parseTrackerRow } from './tracker-parse.mjs';
 import { normalizeCompany } from './tracker-utils.mjs';
 
+// DB modules — only imported when --userId is provided (lazy, optional)
+let dbReader = null;
+let dbWriter = null;
+
 try {
   const { config } = await import('dotenv');
   // quiet: dotenv's startup banner goes to stdout, which --json reserves for a
@@ -1381,6 +1385,21 @@ async function main() {
   const companyFlag = args.indexOf('--company');
   const filterCompany = companyFlag !== -1 ? args[companyFlag + 1]?.toLowerCase() : null;
 
+  // --userId: when provided, read config from DB and write results to DB
+  const userIdFlag = args.indexOf('--userId');
+  const userId = userIdFlag !== -1 ? args[userIdFlag + 1] : null;
+  let dbConfig = null;
+
+  if (userId) {
+    console.log(`[DB mode] Scanning for user: ${userId}`);
+    dbReader = await import('./lib/db-reader.mjs');
+    dbWriter = await import('./lib/db-writer.mjs');
+    dbConfig = await dbReader.buildScanConfigFromDB(userId);
+    console.log(`[DB mode] Profile: ${dbConfig.profile.fullName || 'loaded'}`);
+    console.log(`[DB mode] Target roles: ${dbConfig.profile.targetRoles?.join(', ') || 'any'}`);
+    console.log(`[DB mode] Enabled platforms: ${dbConfig.enabledPlatforms.join(', ') || 'all'}`);
+  }
+
   // 1. Load providers
   const providers = await loadProviders(PROVIDERS_DIR);
   // Opt-in: merge enabled keyed/auth-gated provider plugins. Returns immediately
@@ -1392,7 +1411,7 @@ async function main() {
     process.exit(1);
   }
 
-  // 2. Read portals.yml
+  // 2. Read portals.yml (always needed for company/board list)
   if (!existsSync(PORTALS_PATH)) {
     console.error('Error: portals.yml not found. Run onboarding first.');
     process.exit(1);
@@ -1406,6 +1425,20 @@ async function main() {
     process.exit(1);
   }
   const config = rawConfig && typeof rawConfig === 'object' ? rawConfig : {};
+
+  // When --userId: override filters with DB user preferences
+  if (dbConfig) {
+    if (dbConfig.titleFilter.positive.length > 0) {
+      config.title_filter = { ...config.title_filter, positive: dbConfig.titleFilter.positive };
+    }
+    if (dbConfig.locationFilter.positive.length > 0) {
+      config.location_filter = { ...config.location_filter, positive: dbConfig.locationFilter.positive };
+    }
+    if (dbConfig.salaryFilter) {
+      config.salary_filter = dbConfig.salaryFilter;
+    }
+  }
+
   const companies = Array.isArray(config.tracked_companies) ? config.tracked_companies : [];
   const boards = Array.isArray(config.job_boards) ? config.job_boards : [];
   const titleFilter = buildTitleFilter(config.title_filter);
@@ -1671,6 +1704,23 @@ async function main() {
   if (!dryRun && verifiedOffers.length > 0) {
     appendToPipeline(verifiedOffers);
     appendToScanHistory(verifiedOffers, date);
+
+    // DB mode: also write to database for web app display
+    if (userId && dbWriter) {
+      const dbJobs = verifiedOffers.map(o => ({
+        title: o.title,
+        company: o.company,
+        url: o.url,
+        platform: o.portal || o.source || 'unknown',
+        location: o.location,
+        salary: o.salary,
+        description: o.description,
+        score: o.score || null,
+        tags: o.tags || null,
+      }));
+      const inserted = await dbWriter.writeJobs(userId, dbJobs);
+      console.log(`[DB mode] Wrote ${inserted} new jobs to database`);
+    }
   }
   if (!dryRun && cooldownOffers.length > 0) {
     const cooldownGroups = {};
@@ -1882,7 +1932,8 @@ async function main() {
     if (dryRun) {
       console.log('\n(dry run — run without --dry-run to save results)');
     } else {
-      console.log(`\nResults saved to ${PIPELINE_PATH} and ${SCAN_HISTORY_PATH}`);
+      const dbNote = userId ? ' + database' : '';
+      console.log(`\nResults saved to ${PIPELINE_PATH} and ${SCAN_HISTORY_PATH}${dbNote}`);
     }
   }
 
@@ -1920,6 +1971,19 @@ async function main() {
       : 'career-ops.org/manifesto?utm_source=cli';
     console.log(`\nthe practice behind this tool has a name and a manifesto: ${link}`);
     try { writeFileSync('.manifesto-noted', new Date().toISOString() + '\n'); } catch { /* best-effort */ }
+  }
+
+  // DB mode: update scan schedule last_run and close pool
+  if (userId) {
+    if (dbConfig?.schedules?.length > 0 && dbWriter) {
+      for (const schedule of dbConfig.schedules) {
+        try { await dbWriter.updateScanScheduleRun(schedule.id); } catch {}
+      }
+    }
+    if (dbReader) await dbReader.closePool();
+    if (dbWriter) await dbWriter.closePool();
+    console.log(`[DB mode] Scan complete for user ${userId}`);
+  }
   }
 }
 
