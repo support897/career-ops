@@ -46,6 +46,7 @@ let dbProfile = null;
 let autoApplyEnabled = false;
 let isVip = false;
 let userEmailSettings = null;
+let minScoreForAutoApply = 4;
 
 const API_PLATFORMS = ['greenhouse', 'ashby', 'lever', 'workday', 'remoteok'];
 const JOB_BOARDS = ['linkedin', 'indeed', 'seek'];
@@ -61,6 +62,7 @@ if (userId) {
   }
   autoApplyEnabled = await dbReader.getUserAutoApplySetting(userId);
   isVip = await dbReader.getUserVipStatus(userId);
+  minScoreForAutoApply = await dbReader.getUserMinScoreForAutoApply(userId);
   if (isVip) {
     userEmailSettings = await dbReader.getUserEmailSettings(userId);
     console.log(`[DB mode] VIP user — email automation enabled`);
@@ -1082,6 +1084,16 @@ ${emailBody}
           console.log(`   ⚠️  Score write failed: ${e.message.slice(0, 60)}`);
         }
       }
+    }
+    
+    // Check per-user score threshold before proceeding
+    const { shouldAutoApply: checkAutoApply } = await import('./lib/scorer.mjs');
+    const autoApplyCheck = checkAutoApply(jobScore, autoApplyEnabled, dbProfile || profile, minScoreForAutoApply);
+    if (!autoApplyCheck.autoApply) {
+      console.log(`   ⏭️  ${autoApplyCheck.reason}`);
+      stats.skipped++;
+      stats.skippedJobs.push({ company: job.company, role: job.role || job.title, reason: autoApplyCheck.reason });
+      continue;
     }
     
     // Generate tailored CV
