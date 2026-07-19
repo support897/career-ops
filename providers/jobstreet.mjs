@@ -28,7 +28,7 @@
 const DEFAULT_API = 'https://id.jobstreet.com/api/jobsearch/v5/search';
 const DEFAULT_SITE_KEY = 'ID-Main';
 const DEFAULT_PAGE_SIZE = 30;
-const DEFAULT_MAX_PAGES = 3;
+const DEFAULT_MAX_PAGES = 10;
 
 const ALLOWED_JOBSTREET_HOSTS = new Set([
   'id.jobstreet.com',

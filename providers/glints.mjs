@@ -25,7 +25,7 @@ import { BROWSER_LIKE_USER_AGENT } from './_http.mjs';
 const DEFAULT_API = 'https://glints.com/api/v2-alc/graphql';
 const DEFAULT_COUNTRY = 'ID';
 const DEFAULT_PAGE_SIZE = 30;
-const DEFAULT_MAX_PAGES = 3;
+const DEFAULT_MAX_PAGES = 10;
 
 const ALLOWED_GLINTS_HOSTS = new Set([
   'glints.com',

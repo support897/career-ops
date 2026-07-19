@@ -16,7 +16,7 @@
 const FEED_BASE = 'https://thehub.io/api/jobs';
 const TRUSTED_HOST = 'thehub.io';
 const PER_PAGE = 15;
-const DEFAULT_MAX_PAGES = 3;
+const DEFAULT_MAX_PAGES = 10;
 const MAX_PAGES_CAP = 67;
 
 /** @param {string} url */

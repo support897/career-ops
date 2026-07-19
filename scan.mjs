@@ -1389,15 +1389,18 @@ async function main() {
   const userIdFlag = args.indexOf('--userId');
   const userId = userIdFlag !== -1 ? args[userIdFlag + 1] : null;
   let dbConfig = null;
+  let isVip = false;
 
   if (userId) {
     console.log(`[DB mode] Scanning for user: ${userId}`);
     dbReader = await import('./lib/db-reader.mjs');
     dbWriter = await import('./lib/db-writer.mjs');
     dbConfig = await dbReader.buildScanConfigFromDB(userId);
+    isVip = await dbReader.getUserVipStatus(userId);
     console.log(`[DB mode] Profile: ${dbConfig.profile.fullName || 'loaded'}`);
     console.log(`[DB mode] Target roles: ${dbConfig.profile.targetRoles?.join(', ') || 'any'}`);
     console.log(`[DB mode] Enabled platforms: ${dbConfig.enabledPlatforms.join(', ') || 'all'}`);
+    if (isVip) console.log(`[DB mode] VIP user — all providers enabled`);
   }
 
   // 1. Load providers
@@ -1497,6 +1500,12 @@ async function main() {
 
       if (resolved.error) {
         resolveErrors.push({ company: entry.name, error: resolved.error });
+        continue;
+      }
+
+      // VIP-only providers: skip for non-VIP users
+      if (resolved.provider.requiresVip && !isVip) {
+        skippedCount++;
         continue;
       }
 
