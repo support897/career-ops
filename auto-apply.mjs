@@ -576,15 +576,27 @@ function preScreen(job) {
   return { pass: true, reason: 'Matches target profile' };
 }
 
-// ─── Enhanced Scoring (uses lib/scorer.mjs) ────────────────────────────────
+// ─── Enhanced Scoring (uses lib/scorer.mjs — LLM via Ollama + keyword fallback) ──
 
 let scoreJobFn = null;
+let llmScoreJobFn = null;
+let isOllamaAvailableFn = null;
+let ollamaAvailable = false;
 
 async function loadScorer() {
   if (scoreJobFn) return scoreJobFn;
   try {
     const scorer = await import('./lib/scorer.mjs');
     scoreJobFn = scorer.scoreJob;
+    llmScoreJobFn = scorer.llmScoreJob;
+    isOllamaAvailableFn = scorer.isOllamaAvailable;
+    // Check Ollama availability once at startup
+    ollamaAvailable = await isOllamaAvailableFn();
+    if (ollamaAvailable) {
+      console.log(`   🧠 Ollama detected — using LLM scoring for accurate evaluation`);
+    } else {
+      console.log(`   📊 Ollama not available — using keyword scoring`);
+    }
     return scoreJobFn;
   } catch (e) {
     console.log(`   ⚠️  Could not load scorer: ${e.message.slice(0, 80)}`);
@@ -1013,7 +1025,7 @@ ${emailBody}
     
     const slug = job.company.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     
-    // Enhanced scoring if available
+    // Enhanced scoring if available (LLM via Ollama or keyword fallback)
     let jobScore = job.score || 0;
     let matchReasons = job.matchReasons || [];
     
@@ -1032,7 +1044,7 @@ ${emailBody}
         salaryMax: profile?.compensation?.maximum || 100,
       };
       
-      const scoreResult = scorer({
+      const jobForScoring = {
         title: job.role || job.title,
         company: job.company,
         description: job.description || job.raw || '',
@@ -1040,11 +1052,27 @@ ${emailBody}
         salaryMin: job.salaryMin,
         salaryMax: job.salaryMax,
         location: job.location,
-      }, profileForScoring);
+      };
+      
+      // LLM scoring (Ollama) for VIP users only; keyword scoring for everyone
+      let scoreResult;
+      if (isVip && ollamaAvailable && llmScoreJobFn) {
+        try {
+          scoreResult = await llmScoreJobFn(jobForScoring, profileForScoring);
+          console.log(`   🧠 LLM score: ${scoreResult.score}/5 [${scoreResult.source}] (${matchReasons.length} reasons)`);
+        } catch (e) {
+          console.log(`   ⚠️  LLM scoring failed, falling back to keyword: ${e.message.slice(0, 60)}`);
+          scoreResult = scoreJobFn(jobForScoring, profileForScoring);
+          console.log(`   📊 Keyword score: ${scoreResult.score}/5 (${scoreResult.matchReasons.length} reasons)`);
+        }
+      } else {
+        scoreResult = scoreJobFn(jobForScoring, profileForScoring);
+        const src = isVip ? 'keyword (Ollama unavailable)' : 'keyword';
+        console.log(`   📊 ${src}: ${scoreResult.score}/5 (${scoreResult.matchReasons.length} reasons)`);
+      }
       
       jobScore = scoreResult.score;
       matchReasons = scoreResult.matchReasons;
-      console.log(`   📊 Enhanced score: ${jobScore}/5 (${matchReasons.length} reasons)`);
       
       // Update score in DB if available
       if (userId && dbWriter && job.dbId) {
