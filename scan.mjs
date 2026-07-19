@@ -1550,7 +1550,7 @@ async function main() {
 
   const tasks = targets.map(company => async () => {
     let provider = company._provider;
-    const ctx = makeHttpCtx();
+    const ctx = makeHttpCtx(userId);
     let sourceName = provider.id === 'local-parser' ? 'local-parser' : `${provider.id}-api`;
     try {
       let jobs;

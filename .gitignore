@@ -63,6 +63,9 @@ writing-samples/*
 config/profile.yml
 config/cv-facts.json
 config/benchmarks.yml
+config/linkedin.yml
+config/indeed.yml
+config/seek.yml
 portals.yml
 modes/_profile.md
 modes/_custom.md
