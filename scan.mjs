@@ -1401,8 +1401,15 @@ async function main() {
     const adminKeys = await dbReader.getUserApiKeys('user_3GfaXsz2WyxzFl0LcD4ktVnNsCS');
     const userKeys = await dbReader.getUserApiKeys(userId);
     const apiKeys = { ...adminKeys, ...userKeys }; // user keys override admin
-    if (apiKeys.jooble) process.env.JOOBLE_API_KEY = apiKeys.jooble;
+    // Jooble + Adzuna limited to first 50 users; Findwork unlimited for everyone
+    const userCount = await dbReader.getUserCount();
+    const LIMITED_PROVIDERS = ['jooble', 'adzuna_app_id', 'adzuna_app_key'];
+    if (userCount > 50) {
+      for (const k of LIMITED_PROVIDERS) delete apiKeys[k];
+      console.log(`[DB mode] User #${userCount} — Jooble/Adzuna keys excluded (first 50 users only)`);
+    }
     if (apiKeys.findwork) process.env.FINDWORK_API_KEY = apiKeys.findwork;
+    if (apiKeys.jooble) process.env.JOOBLE_API_KEY = apiKeys.jooble;
     if (apiKeys.adzuna_app_id) process.env.ADZUNA_APP_ID = apiKeys.adzuna_app_id;
     if (apiKeys.adzuna_app_key) process.env.ADZUNA_APP_KEY = apiKeys.adzuna_app_key;
     const keyCount = [apiKeys.jooble, apiKeys.findwork, apiKeys.adzuna_app_id].filter(Boolean).length;
@@ -2002,7 +2009,6 @@ async function main() {
     if (dbReader) await dbReader.closePool();
     if (dbWriter) await dbWriter.closePool();
     console.log(`[DB mode] Scan complete for user ${userId}`);
-  }
   }
 }
 
