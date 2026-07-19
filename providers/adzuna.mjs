@@ -28,6 +28,10 @@ export default {
 
     const country = entry.adzunaCountry || 'au'; // default Australia
     const keywords = entry.searchKeywords || entry.name || 'AI automation';
+    // Adzuna's 'what' param works best with 1-2 keywords; take the first role
+    const searchKeywords = Array.isArray(entry.searchKeywords)
+      ? entry.searchKeywords[0]
+      : (entry.searchKeywords || '').split(/\s{2,}/)[0] || keywords;
     const maxPages = Math.min(entry.max_pages || DEFAULT_MAX_PAGES, MAX_PAGES_CAP);
     const out = [];
 
@@ -36,10 +40,10 @@ export default {
         app_id: appId,
         app_key: appKey,
         results_per_page: String(PER_PAGE),
-        what: keywords,
-        content_type: 'application/json',
+        what: searchKeywords,
       });
       if (entry.searchLocation) params.set('where', entry.searchLocation);
+      else if (entry._userLocation) params.set('where', entry._userLocation);
       if (entry.salaryMin) params.set('salary_min', String(entry.salaryMin));
 
       const url = `${API_BASE}/${country}/search/${page}?${params.toString()}`;
@@ -68,8 +72,8 @@ export default {
           company: typeof j.company === 'object' && j.company !== null && typeof j.company.display_name === 'string'
             ? j.company.display_name.trim()
             : (entry.name || 'Adzuna'),
-          location: typeof j.location === 'object' && j.location !== null && Array.isArray(j.location.display_name)
-            ? j.location.display_name.join(', ')
+          location: typeof j.location === 'object' && j.location !== null && typeof j.location.display_name === 'string'
+            ? j.location.display_name.trim()
             : typeof j.location === 'string' ? j.location.trim()
             : '',
           postedAt: j.created ? new Date(j.created).getTime() || undefined : undefined,
