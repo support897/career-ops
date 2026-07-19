@@ -1526,7 +1526,7 @@ async function main() {
         continue;
       }
 
-      targets.push({ ...entry, _provider: resolved.provider, _isBoard: isBoard });
+      targets.push({ ...entry, _provider: resolved.provider, _isBoard: isBoard, _userLocation: dbConfig?.profile?.location || '', searchKeywords: entry.searchKeywords || (dbConfig?.profile?.targetRoles || []).join(' ') || 'AI automation' });
       if (isBoard) boardCount++;
     }
   }

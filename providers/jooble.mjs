@@ -21,7 +21,7 @@ export default {
     }
 
     const keywords = entry.searchKeywords || entry.name || 'AI automation';
-    const location = entry.searchLocation || '';
+    const location = entry.searchLocation || entry._userLocation || '';
 
     const body = { keywords, location, page: 1 };
 
