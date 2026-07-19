@@ -43,6 +43,7 @@ const emailConfig = loadYAML('config/email.yml');
 let dbReader = null;
 let dbWriter = null;
 let dbProfile = null;
+let autoApplyEnabled = false;
 
 if (userId) {
   console.log(`[DB mode] Multi-user mode for userId: ${userId}`);
@@ -53,7 +54,8 @@ if (userId) {
     console.error(`❌ No profile found for user ${userId}. Complete onboarding first.`);
     process.exit(1);
   }
-  console.log(`[DB mode] Profile loaded: ${dbProfile.fullName}`);
+  autoApplyEnabled = await dbReader.getUserAutoApplySetting(userId);
+  console.log(`[DB mode] Profile loaded: ${dbProfile.fullName}, auto-apply: ${autoApplyEnabled}`);
 }
 
 // Local mode: load from profile.yml
@@ -514,8 +516,8 @@ function getPendingFromPipeline() {
 // ─── Pre-screen ────────────────────────────────────────────────────────────
 
 function preScreen(job) {
-  const title = (job.role || '').toLowerCase();
-  const raw = (job.raw || '').toLowerCase();
+  const title = (job.role || job.title || '').toLowerCase();
+  const raw = (job.raw || `${job.title || ''} ${job.company || ''} ${job.description || ''}`).toLowerCase();
   
   const targetKeywords = [
     'ai', 'automation', 'marketing', 'gtm', 'operations', 'agent',
@@ -537,7 +539,7 @@ function preScreen(job) {
     'singapore', 'hong kong'
   ];
   
-  const hasTarget = targetKeywords.some(k => title.includes(k));
+  const hasTarget = targetKeywords.some(k => title.includes(k) || raw.includes(k));
   const hasExclude = excludeKeywords.some(k => title.includes(k));
   const hasGeoBlock = geoBlockers.some(g => raw.includes(g));
   const isRemote = raw.includes('remote');
@@ -547,6 +549,46 @@ function preScreen(job) {
   if (!hasTarget && !isRemote) return { pass: false, reason: 'No target keywords, not remote' };
   
   return { pass: true, reason: 'Matches target profile' };
+}
+
+// ─── Enhanced Scoring (uses lib/scorer.mjs) ────────────────────────────────
+
+let scoreJobFn = null;
+
+async function loadScorer() {
+  if (scoreJobFn) return scoreJobFn;
+  try {
+    const scorer = await import('./lib/scorer.mjs');
+    scoreJobFn = scorer.scoreJob;
+    return scoreJobFn;
+  } catch (e) {
+    console.log(`   ⚠️  Could not load scorer: ${e.message.slice(0, 80)}`);
+    return null;
+  }
+}
+
+// ─── Document Generators ───────────────────────────────────────────────────
+
+let cvGeneratorFn = null;
+let clGeneratorFn = null;
+
+async function loadGenerators() {
+  if (!cvGeneratorFn) {
+    try {
+      const cvGen = await import('./lib/cv-generator.mjs');
+      cvGeneratorFn = cvGen.generateCV;
+    } catch (e) {
+      console.log(`   ⚠️  CV generator not available: ${e.message.slice(0, 80)}`);
+    }
+  }
+  if (!clGeneratorFn) {
+    try {
+      const clGen = await import('./lib/cover-letter-generator.mjs');
+      clGeneratorFn = clGen.generateCoverLetter;
+    } catch (e) {
+      console.log(`   ⚠️  Cover letter generator not available: ${e.message.slice(0, 80)}`);
+    }
+  }
 }
 
 // ─── Generate Tailored CV ──────────────────────────────────────────────────
@@ -882,10 +924,56 @@ async function main() {
   }
   
   // Step 3: Process each job
+  const scorer = await loadScorer();
+  await loadGenerators();
+  
   for (const job of toProcess) {
     console.log(`\n📝 Processing: ${job.company} — ${job.role}`);
     
     const slug = job.company.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    
+    // Enhanced scoring if available
+    let jobScore = job.score || 0;
+    let matchReasons = job.matchReasons || [];
+    
+    if (scorer && (!jobScore || jobScore === 0)) {
+      const profileForScoring = userId ? {
+        targetRoles: dbProfile?.targetRoles || [],
+        jobType: dbProfile?.jobType || ['remote'],
+        employmentType: dbProfile?.employmentType || ['contract'],
+        salaryMin: dbProfile?.salaryMin,
+        salaryMax: dbProfile?.salaryMax,
+      } : {
+        targetRoles: profile?.target_roles || ['AI Automation Specialist', 'Marketing Automation Engineer'],
+        jobType: profile?.job_type || ['remote'],
+        employmentType: profile?.employment_type || ['contract'],
+        salaryMin: profile?.compensation?.minimum || 50,
+        salaryMax: profile?.compensation?.maximum || 100,
+      };
+      
+      const scoreResult = scorer({
+        title: job.role || job.title,
+        company: job.company,
+        description: job.description || job.raw || '',
+        salary: job.salary,
+        salaryMin: job.salaryMin,
+        salaryMax: job.salaryMax,
+        location: job.location,
+      }, profileForScoring);
+      
+      jobScore = scoreResult.score;
+      matchReasons = scoreResult.matchReasons;
+      console.log(`   📊 Enhanced score: ${jobScore}/5 (${matchReasons.length} reasons)`);
+      
+      // Update score in DB if available
+      if (userId && dbWriter && job.dbId) {
+        try {
+          await dbWriter.updateJobScore(job.dbId, jobScore, matchReasons);
+        } catch (e) {
+          console.log(`   ⚠️  Score write failed: ${e.message.slice(0, 60)}`);
+        }
+      }
+    }
     
     // Generate tailored CV
     console.log(`   📄 Generating tailored CV...`);
@@ -895,11 +983,58 @@ async function main() {
     console.log(`   📝 Generating cover letter...`);
     const clPath = generateCoverLetter(job.company, job.role);
     
+    // Try enhanced document generation if available
+    let enhancedCv = null;
+    let enhancedCl = null;
+    
+    if (cvGeneratorFn) {
+      try {
+        const profileForDoc = userId ? dbProfile : {
+          fullName: profile?.candidate?.full_name || 'Ilse Placencia',
+          phone: profile?.candidate?.phone || '+61498570497',
+          email: emailConfig?.gmail?.user || 'placenciailse@gmail.com',
+          location: profile?.candidate?.location || 'Gold Coast, QLD, Australia',
+          portfolioUrl: profile?.candidate?.portfolio_url || 'https://www.ilseplacencia.shop',
+        };
+        enhancedCv = await cvGeneratorFn(profileForDoc, job.description || job.raw || '', join(__dirname, 'output'));
+        if (enhancedCv.success) {
+          console.log(`   ✅ Enhanced CV generated: ${enhancedCv.pdfPath}`);
+        }
+      } catch (e) {
+        console.log(`   ⚠️  Enhanced CV failed: ${e.message.slice(0, 80)}`);
+      }
+    }
+    
+    if (clGeneratorFn) {
+      try {
+        const profileForDoc = userId ? dbProfile : {
+          fullName: profile?.candidate?.full_name || 'Ilse Placencia',
+          phone: profile?.candidate?.phone || '+61498570497',
+          email: emailConfig?.gmail?.user || 'placenciailse@gmail.com',
+          location: profile?.candidate?.location || 'Gold Coast, QLD, Australia',
+          portfolioUrl: profile?.candidate?.portfolio_url || 'https://www.ilseplacencia.shop',
+        };
+        enhancedCl = await clGeneratorFn(profileForDoc, {
+          company: job.company,
+          title: job.role || job.title,
+        }, job.description || job.raw || '', join(__dirname, 'output'));
+        if (enhancedCl.success) {
+          console.log(`   ✅ Enhanced cover letter generated: ${enhancedCl.pdfPath}`);
+        }
+      } catch (e) {
+        console.log(`   ⚠️  Enhanced cover letter failed: ${e.message.slice(0, 80)}`);
+      }
+    }
+    
+    // Use enhanced PDFs if available, fall back to basic
+    const finalCvPath = enhancedCv?.pdfPath || cv.pdfPath;
+    const finalClPath = enhancedCl?.pdfPath || clPath;
+    
     // Scrape JD and generate personalized email
     console.log(`   📧 Scraping job description for personalization...`);
     const jdText = await scrapeJobDescription(job.url);
-    const emailSubject = `Application: ${job.role} at ${job.company} — ${userCreds.fullName}`;
-    const emailBody = generatePersonalizedEmail(job.company, job.role, jdText, profile);
+    const emailSubject = `Application: ${job.role || job.title} at ${job.company} — ${userCreds.fullName}`;
+    const emailBody = generatePersonalizedEmail(job.company, job.role || job.title, jdText, profile);
     
     // Apply via ATS form
     let atsApplied = false;
@@ -916,14 +1051,16 @@ async function main() {
       
       const manualPackage = {
         company: job.company,
-        role: job.role,
+        role: job.role || job.title,
         url: job.url,
         source: job.url.includes('indeed.com') ? 'Indeed' : 'SEEK',
-        cv: cv.pdfPath,
-        coverLetter: clPath,
+        score: jobScore,
+        matchReasons,
+        cv: finalCvPath,
+        coverLetter: finalClPath,
         emailSubject,
         emailBody,
-        instructions: `Apply manually at: ${job.url}\n\nThis job is only available through ${job.url.includes('indeed.com') ? 'Indeed' : 'SEEK'} and cannot be automated.\n\nSteps:\n1. Click the link above\n2. Upload your CV: ${cv.pdfPath}\n3. Upload cover letter: ${clPath}\n4. Copy the email subject and body below if asked for a cover letter\n5. Submit application`,
+        instructions: `Apply manually at: ${job.url}\n\nThis job is only available through ${job.url.includes('indeed.com') ? 'Indeed' : 'SEEK'} and cannot be automated.\n\nSteps:\n1. Click the link above\n2. Upload your CV: ${finalCvPath}\n3. Upload cover letter: ${finalClPath}\n4. Copy the email subject and body below if asked for a cover letter\n5. Submit application`,
       };
       
       const packagePath = join(__dirname, `output/manual-apply-${slug}-${TODAY}.json`);
@@ -936,7 +1073,7 @@ async function main() {
       try {
         const userIdFlag = userId ? ` --userId "${userId}"` : '';
         const atsResult = execSync(
-          `node apply-to-ats.mjs "${job.url}" --cv "${cv.pdfPath || cv.htmlPath}" --cover-letter "${clPath}"${userIdFlag}`,
+          `node apply-to-ats.mjs "${job.url}" --cv "${finalCvPath || cv.pdfPath || cv.htmlPath}" --cover-letter "${finalClPath || clPath}"${userIdFlag}`,
           { encoding: 'utf8', cwd: __dirname, timeout: 90000 }
         );
         const result = JSON.parse(atsResult.trim().split('\n').pop());
@@ -966,7 +1103,7 @@ async function main() {
         to: companyEmail,
         subject: emailSubject,
         body: emailBody,
-        attachments: [cv.pdfPath, clPath].filter(Boolean),
+        attachments: [finalCvPath, finalClPath].filter(Boolean),
       });
       if (result.success) console.log(`   ✅ Email sent to ${companyEmail}`);
       else console.log(`   ⚠️  Email failed: ${result.error}`);
@@ -974,10 +1111,11 @@ async function main() {
       // No email found — save as draft
       console.log(`   📧 No email found on website — saving as draft...`);
       const draftPath = join(__dirname, `output/draft-${slug}-${TODAY}.md`);
-      const draftContent = `# Draft Email — ${job.company} — ${job.role}
+      const draftContent = `# Draft Email — ${job.company} — ${job.role || job.title}
 
 **To:** (no email found on website — find recruiter email manually)
 **Subject:** ${emailSubject}
+**Score:** ${jobScore}/5
 
 ---
 
@@ -986,8 +1124,11 @@ ${emailBody}
 ---
 
 **Attachments:**
-- ${cv.pdfPath || 'CV not generated'}
-- ${clPath || 'Cover letter not generated'}
+- ${finalCvPath || cv.pdfPath || 'CV not generated'}
+- ${finalClPath || clPath || 'Cover letter not generated'}
+
+**Match Reasons:**
+${matchReasons.length > 0 ? matchReasons.map(r => `- ${r}`).join('\n') : '- No specific match reasons'}
 
 **Note:** No email was found on the job posting or company website. Check the company's contact page or LinkedIn to find the recruiter's email address, then copy this content and send manually.
 `;
@@ -1012,15 +1153,26 @@ ${emailBody}
     // DB mode: persist application record and update job status
     if (userId && dbWriter && job.dbId) {
       try {
-        const coverLetterContent = existsSync(clPath) ? readFileSync(clPath, 'utf8') : null;
+        // Use enhanced cover letter content if available
+        let coverLetterContent = null;
+        if (enhancedCl?.textPath && existsSync(enhancedCl.textPath)) {
+          coverLetterContent = readFileSync(enhancedCl.textPath, 'utf8');
+        } else if (existsSync(clPath)) {
+          coverLetterContent = readFileSync(clPath, 'utf8');
+        }
+        
         await dbWriter.writeApplication(userId, job.dbId, {
-          resumeUrl: userCreds.resumeUrl || cv.pdfPath,
+          resumeUrl: userCreds.resumeUrl || finalCvPath || cv.pdfPath,
           coverLetter: coverLetterContent,
           emailBody,
           emailSubject,
           status: atsApplied ? 'applied' : 'draft',
         });
-        await dbWriter.updateJobStatus(job.dbId, atsApplied ? 'applied' : 'pending');
+        await dbWriter.updateJobStatus(job.dbId, atsApplied ? 'auto-applied' : 'pending');
+        // Update score with enhanced scoring
+        if (jobScore > 0) {
+          await dbWriter.updateJobScore(job.dbId, jobScore, matchReasons);
+        }
         console.log(`   💾 Application saved to database`);
       } catch (e) {
         console.log(`   ⚠️  DB write failed: ${e.message.slice(0, 80)}`);
