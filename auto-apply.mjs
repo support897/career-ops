@@ -117,13 +117,28 @@ function slugify(text) {
 async function sendEmail({ to, subject, body, attachments = [] }) {
   try {
     const { createTransport } = await import('nodemailer');
+    
+    // VIP: use DB-stored encrypted password; non-VIP: use config/email.yml
+    let smtpUser = emailConfig.gmail.user;
+    let smtpPass = emailConfig.gmail.app_password;
+    
+    if (isVip && userEmailSettings?.encryptedAppPassword && userId) {
+      const { decryptPassword } = await import('./lib/db-reader.mjs');
+      const decrypted = decryptPassword(userId, userEmailSettings.encryptedAppPassword);
+      if (decrypted) {
+        smtpUser = userEmailSettings.emailAddress || smtpUser;
+        smtpPass = decrypted;
+        console.log(`   🔐 Using VIP email credentials from DB`);
+      }
+    }
+    
     const transporter = createTransport({
       service: 'gmail',
-      auth: { user: emailConfig.gmail.user, pass: emailConfig.gmail.app_password },
+      auth: { user: smtpUser, pass: smtpPass },
     });
 
     const result = await transporter.sendMail({
-      from: `"${emailConfig.defaults.from_name}" <${emailConfig.defaults.from_email}>`,
+      from: `"${emailConfig.defaults.from_name}" <${smtpUser}>`,
       to,
       subject,
       text: body,
@@ -1107,26 +1122,31 @@ ${emailBody}
     let atsUrl = job.url;
     let method = 'ATS';
     
-    // Check if this is an Indeed/SEEK-only job (no company website to apply through)
-    const isJobBoardOnly = job.url.includes('indeed.com') || job.url.includes('seek.com.au') || job.url.includes('seek.co.nz');
+    // Check if this is a job board listing (LinkedIn, Indeed, SEEK) — can't be automated via Lambda
+    const isJobBoardOnly = job.url.includes('indeed.com') || job.url.includes('seek.com.au') || job.url.includes('seek.co.nz') || job.url.includes('linkedin.com') || job.url.includes('jobspresso.com');
     
     if (isJobBoardOnly) {
-      // Indeed/SEEK-only job — generate manual apply package
-      console.log(`   📋 Indeed/SEEK-only job — generating manual apply package...`);
+      // Job board listing — generate manual apply package (no Puppeteer in Lambda)
+      console.log(`   📋 Job board listing — generating manual apply package...`);
       method = 'Manual (Job Board)';
+      
+      const source = job.url.includes('indeed.com') ? 'Indeed' 
+        : job.url.includes('seek.com') ? 'SEEK'
+        : job.url.includes('linkedin.com') ? 'LinkedIn'
+        : 'Job Board';
       
       const manualPackage = {
         company: job.company,
         role: job.role || job.title,
         url: job.url,
-        source: job.url.includes('indeed.com') ? 'Indeed' : 'SEEK',
+        source,
         score: jobScore,
         matchReasons,
         cv: finalCvPath,
         coverLetter: finalClPath,
         emailSubject,
         emailBody,
-        instructions: `Apply manually at: ${job.url}\n\nThis job is only available through ${job.url.includes('indeed.com') ? 'Indeed' : 'SEEK'} and cannot be automated.\n\nSteps:\n1. Click the link above\n2. Upload your CV: ${finalCvPath}\n3. Upload cover letter: ${finalClPath}\n4. Copy the email subject and body below if asked for a cover letter\n5. Submit application`,
+        instructions: `Apply manually at: ${job.url}\n\nThis is a ${source} listing and cannot be automated via Lambda (no Puppeteer/Chrome).\n\nSteps:\n1. Click the link above\n2. Upload your CV: ${finalCvPath}\n3. Upload cover letter: ${finalClPath}\n4. Copy the email subject and body below if asked for a cover letter\n5. Submit application`,
       };
       
       const packagePath = join(__dirname, `output/manual-apply-${slug}-${TODAY}.json`);
