@@ -21,7 +21,7 @@ const FEED_BASE = 'https://4dayweek.io/api/jobs';
 const TRUSTED_HOST = '4dayweek.io';
 const JOB_BASE = `https://${TRUSTED_HOST}/job`;
 const PER_PAGE = 25;
-const DEFAULT_MAX_PAGES = 3;
+const DEFAULT_MAX_PAGES = 10;
 const MAX_PAGES_CAP = 50;
 const SLUG_RE = /^[A-Za-z0-9][A-Za-z0-9-]*$/;
 

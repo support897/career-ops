@@ -15,7 +15,7 @@
 const FEED_BASE = 'https://www.getonbrd.com/api/v0/categories/programming/jobs';
 const TRUSTED_HOST = 'www.getonbrd.com';
 const PER_PAGE = 100;
-const DEFAULT_MAX_PAGES = 3;
+const DEFAULT_MAX_PAGES = 10;
 const MAX_PAGES_CAP = 50;
 
 /** @param {string} url */
