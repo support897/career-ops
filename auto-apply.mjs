@@ -121,8 +121,8 @@ async function sendEmail({ to, subject, body, attachments = [] }) {
     const { createTransport } = await import('nodemailer');
     
     // VIP: use DB-stored encrypted password; non-VIP: use config/email.yml
-    let smtpUser = emailConfig.gmail.user;
-    let smtpPass = emailConfig.gmail.app_password;
+    let smtpUser = emailConfig?.gmail?.user || '';
+    let smtpPass = emailConfig?.gmail?.app_password || '';
     
     if (isVip && userEmailSettings?.encryptedAppPassword && userId) {
       const { decryptPassword } = await import('./lib/db-reader.mjs');
@@ -134,9 +134,16 @@ async function sendEmail({ to, subject, body, attachments = [] }) {
       }
     }
     
+    if (!smtpUser || !smtpPass) {
+      return { success: false, error: 'No email credentials available' };
+    }
+    
     const transporter = createTransport({
       service: 'gmail',
       auth: { user: smtpUser, pass: smtpPass },
+      connectionTimeout: 10000,
+      greetingTimeout: 5000,
+      socketTimeout: 15000,
     });
 
     const result = await transporter.sendMail({
@@ -253,9 +260,10 @@ async function findRecruiterEmail(company, atsType) {
 // ─── Find Company Email (fallback) ─────────────────────────────────────────
 
 async function scrapeJobDescription(url) {
+  let browser;
   try {
     const { chromium } = await import('playwright');
-    const browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
     
@@ -264,10 +272,11 @@ async function scrapeJobDescription(url) {
       const main = document.querySelector('main, [role="main"], .job-description, #content, .content');
       return main ? main.innerText : document.body.innerText;
     });
-    await browser.close();
     return content.slice(0, 5000); // Limit to 5k chars
   } catch (e) {
     return '';
+  } finally {
+    if (browser) try { await browser.close(); } catch {}
   }
 }
 
@@ -405,13 +414,13 @@ function generatePersonalizedEmail(company, role, jdText, profileData) {
 // ─── Find Company Email ─────────────────────────────────────────────────────
 
 async function extractEmailsFromPage(url) {
+  let browser;
   try {
     const { chromium } = await import('playwright');
-    const browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
     const content = await page.content();
-    await browser.close();
     
     // Extract all emails from page content
     const emailRegex = /[\w.+-]+@[\w.-]+\.\w{2,}/g;
@@ -425,6 +434,8 @@ async function extractEmailsFromPage(url) {
     return found.filter(e => !junk.some(j => e.toLowerCase().includes(j)));
   } catch (e) {
     return [];
+  } finally {
+    if (browser) try { await browser.close(); } catch {}
   }
 }
 
@@ -542,29 +553,39 @@ function getPendingFromPipeline() {
 
 // ─── Pre-screen ────────────────────────────────────────────────────────────
 
-function preScreen(job) {
+function preScreen(job, userProfile) {
   const title = (job.role || job.title || '').toLowerCase();
   const raw = (job.raw || `${job.title || ''} ${job.company || ''} ${job.description || ''}`).toLowerCase();
   
-  const targetKeywords = [
+  // Use DB profile target roles if available, fall back to defaults
+  const targetRoles = (userProfile?.targetRoles || userProfile?.target_roles || []).map(r => r.toLowerCase());
+  const targetKeywords = targetRoles.length > 0 ? targetRoles : [
     'ai', 'automation', 'marketing', 'gtm', 'operations', 'agent',
     'workflow', 'growth', 'demand gen', 'revops', 'revenue ops',
     'product ops', 'sales ops', 'enablement', 'strategy'
   ];
   
+  // Use DB profile employment type to decide exclusions
+  const empTypes = (userProfile?.employmentType || userProfile?.employment_type || []).map(t => t.toLowerCase());
   const excludeKeywords = [
     'senior researcher', 'staff engineer', 'principal engineer',
     'director', 'vp of', 'fellow', 'intern', 'junior',
     'devops', 'sre', 'platform engineer', 'systems architect',
-    'data engineer', 'ml engineer', 'software engineer'
   ];
   
-  const geoBlockers = [
-    'on-site', 'onsite', 'in-office', 'hybrid',
-    'new york', 'san francisco', 'los angeles', 'seattle',
-    'london', 'berlin', 'munich', 'paris', 'tokyo',
-    'singapore', 'hong kong'
-  ];
+  // Geo filtering based on jobType preference
+  const jobTypes = userProfile?.jobType || userProfile?.job_type || ['remote'];
+  const prefersRemote = jobTypes.includes('remote');
+  
+  let geoBlockers = [];
+  if (prefersRemote) {
+    geoBlockers = [
+      'on-site', 'onsite', 'in-office',
+      'new york', 'san francisco', 'los angeles', 'seattle',
+      'london', 'berlin', 'munich', 'paris', 'tokyo',
+      'singapore', 'hong kong'
+    ];
+  }
   
   const hasTarget = targetKeywords.some(k => title.includes(k) || raw.includes(k));
   const hasExclude = excludeKeywords.some(k => title.includes(k));
@@ -920,6 +941,12 @@ async function main() {
       raw: `${j.title} | ${j.company} | ${j.location || ''} | remote`,
       dbId: j.id,
       description: j.description,
+      location: j.location,
+      employmentType: j.employmentType,
+      salary: j.salary,
+      salaryMin: j.salaryMin,
+      salaryMax: j.salaryMax,
+      platform: j.platform,
     }));
     console.log(`   Found ${pending.length} pending jobs in database`);
   } else {
@@ -950,7 +977,7 @@ async function main() {
   // Step 2: Pre-screen
   const toProcess = [];
   for (const job of pending.slice(0, LIMIT)) {
-    const screen = preScreen(job);
+    const screen = preScreen(job, dbProfile || profile);
     stats.screened++;
     if (!screen.pass) {
       console.log(`   ⏭️  ${job.company} — ${job.role}: ${screen.reason}`);
@@ -969,61 +996,9 @@ async function main() {
   for (const job of toProcess) {
     console.log(`\n📝 Processing: ${job.company} — ${job.role}`);
     
-    // VIP vs non-VIP platform logic
+    // Platform logic — all users auto-apply via cookies on job boards, API on ATS
     const isJobBoard = JOB_BOARDS.some(p => job.url?.includes(p) || job.platform?.includes(p));
     const isApiPlatform = API_PLATFORMS.some(p => job.platform?.includes(p)) || !isJobBoard;
-    
-    // Non-VIP: skip job boards entirely (generate docs only, no apply)
-    if (!isVip && isJobBoard) {
-      console.log(`   ⏭️  Non-VIP — skipping ${job.platform} job board (generate docs + URL only)`);
-      
-      // Still generate docs for the user
-      const slug = job.company.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      const jdText = await scrapeJobDescription(job.url);
-      const emailSubject = `Application: ${job.role || job.title} at ${job.company} — ${userCreds.fullName}`;
-      const emailBody = generatePersonalizedEmail(job.company, job.role || job.title, jdText, profile);
-      
-      // Save draft package
-      const draftPath = join(__dirname, `output/draft-${slug}-${TODAY}.md`);
-      const draftContent = `# Draft Application — ${job.company} — ${job.role || job.title}
-
-**Platform:** ${job.platform}
-**URL:** ${job.url}
-**Score:** ${job.score || 'N/A'}/5
-
-## Email Subject
-${emailSubject}
-
-## Email Body
-${emailBody}
-
-## How to Apply
-1. Visit: ${job.url}
-2. Upload your CV and cover letter
-3. Copy the email content above if needed
-
-**Note:** This is a job board listing. Apply manually via the link above.
-`;
-      writeFileSync(draftPath, draftContent);
-      console.log(`   💾 Draft saved: ${draftPath}`);
-      
-      // Update status in DB
-      if (userId && dbWriter && job.dbId) {
-        try {
-          await dbWriter.writeApplication(userId, job.dbId, {
-            emailBody,
-            emailSubject,
-            status: 'draft',
-          });
-          await dbWriter.updateJobStatus(job.dbId, 'pending');
-        } catch (e) {
-          console.log(`   ⚠️  DB write failed: ${e.message.slice(0, 80)}`);
-        }
-      }
-      
-      stats.skipped++;
-      continue;
-    }
     
     const slug = job.company.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     
@@ -1054,6 +1029,7 @@ ${emailBody}
         salaryMin: job.salaryMin,
         salaryMax: job.salaryMax,
         location: job.location,
+        employmentType: job.employmentType,
       };
       
       // LLM scoring (Ollama) for VIP users only; keyword scoring for everyone
@@ -1098,11 +1074,23 @@ ${emailBody}
     
     // Generate tailored CV
     console.log(`   📄 Generating tailored CV...`);
-    const cv = generateTailoredCV(job.company, job.role);
+    let cv;
+    try {
+      cv = generateTailoredCV(job.company, job.role);
+    } catch (e) {
+      console.log(`   ⚠️  CV generation failed: ${e.message.slice(0, 80)}`);
+      cv = { pdfPath: null, htmlPath: null, success: false };
+    }
     
     // Generate cover letter
     console.log(`   📝 Generating cover letter...`);
-    const clPath = generateCoverLetter(job.company, job.role);
+    let clPath;
+    try {
+      clPath = generateCoverLetter(job.company, job.role);
+    } catch (e) {
+      console.log(`   ⚠️  Cover letter generation failed: ${e.message.slice(0, 80)}`);
+      clPath = null;
+    }
     
     // Try enhanced document generation if available
     let enhancedCv = null;
@@ -1155,7 +1143,7 @@ ${emailBody}
     console.log(`   📧 Scraping job description for personalization...`);
     const jdText = await scrapeJobDescription(job.url);
     const emailSubject = `Application: ${job.role || job.title} at ${job.company} — ${userCreds.fullName}`;
-    const emailBody = generatePersonalizedEmail(job.company, job.role || job.title, jdText, profile);
+    const emailBody = generatePersonalizedEmail(job.company, job.role || job.title, jdText, dbProfile || profile);
     
     // Apply via ATS form
     let atsApplied = false;
@@ -1195,25 +1183,31 @@ ${emailBody}
       
     } else if (!DRY_RUN && job.url) {
       // Try automated ATS apply (Greenhouse, Ashby, Lever, custom forms)
-      console.log(`   🖥️  Applying via ATS form...`);
-      try {
-        const userIdFlag = userId ? ` --userId "${userId}"` : '';
-        const atsResult = execSync(
-          `node apply-to-ats.mjs "${job.url}" --cv "${finalCvPath || cv.pdfPath || cv.htmlPath}" --cover-letter "${finalClPath || clPath}"${userIdFlag}`,
-          { encoding: 'utf8', cwd: __dirname, timeout: 90000 }
-        );
-        const result = JSON.parse(atsResult.trim().split('\n').pop());
-        if (result.success) {
-          console.log(`   ✅ ATS application submitted`);
-          atsApplied = true;
-          if (result.confirmationUrl) atsUrl = result.confirmationUrl;
-        } else {
-          console.log(`   ⚠️  ATS apply failed: ${result.error}`);
+      const cvPathForAts = finalCvPath || cv.pdfPath;
+      if (!cvPathForAts) {
+        console.log(`   ⚠️  No CV file available — skipping ATS apply`);
+        method = 'Email (no CV)';
+      } else {
+        console.log(`   🖥️  Applying via ATS form...`);
+        try {
+          const userIdFlag = userId ? ` --userId "${userId}"` : '';
+          const atsResult = execSync(
+            `node apply-to-ats.mjs "${job.url}" --cv "${cvPathForAts}" --cover-letter "${finalClPath || clPath}"${userIdFlag}`,
+            { encoding: 'utf8', cwd: __dirname, timeout: 90000 }
+          );
+          const result = JSON.parse(atsResult.trim().split('\n').pop());
+          if (result.success) {
+            console.log(`   ✅ ATS application submitted`);
+            atsApplied = true;
+            if (result.confirmationUrl) atsUrl = result.confirmationUrl;
+          } else {
+            console.log(`   ⚠️  ATS apply failed: ${result.error}`);
+            method = 'Email (ATS failed)';
+          }
+        } catch (e) {
+          console.log(`   ⚠️  ATS apply error: ${e.message.slice(0, 100)}`);
           method = 'Email (ATS failed)';
         }
-      } catch (e) {
-        console.log(`   ⚠️  ATS apply error: ${e.message.slice(0, 100)}`);
-        method = 'Email (ATS failed)';
       }
     } else if (DRY_RUN) {
       console.log(`   🖥️  [DRY RUN] Would apply via ATS: ${job.url}`);
@@ -1282,12 +1276,21 @@ ${emailBody}
           coverLetterContent = readFileSync(clPath, 'utf8');
         }
         
+        // Read enhanced CV HTML for caching in DB
+        let resumeHtml = null;
+        if (enhancedCv?.htmlPath && existsSync(enhancedCv.htmlPath)) {
+          resumeHtml = readFileSync(enhancedCv.htmlPath, 'utf8');
+        } else if (cv?.htmlPath && existsSync(cv.htmlPath)) {
+          resumeHtml = readFileSync(cv.htmlPath, 'utf8');
+        }
+        
         await dbWriter.writeApplication(userId, job.dbId, {
           resumeUrl: userCreds.resumeUrl || finalCvPath || cv.pdfPath,
           coverLetter: coverLetterContent,
           emailBody,
           emailSubject,
           status: atsApplied ? 'applied' : 'draft',
+          resumeHtml,
         });
         await dbWriter.updateJobStatus(job.dbId, atsApplied ? 'auto-applied' : 'pending');
         // Update score with enhanced scoring
@@ -1309,12 +1312,14 @@ ${emailBody}
     writeFileSync(reportPath, report);
     
     // Send report email — VIP only
-    if (isVip) {
+    if (isVip && emailConfig?.report?.to) {
       await sendEmail({
         to: emailConfig.report.to,
-        subject: `${emailConfig.report.subject_prefix} ${TODAY} — ${stats.sent} applications submitted`,
+        subject: `${emailConfig.report.subject_prefix || 'Daily Report'} ${TODAY} — ${stats.sent} applications submitted`,
         body: report,
       });
+    } else if (isVip) {
+      console.log(`   📧 VIP but no report email configured — report saved to ${reportPath}`);
     } else {
       console.log(`   📧 Non-VIP — report saved to ${reportPath} (no email sent)`);
     }
@@ -1332,6 +1337,9 @@ ${emailBody}
   // Cleanup DB connections
   if (userId && dbReader) {
     try { await dbReader.closePool(); } catch {}
+  }
+  if (userId && dbWriter) {
+    try { await dbWriter.closePool(); } catch {}
   }
 }
 
