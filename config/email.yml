@@ -1,0 +1,36 @@
+# Email Configuration for Automated Applications
+# SECURITY: This file is gitignored. Never commit it.
+
+gmail:
+  # Your Gmail address
+  user: "placenciailse@gmail.com"
+  # Gmail app password (16 characters, not your real password)
+  # Generate at: https://myaccount.google.com/apppasswords
+  # Requires 2FA to be enabled on your Google account
+  app_password: "hptfiylhorjaakno"
+
+# Job board login credentials (for Easy Apply automation)
+job_boards:
+  indeed:
+    email: "placenciailse@gmail.com"
+    password: "20inPG05"
+    note: "May be connected to Google login"
+  seek:
+    email: "placenciailse@gmail.com"
+    password: "20inPG05"
+
+# Application email defaults
+defaults:
+  from_name: "Ilse Placencia"
+  from_email: "placenciailse@gmail.com"
+  reply_to: "placenciailse@gmail.com"
+  signature: |
+    Best regards,
+    Ilse Placencia
+    placenciailse@gmail.com | 04 98570497
+    ilseplacencia.shop
+
+# Daily report recipient
+report:
+  to: "placenciailse@gmail.com"
+  subject_prefix: "[Career-Ops Daily]"  
