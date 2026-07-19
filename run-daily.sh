@@ -35,9 +35,9 @@ for (const p of platforms) {
 }
 " 2>&1 | tee "$LOG_DIR/cookies-$TODAY.log"
 
-# Step 1: Scan tracked companies + job boards (Greenhouse/Ashby/Lever per-company + remote boards)
+# Step 1: Scan tracked companies + job boards
 echo "[$TODAY $(date +%H:%M:%S)] Step 1a: Scanning tracked companies and job boards..."
-node scan.mjs 2>&1 | tee "$LOG_DIR/scan-$TODAY.log"
+node scan.mjs --userId user_3GfaXsz2WyxzFl0LcD4ktVnNsCS 2>&1 | tee "$LOG_DIR/scan-$TODAY.log"
 
 # Step 2: Reverse ATS scan — walks ALL Greenhouse/Lever/Ashby/Workday directories
 echo "[$TODAY $(date +%H:%M:%S)] Step 1b: Scanning all ATS directories (Greenhouse/Lever/Ashby/Workday)..."
@@ -45,7 +45,7 @@ node scan-ats-full.mjs --since 3 2>&1 | tee -a "$LOG_DIR/scan-$TODAY.log"
 
 # Step 3: Run the pipeline (pre-screen → generate → apply → email → report)
 echo "[$TODAY $(date +%H:%M:%S)] Step 2: Running apply pipeline..."
-node auto-apply.mjs 2>&1 | tee "$LOG_DIR/auto-apply-$TODAY.log"
+node auto-apply.mjs --userId user_3GfaXsz2WyxzFl0LcD4ktVnNsCS 2>&1 | tee "$LOG_DIR/auto-apply-$TODAY.log"
 
 EXIT_CODE=${PIPESTATUS[0]}
 
