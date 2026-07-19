@@ -1397,6 +1397,14 @@ async function main() {
     dbWriter = await import('./lib/db-writer.mjs');
     dbConfig = await dbReader.buildScanConfigFromDB(userId);
     isVip = await dbReader.getUserVipStatus(userId);
+    // Load API keys from DB and inject into env for providers
+    const apiKeys = await dbReader.getUserApiKeys(userId);
+    if (apiKeys.jooble) process.env.JOOBLE_API_KEY = apiKeys.jooble;
+    if (apiKeys.findwork) process.env.FINDWORK_API_KEY = apiKeys.findwork;
+    if (apiKeys.adzuna_app_id) process.env.ADZUNA_APP_ID = apiKeys.adzuna_app_id;
+    if (apiKeys.adzuna_app_key) process.env.ADZUNA_APP_KEY = apiKeys.adzuna_app_key;
+    const keyCount = [apiKeys.jooble, apiKeys.findwork, apiKeys.adzuna_app_id].filter(Boolean).length;
+    if (keyCount > 0) console.log(`[DB mode] Loaded ${keyCount} API key(s) from DB`);
     console.log(`[DB mode] Profile: ${dbConfig.profile.fullName || 'loaded'}`);
     console.log(`[DB mode] Target roles: ${dbConfig.profile.targetRoles?.join(', ') || 'any'}`);
     console.log(`[DB mode] Enabled platforms: ${dbConfig.enabledPlatforms.join(', ') || 'all'}`);
