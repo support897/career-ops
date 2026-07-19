@@ -16,8 +16,9 @@
 //
 // Wire in via a `job_boards:` entry with `provider: hackernews`.
 
+// Use search endpoint (relevance-sorted) with exact phrase to avoid "Who is dating?" results
 const SEARCH_URL =
-  'https://hn.algolia.com/api/v1/search_by_date?tags=story&query=Ask%20HN%20Who%20is%20hiring&hitsPerPage=5';
+  'https://hn.algolia.com/api/v1/search?query=%22Ask%20HN%3A%20Who%20is%20hiring%22&tags=story&hitsPerPage=5';
 
 /** @param {string} id */
 function itemUrl(id) {
