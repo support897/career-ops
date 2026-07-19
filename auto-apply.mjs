@@ -44,6 +44,11 @@ let dbReader = null;
 let dbWriter = null;
 let dbProfile = null;
 let autoApplyEnabled = false;
+let isVip = false;
+let userEmailSettings = null;
+
+const API_PLATFORMS = ['greenhouse', 'ashby', 'lever', 'workday', 'remoteok'];
+const JOB_BOARDS = ['linkedin', 'indeed', 'seek'];
 
 if (userId) {
   console.log(`[DB mode] Multi-user mode for userId: ${userId}`);
@@ -55,7 +60,12 @@ if (userId) {
     process.exit(1);
   }
   autoApplyEnabled = await dbReader.getUserAutoApplySetting(userId);
-  console.log(`[DB mode] Profile loaded: ${dbProfile.fullName}, auto-apply: ${autoApplyEnabled}`);
+  isVip = await dbReader.getUserVipStatus(userId);
+  if (isVip) {
+    userEmailSettings = await dbReader.getUserEmailSettings(userId);
+    console.log(`[DB mode] VIP user — email automation enabled`);
+  }
+  console.log(`[DB mode] Profile loaded: ${dbProfile.fullName}, auto-apply: ${autoApplyEnabled}, vip: ${isVip}`);
 }
 
 // Local mode: load from profile.yml
@@ -930,6 +940,62 @@ async function main() {
   for (const job of toProcess) {
     console.log(`\n📝 Processing: ${job.company} — ${job.role}`);
     
+    // VIP vs non-VIP platform logic
+    const isJobBoard = JOB_BOARDS.some(p => job.url?.includes(p) || job.platform?.includes(p));
+    const isApiPlatform = API_PLATFORMS.some(p => job.platform?.includes(p)) || !isJobBoard;
+    
+    // Non-VIP: skip job boards entirely (generate docs only, no apply)
+    if (!isVip && isJobBoard) {
+      console.log(`   ⏭️  Non-VIP — skipping ${job.platform} job board (generate docs + URL only)`);
+      
+      // Still generate docs for the user
+      const slug = job.company.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const jdText = await scrapeJobDescription(job.url);
+      const emailSubject = `Application: ${job.role || job.title} at ${job.company} — ${userCreds.fullName}`;
+      const emailBody = generatePersonalizedEmail(job.company, job.role || job.title, jdText, profile);
+      
+      // Save draft package
+      const draftPath = join(__dirname, `output/draft-${slug}-${TODAY}.md`);
+      const draftContent = `# Draft Application — ${job.company} — ${job.role || job.title}
+
+**Platform:** ${job.platform}
+**URL:** ${job.url}
+**Score:** ${job.score || 'N/A'}/5
+
+## Email Subject
+${emailSubject}
+
+## Email Body
+${emailBody}
+
+## How to Apply
+1. Visit: ${job.url}
+2. Upload your CV and cover letter
+3. Copy the email content above if needed
+
+**Note:** This is a job board listing. Apply manually via the link above.
+`;
+      writeFileSync(draftPath, draftContent);
+      console.log(`   💾 Draft saved: ${draftPath}`);
+      
+      // Update status in DB
+      if (userId && dbWriter && job.dbId) {
+        try {
+          await dbWriter.writeApplication(userId, job.dbId, {
+            emailBody,
+            emailSubject,
+            status: 'draft',
+          });
+          await dbWriter.updateJobStatus(job.dbId, 'pending');
+        } catch (e) {
+          console.log(`   ⚠️  DB write failed: ${e.message.slice(0, 80)}`);
+        }
+      }
+      
+      stats.skipped++;
+      continue;
+    }
+    
     const slug = job.company.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     
     // Enhanced scoring if available
@@ -1093,11 +1159,11 @@ async function main() {
       console.log(`   🖥️  [DRY RUN] Would apply via ATS: ${job.url}`);
     }
     
-    // Send email to company — find real email from job posting or website
+    // Send email to company — VIP only (non-VIP gets drafts)
     let companyEmail = await findCompanyEmail(job);
     
-    if (!DRY_RUN && companyEmail) {
-      // Found real email — send it
+    if (isVip && !DRY_RUN && companyEmail) {
+      // VIP: send email automatically
       console.log(`   📧 Sending personalized email to ${companyEmail}...`);
       const result = await sendEmail({
         to: companyEmail,
@@ -1107,13 +1173,13 @@ async function main() {
       });
       if (result.success) console.log(`   ✅ Email sent to ${companyEmail}`);
       else console.log(`   ⚠️  Email failed: ${result.error}`);
-    } else if (!DRY_RUN) {
-      // No email found — save as draft
-      console.log(`   📧 No email found on website — saving as draft...`);
+    } else if (!isVip && !DRY_RUN) {
+      // Non-VIP: save as draft (no email sending)
+      console.log(`   📧 Non-VIP — saving email as draft...`);
       const draftPath = join(__dirname, `output/draft-${slug}-${TODAY}.md`);
       const draftContent = `# Draft Email — ${job.company} — ${job.role || job.title}
 
-**To:** (no email found on website — find recruiter email manually)
+**To:** ${companyEmail || '(no email found — find recruiter email manually)'}
 **Subject:** ${emailSubject}
 **Score:** ${jobScore}/5
 
@@ -1126,15 +1192,10 @@ ${emailBody}
 **Attachments:**
 - ${finalCvPath || cv.pdfPath || 'CV not generated'}
 - ${finalClPath || clPath || 'Cover letter not generated'}
-
-**Match Reasons:**
-${matchReasons.length > 0 ? matchReasons.map(r => `- ${r}`).join('\n') : '- No specific match reasons'}
-
-**Note:** No email was found on the job posting or company website. Check the company's contact page or LinkedIn to find the recruiter's email address, then copy this content and send manually.
 `;
       writeFileSync(draftPath, draftContent);
       console.log(`   💾 Draft saved: ${draftPath}`);
-    } else {
+    } else if (DRY_RUN) {
       console.log(`   📧 [DRY RUN] Would email ${companyEmail || '(no email found — would save as draft)'}`);
       console.log(`   📧 Preview:\n${emailBody.slice(0, 300)}...`);
     }
@@ -1187,12 +1248,16 @@ ${matchReasons.length > 0 ? matchReasons.map(r => `- ${r}`).join('\n') : '- No s
   if (!DRY_RUN) {
     writeFileSync(reportPath, report);
     
-    // Send report email
-    await sendEmail({
-      to: emailConfig.report.to,
-      subject: `${emailConfig.report.subject_prefix} ${TODAY} — ${stats.sent} applications submitted`,
-      body: report,
-    });
+    // Send report email — VIP only
+    if (isVip) {
+      await sendEmail({
+        to: emailConfig.report.to,
+        subject: `${emailConfig.report.subject_prefix} ${TODAY} — ${stats.sent} applications submitted`,
+        body: report,
+      });
+    } else {
+      console.log(`   📧 Non-VIP — report saved to ${reportPath} (no email sent)`);
+    }
   }
   
   console.log(`\n${'─'.repeat(60)}`);
