@@ -174,10 +174,9 @@ export default {
   name: 'Indeed Jobs',
   
   detect(ctx) {
-    const data = loadCookies(ctx?.userId);
-    if (!data || data.cookies.length === 0) return false;
-    const { valid } = checkCookieAge(data.exportedAt);
-    return valid;
+    // Cookie-based provider should only run on portal entries that explicitly
+    // set `provider: indeed`. URL auto-detection is never safe here.
+    return false;
   },
 
   async fetch(entry, ctx) {

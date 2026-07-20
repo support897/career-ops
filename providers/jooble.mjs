@@ -20,8 +20,13 @@ export default {
       throw new Error('jooble: missing JOOBLE_API_KEY env var — register at https://jooble.org/api');
     }
 
-    const keywords = entry.searchKeywords || entry.name || 'AI automation';
-    const location = entry.searchLocation || entry._userLocation || '';
+    const keywords = (entry.searchKeywords || '').trim();
+    if (!keywords) return [];
+
+    const location =
+      entry.searchLocation ||
+      [entry._userLocation, entry._userCountry].filter(Boolean).join(', ') ||
+      '';
 
     const body = { keywords, location, page: 1 };
 

@@ -23,7 +23,9 @@ export default {
       throw new Error('findwork: missing FINDWORK_API_KEY env var — register at https://findwork.dev');
     }
 
-    const keywords = entry.searchKeywords || entry.name || 'AI automation';
+    const keywords = (entry.searchKeywords || '').trim();
+    if (!keywords) return [];
+
     const maxPages = Math.min(entry.max_pages || DEFAULT_MAX_PAGES, MAX_PAGES_CAP);
     const out = [];
 
@@ -33,8 +35,12 @@ export default {
         page: String(page),
         order_by: 'relevance',
       });
-      if (entry.searchLocation) params.set('location', entry.searchLocation);
+      const location =
+        entry.searchLocation ||
+        [entry._userLocation, entry._userCountry].filter(Boolean).join(', ');
+      if (location) params.set('location', location);
       if (entry.remoteOnly) params.set('remote', 'true');
+
 
       const url = `${API_URL}?${params.toString()}`;
       const json = await ctx.fetchJson(url, {

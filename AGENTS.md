@@ -124,7 +124,7 @@ AI-powered, CLI-agnostic job search automation: pipeline tracking, offer evaluat
 | `jd-skill-gap.mjs` | Zero-LLM JD skill-gap checker — classifies a JD's required skills against `cv.md` into existing / supportedByResume / gap so a CV can be tailored honestly (JSON or `--summary` output); never auto-adds a claim to `cv.md` |
 | `data/follow-ups.md` | Follow-up history tracker |
 | `data/blacklist.md` | Your do-not-apply company list (user layer, opt-in — never auto-populated; respected by `scan.mjs` and the `auto-pipeline`/`oferta`/`apply` gates) |
-| `scan.mjs` | Zero-token portal scanner — hits Greenhouse/Ashby/Lever APIs directly, zero LLM cost |
+| `scan.mjs` | Zero-token portal scanner — hits Greenhouse/Ashby/Lever APIs directly, zero LLM cost. In multi-user DB mode it loads per-user API keys from `users.api_keys` and injects them as env vars (`JOOBLE_API_KEY`, `FINDWORK_API_KEY`, `ADZUNA_APP_ID`, `ADZUNA_APP_KEY`). Global fallback keys can be supplied via the `CAREER_OPS_DEFAULT_API_KEYS` JSON env var or an `__admin__` user row; user keys always override global defaults. DB mode also reads `profiles.country` and `profiles.location` to build a country-aware location filter and passes the country to board providers (Adzuna country code, Jooble/Findwork location). |
 | `scan-ats-full.mjs` | Reverse-ATS keyword-first scanner — walks the full public job-board-aggregator dataset per ATS provider (Greenhouse/Lever/Ashby/Workday), filtered by portals.yml's title_filter/location_filter. No company-list curation needed; complements scan.mjs's company-first model. |
 | `check-liveness.mjs` | Job posting liveness checker |
 | `liveness-core.mjs` | Shared liveness logic (expired signals win over generic Apply text) |

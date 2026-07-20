@@ -1397,8 +1397,18 @@ async function main() {
     dbWriter = await import('./lib/db-writer.mjs');
     dbConfig = await dbReader.buildScanConfigFromDB(userId);
     isVip = await dbReader.getUserVipStatus(userId);
-    // Load API keys: admin keys are global (shared by all users), user keys override
-    const adminKeys = await dbReader.getUserApiKeys('user_3GfaXsz2WyxzFl0LcD4ktVnNsCS');
+    // Load API keys: global defaults (env or __admin__ row) are shared by all users;
+    // individual user keys override them.
+    let adminKeys = {};
+    if (process.env.CAREER_OPS_DEFAULT_API_KEYS) {
+      try {
+        adminKeys = JSON.parse(process.env.CAREER_OPS_DEFAULT_API_KEYS);
+      } catch (e) {
+        console.warn('[DB mode] Could not parse CAREER_OPS_DEFAULT_API_KEYS:', e.message);
+      }
+    } else {
+      adminKeys = await dbReader.getUserApiKeys('__admin__').catch(() => ({}));
+    }
     const userKeys = await dbReader.getUserApiKeys(userId);
     const apiKeys = { ...adminKeys, ...userKeys }; // user keys override admin
     // Jooble + Adzuna limited to first 50 users; Findwork unlimited for everyone
@@ -1452,7 +1462,16 @@ async function main() {
       config.title_filter = { ...config.title_filter, positive: dbConfig.titleFilter.positive };
     }
     if (dbConfig.locationFilter.positive.length > 0) {
-      config.location_filter = { ...config.location_filter, positive: dbConfig.locationFilter.positive };
+      config.location_filter = {
+        ...config.location_filter,
+        positive: dbConfig.locationFilter.positive,
+        always_allow: [
+          ...(Array.isArray(config.location_filter?.always_allow)
+            ? config.location_filter.always_allow
+            : []),
+          ...dbConfig.locationFilter.always_allow,
+        ],
+      };
     }
     if (dbConfig.salaryFilter) {
       config.salary_filter = dbConfig.salaryFilter;
@@ -1486,6 +1505,13 @@ async function main() {
   const resolveErrors = [];
   const agentHandoff = [];
 
+  function normalizePlatformId(name) {
+    return String(name ?? '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
   /**
    * Processes a list of configuration entries, resolves their appropriate data providers,
    * and appends valid entries to the global scanning targets list.
@@ -1496,6 +1522,12 @@ async function main() {
     for (const entry of entries) {
       if (!entry || typeof entry !== 'object') continue;
       if (entry.enabled === false) continue;
+
+      // Per-user platform toggle (from web app). Missing setting = use portals.yml default.
+      if (dbConfig?.platformEnabled) {
+        const pid = normalizePlatformId(entry.name);
+        if (dbConfig.platformEnabled[pid] === false) continue;
+      }
       if (typeof entry.name !== 'string' || !entry.name.trim()) {
         console.error(`⚠️  Skipping entry — missing or non-string 'name' field: ${JSON.stringify(entry)}`);
         continue;
@@ -1526,7 +1558,14 @@ async function main() {
         continue;
       }
 
-      targets.push({ ...entry, _provider: resolved.provider, _isBoard: isBoard, _userLocation: dbConfig?.profile?.location || '', searchKeywords: entry.searchKeywords || (dbConfig?.profile?.targetRoles || []).join(' ') || 'AI automation' });
+      targets.push({
+        ...entry,
+        _provider: resolved.provider,
+        _isBoard: isBoard,
+        _userLocation: dbConfig?.profile?.location || '',
+        _userCountry: dbConfig?.profile?.country || '',
+        searchKeywords: entry.searchKeywords || (dbConfig?.profile?.targetRoles || []).join(' ') || '',
+      });
       if (isBoard) boardCount++;
     }
   }
