@@ -1,8 +1,10 @@
 /**
- * lambda/index.mjs — AWS Lambda handler for career-ops scanning.
+ * lambda/index.mjs — AWS Lambda handler for career-ops scanning & applying.
  *
- * Receives scan requests from Inngest via API Gateway,
- * runs the scanner with --userId, returns results.
+ * Receives events from Inngest via API Gateway.
+ * Supported actions:
+ *   - scan:  runs scan.mjs --userId
+ *   - apply: runs auto-apply.mjs --userId
  *
  * Environment variables required:
  *   DATABASE_URL — Neon DB connection string
@@ -23,9 +25,11 @@ mkdirSync(WORK_DIR, { recursive: true });
 export const handler = async (event) => {
   console.log('[Lambda] Event received:', JSON.stringify(event, null, 2));
 
+  let userId, platforms, keywords, location, maxResults;
+  let action = 'scan';
   try {
     const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
-    const { userId, platforms, keywords, location, maxResults } = body;
+    ({ userId, platforms, keywords, location, maxResults, action = 'scan' } = body);
 
     if (!userId) {
       return {
@@ -34,18 +38,7 @@ export const handler = async (event) => {
       };
     }
 
-    console.log(`[Lambda] Scanning for user: ${userId}`);
-    console.log(`[Lambda] Platforms: ${platforms?.join(', ') || 'all'}`);
-    console.log(`[Lambda] Keywords: ${keywords || 'none'}`);
-
-    // Build scan command
-    const args = ['scan.mjs', '--userId', userId];
-
-    if (platforms && platforms.length > 0) {
-      // Scan specific platforms (filtered by provider)
-      // Note: scan.mjs --company filters by company name, not platform
-      // For platform filtering, we rely on DB config
-    }
+    console.log(`[Lambda] Action: ${action} for user: ${userId}`);
 
     // Set working directory to where career-ops code lives
     const careerOpsDir = process.env.LAMBDA_TASK_ROOT || '/var/task';
@@ -55,23 +48,31 @@ export const handler = async (event) => {
       throw new Error('DATABASE_URL environment variable is not set');
     }
 
+    let args;
+    if (action === 'apply') {
+      args = ['auto-apply.mjs', '--userId', userId];
+    } else {
+      args = ['scan.mjs', '--userId', userId];
+      // Future: pass platform filters from `platforms` if scan.mjs supports it
+    }
+
     console.log(`[Lambda] Running: node ${args.join(' ')}`);
     console.log(`[Lambda] Working directory: ${careerOpsDir}`);
 
-    // Run the scanner
+    // Run the requested script
     const { stdout, stderr } = await execFileAsync('node', args, {
       cwd: careerOpsDir,
       env: {
         ...process.env,
         NODE_OPTIONS: '--max-old-space-size=1536', // Lambda has 2GB, leave headroom
       },
-      timeout: 240000, // 4 minutes (Lambda timeout is 5 min)
+      timeout: action === 'apply' ? 300000 : 240000, // apply can take longer
       maxBuffer: 10 * 1024 * 1024, // 10MB buffer
     });
 
-    console.log('[Lambda] Scanner output:', stdout);
+    console.log('[Lambda] Output:', stdout);
     if (stderr) {
-      console.log('[Lambda] Scanner stderr:', stderr);
+      console.log('[Lambda] Stderr:', stderr);
     }
 
     // Parse results from stdout
@@ -81,14 +82,21 @@ export const handler = async (event) => {
     const totalFoundMatch = stdout.match(/Total found:\s+(\d+)/);
     const totalFound = totalFoundMatch ? parseInt(totalFoundMatch[1], 10) : 0;
 
+    const appliedMatch = stdout.match(/Applied:\s+(\d+)/);
+    const applied = appliedMatch ? parseInt(appliedMatch[1], 10) : 0;
+
     return {
       statusCode: 200,
       body: JSON.stringify({
         success: true,
         userId,
+        action,
         newOffers,
         totalFound,
-        message: `Scan complete. ${newOffers} new jobs found and added to database.`,
+        applied,
+        message: action === 'apply'
+          ? `Apply pipeline complete. ${applied} applications processed.`
+          : `Scan complete. ${newOffers} new jobs found and added to database.`,
         output: stdout,
       }),
     };
@@ -100,8 +108,8 @@ export const handler = async (event) => {
       return {
         statusCode: 504,
         body: JSON.stringify({
-          error: 'Scan timed out',
-          message: 'The scan took too long. Try scanning fewer platforms.',
+          error: 'Pipeline timed out',
+          message: 'The operation took too long. Try fewer platforms or run locally.',
         }),
       };
     }
@@ -109,7 +117,7 @@ export const handler = async (event) => {
     return {
       statusCode: 500,
       body: JSON.stringify({
-        error: 'Scan failed',
+        error: `${action} failed`,
         message: error.message,
         stderr: error.stderr,
       }),
