@@ -14,6 +14,46 @@ const PER_PAGE = 50;
 const DEFAULT_MAX_PAGES = 5;
 const MAX_PAGES_CAP = 50;
 
+const COUNTRY_CODE_MAP = {
+  'australia': 'au',
+  'united states': 'us',
+  'usa': 'us',
+  'united kingdom': 'gb',
+  'uk': 'gb',
+  'canada': 'ca',
+  'germany': 'de',
+  'france': 'fr',
+  'spain': 'es',
+  'italy': 'it',
+  'netherlands': 'nl',
+  'ireland': 'ie',
+  'sweden': 'se',
+  'norway': 'no',
+  'denmark': 'dk',
+  'finland': 'fi',
+  'switzerland': 'ch',
+  'austria': 'at',
+  'belgium': 'be',
+  'poland': 'pl',
+  'portugal': 'pt',
+  'india': 'in',
+  'singapore': 'sg',
+  'japan': 'jp',
+  'south korea': 'kr',
+  'brazil': 'br',
+  'mexico': 'mx',
+  'argentina': 'ar',
+  'new zealand': 'nz',
+  'south africa': 'za',
+  'united arab emirates': 'ae',
+  'israel': 'il',
+};
+
+function adzunaCountryCode(countryName) {
+  if (!countryName || typeof countryName !== 'string') return null;
+  return COUNTRY_CODE_MAP[countryName.trim().toLowerCase()] || null;
+}
+
 /** @type {Provider} */
 export default {
   id: 'adzuna',
@@ -26,8 +66,13 @@ export default {
       throw new Error('adzuna: missing ADZUNA_APP_ID and/or ADZUNA_APP_KEY env vars — register at https://developer.adzuna.com');
     }
 
-    const country = entry.adzunaCountry || 'au'; // default Australia
-    const keywords = entry.searchKeywords || entry.name || 'AI automation';
+    const country =
+      entry.adzunaCountry ||
+      adzunaCountryCode(entry._userCountry) ||
+      'au'; // default Australia
+    const keywords = (entry.searchKeywords || '').trim();
+    if (!keywords) return [];
+
     // Adzuna's 'what' param works best with 1-2 keywords; take the first role
     const searchKeywords = Array.isArray(entry.searchKeywords)
       ? entry.searchKeywords[0]
