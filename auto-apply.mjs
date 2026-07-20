@@ -51,11 +51,6 @@ let minScoreForAutoApply = 4;
 const API_PLATFORMS = ['greenhouse', 'ashby', 'lever', 'workday', 'remoteok'];
 const JOB_BOARDS = ['linkedin', 'indeed', 'seek'];
 
-// Free-tier limits
-const FREE_TIER_DAILY_APPLY_LIMIT = 1;
-let applicationsToday = 0;
-let remainingFreeApplications = Infinity;
-
 if (userId) {
   console.log(`[DB mode] Multi-user mode for userId: ${userId}`);
   dbReader = await import('./lib/db-reader.mjs');
@@ -68,11 +63,6 @@ if (userId) {
   autoApplyEnabled = await dbReader.getUserAutoApplySetting(userId);
   isVip = await dbReader.getUserVipStatus(userId);
   minScoreForAutoApply = await dbReader.getUserMinScoreForAutoApply(userId);
-  applicationsToday = await dbReader.getUserApplicationCountToday(userId);
-  if (!isVip) {
-    remainingFreeApplications = Math.max(0, FREE_TIER_DAILY_APPLY_LIMIT - applicationsToday);
-    console.log(`[DB mode] Free-tier user — ${applicationsToday}/${FREE_TIER_DAILY_APPLY_LIMIT} applications used today`);
-  }
   if (isVip) {
     userEmailSettings = await dbReader.getUserEmailSettings(userId);
     console.log(`[DB mode] VIP user — email automation enabled`);
@@ -1021,12 +1011,6 @@ async function main() {
       continue;
     }
 
-    // Free-tier guard: enforce 1 application per day
-    if (!isVip && remainingFreeApplications <= 0) {
-      console.log(`   ⛔ Free-tier daily limit reached (${FREE_TIER_DAILY_APPLY_LIMIT}/day). Stopping.`);
-      break;
-    }
-
     console.log(`\n📝 Processing: ${job.company} — ${job.role || job.title}`);
     
     // Platform logic — all users auto-apply via cookies on job boards, API on ATS
@@ -1289,7 +1273,6 @@ ${emailBody}
     
     // Track
     stats.sent++;
-    if (!isVip && !DRY_RUN) remainingFreeApplications--;
     applications.push({
       num: applications.length + 1,
       company: job.company,
