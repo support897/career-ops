@@ -51,6 +51,11 @@ let minScoreForAutoApply = 4;
 const API_PLATFORMS = ['greenhouse', 'ashby', 'lever', 'workday', 'remoteok'];
 const JOB_BOARDS = ['linkedin', 'indeed', 'seek'];
 
+// Free-tier limits
+const FREE_TIER_DAILY_APPLY_LIMIT = 1;
+let applicationsToday = 0;
+let remainingFreeApplications = Infinity;
+
 if (userId) {
   console.log(`[DB mode] Multi-user mode for userId: ${userId}`);
   dbReader = await import('./lib/db-reader.mjs');
@@ -63,6 +68,11 @@ if (userId) {
   autoApplyEnabled = await dbReader.getUserAutoApplySetting(userId);
   isVip = await dbReader.getUserVipStatus(userId);
   minScoreForAutoApply = await dbReader.getUserMinScoreForAutoApply(userId);
+  applicationsToday = await dbReader.getUserApplicationCountToday(userId);
+  if (!isVip) {
+    remainingFreeApplications = Math.max(0, FREE_TIER_DAILY_APPLY_LIMIT - applicationsToday);
+    console.log(`[DB mode] Free-tier user — ${applicationsToday}/${FREE_TIER_DAILY_APPLY_LIMIT} applications used today`);
+  }
   if (isVip) {
     userEmailSettings = await dbReader.getUserEmailSettings(userId);
     console.log(`[DB mode] VIP user — email automation enabled`);
@@ -72,6 +82,12 @@ if (userId) {
 
 // Local mode: load from profile.yml
 const profile = loadYAML('config/profile.yml');
+
+// Local mode runs with full capabilities (legacy Ilse-only path)
+if (!userId) {
+  isVip = true;
+  console.log('[Local mode] Running as VIP-equivalent (local profile.yml path)');
+}
 
 // Build unified credential object — DB mode takes precedence
 const userCreds = userId ? {
@@ -100,8 +116,8 @@ const userCreds = userId ? {
   resumeName: null,
 };
 
-if (!emailConfig?.gmail?.app_password && !DRY_RUN) {
-  console.error('❌ Gmail app_password not set in config/email.yml');
+if (!emailConfig?.gmail?.app_password && !DRY_RUN && isVip) {
+  console.error('❌ Gmail app_password not set in config/email.yml (required for VIP email sending)');
   process.exit(1);
 }
 
@@ -994,7 +1010,24 @@ async function main() {
   await loadGenerators();
   
   for (const job of toProcess) {
-    console.log(`\n📝 Processing: ${job.company} — ${job.role}`);
+    // Free-tier guard: skip cookie-based job boards (LinkedIn/Indeed/SEEK are VIP-only)
+    const isCookiePlatform = JOB_BOARDS.some(p =>
+      (job.url || '').includes(p) || (job.platform || '').includes(p)
+    );
+    if (!isVip && isCookiePlatform) {
+      console.log(`   ⏭️  ${job.company} — ${job.role || job.title}: Cookie-based platform (VIP only)`);
+      stats.skipped++;
+      stats.skippedJobs.push({ ...job, reason: 'Cookie-based platform — VIP only' });
+      continue;
+    }
+
+    // Free-tier guard: enforce 1 application per day
+    if (!isVip && remainingFreeApplications <= 0) {
+      console.log(`   ⛔ Free-tier daily limit reached (${FREE_TIER_DAILY_APPLY_LIMIT}/day). Stopping.`);
+      break;
+    }
+
+    console.log(`\n📝 Processing: ${job.company} — ${job.role || job.title}`);
     
     // Platform logic — all users auto-apply via cookies on job boards, API on ATS
     const isJobBoard = JOB_BOARDS.some(p => job.url?.includes(p) || job.platform?.includes(p));
@@ -1256,6 +1289,7 @@ ${emailBody}
     
     // Track
     stats.sent++;
+    if (!isVip && !DRY_RUN) remainingFreeApplications--;
     applications.push({
       num: applications.length + 1,
       company: job.company,
@@ -1266,7 +1300,7 @@ ${emailBody}
     });
     
     // DB mode: persist application record and update job status
-    if (userId && dbWriter && job.dbId) {
+    if (userId && dbWriter && job.dbId && !DRY_RUN) {
       try {
         // Use enhanced cover letter content if available
         let coverLetterContent = null;
