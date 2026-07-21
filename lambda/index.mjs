@@ -28,7 +28,10 @@ export const handler = async (event) => {
   let userId, platforms, keywords, location, maxResults;
   let action = 'scan';
   try {
-    const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
+    // Handle both SDK invoke (event is the payload) and Function URL (payload in event.body)
+    const body = event.body
+      ? (typeof event.body === 'string' ? JSON.parse(event.body) : event.body)
+      : event;
     ({ userId, platforms, keywords, location, maxResults, action = 'scan' } = body);
 
     if (!userId) {
