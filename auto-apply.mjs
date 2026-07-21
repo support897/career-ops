@@ -359,61 +359,50 @@ function matchToExperience(requirements, profile) {
 function generatePersonalizedEmail(company, role, jdText, profileData) {
   const requirements = extractRequirements(jdText);
   const matches = matchToExperience(requirements, profileData);
-  
-  // Human touches - rotate through these to keep emails fresh and genuine
-  const humanTouches = [
-    { text: `I've been following ${company}'s work and genuinely love what you're building.`, type: 'enthusiasm' },
-    { text: `As someone who's built automated systems for my own businesses, I understand the real-world challenges your team is solving.`, type: 'relatability' },
-    { text: `I'm fluent in Spanish, English, Italian, and French — happy to help with international expansion if needed.`, type: 'multilingual' },
-    { text: `I've been exploring similar problems in my own work and would love to learn how your team approaches them.`, type: 'curiosity' },
-    { text: `Congrats on the exciting work your team is doing — it's exactly the kind of impact I want to be part of.`, type: 'congrats' },
+
+  const openers = [
+    `I hope this finds you well. I came across the ${role} role at ${company} and something about it genuinely resonated with me — it's not every day you find a position that feels like it was written with your exact background in mind. I wanted to reach out personally rather than just submitting through the form.`,
+    `I'm reaching out because I've just read through the ${role} posting at ${company}, and I have to say — it's rare to find a role that lines up so perfectly with what I've been building for the past four years. I felt compelled to write to you directly.`,
+    `When I saw the ${role} opening at ${company}, I stopped everything. This is exactly the kind of role I've been working toward — not just the technical requirements, but the kind of impact it promises. I wanted to introduce myself properly rather than let a standard application speak for me.`,
+    `I'll be honest — your ${role} posting at ${company} is the first one in weeks that made me feel genuinely excited. I've spent years building the exact systems your team seems to need, and I wanted to share what I've done rather than just check boxes on an application form.`,
+    `I've been thinking about the ${role} position at ${company} since I came across it. It sounds corny, but sometimes a job posting just clicks — like someone described perfectly what you love doing. I hope you don't mind me reaching out directly to share what I've been working on.`,
   ];
-  
-  // Pick a human touch based on company name (deterministic, so same company always gets same touch)
-  const touchIndex = company.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % humanTouches.length;
-  const humanTouch = humanTouches[touchIndex];
-  
-  // Build the email
+  const openerIdx = company.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % openers.length;
+
   let email = `Dear ${company} Hiring Team,\n\n`;
-  
-  // Warm opening with human touch
-  email += `I'm writing to express my interest in the ${role} position at ${company}. ${humanTouch.text}\n\n`;
-  
-  // Personalized body based on matched skills
+  email += openers[openerIdx] + '\n\n';
+
+  email += `A little about me — I'm ${userCreds.fullName}, an AI Automation Specialist based in ${userCreds.location || 'Australia'}. Over the past four years, I've designed, coded, and deployed end-to-end automation systems across three businesses I founded. Not the kind of automation you set and forget — I'm talking about pipelines that run 24/7: scraping prospects, generating personalized reports, sending cold outreach, deploying websites, and booking meetings through AI voice agents, all with zero manual input. I've written every line of code, debugged workflows at 2am, and iterated until each system worked flawlessly. That's the level of care I'd bring to ${company}.\n\n`;
+
   if (matches.length > 0) {
-    // Pick top 2 most relevant matches (keep it short)
-    const topMatches = matches.slice(0, 2);
-    
-    email += `Your role requires `;
-    const skillList = topMatches.map(m => m.skill.replace(/_/g, ' '));
-    if (skillList.length === 1) {
-      email += skillList[0];
-    } else {
-      email += skillList[0] + ' and ' + skillList[1];
-    }
-    email += ` — here's what I've done in these areas:\n\n`;
-    
-    // Specific proof points (short, punchy)
+    const topMatches = matches.slice(0, 3);
+    email += `What excites me about the ${role} position at ${company} is how closely it aligns with these areas I've been perfecting:\n\n`;
     for (const match of topMatches) {
       const proofText = match.proof.includes(':') ? match.proof.split(':')[1].trim() : match.proof;
       const cleanProof = proofText
         .replace(/^Fully /, 'Built a fully ')
         .replace(/^Automated /, 'Built an automated ')
         .replace(/^Managed /, 'Managed ');
-      email += `• ${cleanProof.charAt(0).toUpperCase() + cleanProof.slice(1)}\n`;
+      email += `• ${cleanProof.charAt(0).toUpperCase() + cleanProof.slice(1)}\n\n`;
     }
-    email += '\n';
+    email += `These aren't just bullet points from a resume — they're systems I've built from scratch that are still running today, generating real results without any human intervention. I believe ${company} would benefit from this same hands-on approach.\n\n`;
   } else {
-    email += `I build AI-powered automation systems that replace manual operations with intelligent workflows. With 4+ years of experience across three businesses I founded, I bring a unique combination of technical depth and business outcomes.\n\n`;
+    email += `What draws me to ${company} isn't just the ${role} title — it's the kind of challenges I'd get to work on. I build AI-powered automation that replaces manual operations with intelligent workflows, and I've done it across marketing, sales, content production, and customer acquisition. I don't just configure tools — I build the tools myself, from the first line of code to the production deployment.\n\n`;
   }
-  
-  // Warm closing — use unified credentials
-  email += `I'd be thrilled to bring this experience to ${company}. Wishing you a great week regardless.\n\n`;
-  email += `Best regards,\n`;
+
+  const closings = [
+    `I know your team probably receives dozens of applications, so I genuinely appreciate you taking the time to read this. I've attached my CV (personalized for this role) and a cover letter that goes deeper into the experience I've outlined above. If anything I've shared resonates, I'd love the chance to continue the conversation — whatever format works best for you.`,
+    `Thank you for reading this far — I know how busy hiring teams are, and I don't take your time for granted. I've attached my personalized CV and cover letter for this role. If what I've described sounds like the kind of person you're looking for, I'd welcome the opportunity to talk further. No pressure, no rush — just a genuine conversation.`,
+    `I realize I've written quite a bit here, and I hope it comes across as enthusiasm rather than lengthiness. Your ${role} position genuinely excites me. My CV (tailored for this role) and cover letter are attached. I'd be honoured to hear back from you if there's a fit.`,
+    `Thank you for considering my application — I know these decisions involve weighing many factors, and I appreciate the care you put into them. I've attached my CV (personalized for the ${role} position) and cover letter. Whether or not things work out, I admire what ${company} is building and I'm rooting for your team's success regardless.`,
+  ];
+  email += `${closings[(openerIdx + 2) % closings.length]}\n\n`;
+
+  email += `With gratitude and warm regards,\n`;
   email += `${userCreds.fullName}\n`;
   email += `${userCreds.email} | ${userCreds.phone}\n`;
   email += `${userCreds.website}`;
-  
+
   return email;
 }
 
@@ -1167,36 +1156,63 @@ async function main() {
     let atsUrl = job.url;
     let method = 'ATS';
     
-    // Check if this is a job board listing (LinkedIn, Indeed, SEEK) — can't be automated via Lambda
-    const isJobBoardOnly = job.url.includes('indeed.com') || job.url.includes('seek.com.au') || job.url.includes('seek.co.nz') || job.url.includes('linkedin.com') || job.url.includes('jobspresso.com');
+    // Check if this is a job board listing (LinkedIn, Indeed, SEEK) — use cookies to auto-apply
+    const platform = job.url.includes('linkedin.com') ? 'linkedin'
+      : job.url.includes('indeed.com') ? 'indeed'
+      : job.url.includes('seek.com') ? 'seek'
+      : null;
+    const isJobBoardOnly = !!platform;
     
     if (isJobBoardOnly) {
-      // Job board listing — generate manual apply package (no Puppeteer in Lambda)
-      console.log(`   📋 Job board listing — generating manual apply package...`);
-      method = 'Manual (Job Board)';
+      // Attempt cookie-based auto-apply using saved browser sessions
+      console.log(`   🌐 Cookie platform — ${platform}...`);
+      method = `${platform.charAt(0).toUpperCase() + platform.slice(1)} Auto-Apply`;
       
-      const source = job.url.includes('indeed.com') ? 'Indeed' 
-        : job.url.includes('seek.com') ? 'SEEK'
-        : job.url.includes('linkedin.com') ? 'LinkedIn'
-        : 'Job Board';
+      if (isVip && !DRY_RUN) {
+        try {
+          const providerMod = await import(`./providers/${platform}.mjs`).catch(() => null);
+          if (providerMod?.default?.apply) {
+            const applyResult = await providerMod.default.apply(job.url, {
+              userId,
+              candidateInfo: {
+                firstName: userCreds.firstName || userCreds.fullName?.split(' ')[0],
+                lastName: userCreds.lastName || userCreds.fullName?.split(' ').slice(1).join(' '),
+                email: userCreds.email,
+                phone: userCreds.phone,
+              },
+              cvPath: finalCvPath || cv.pdfPath,
+            });
+            if (applyResult?.success) {
+              console.log(`   ✅ ${applyResult.method || platform} — application submitted`);
+              atsApplied = true;
+            } else {
+              console.log(`   ⚠️  ${platform} apply failed: ${applyResult?.error} — falling back to manual`);
+              method = 'Semi-Auto (Manual)';
+            }
+          } else {
+            console.log(`   ⚠️  ${platform} provider has no apply() — generating manual package`);
+            method = 'Semi-Auto (Manual)';
+          }
+        } catch (e) {
+          console.log(`   ⚠️  ${platform} cookie apply error: ${e.message.slice(0, 100)} — falling back to manual`);
+          method = 'Semi-Auto (Manual)';
+        }
+      }
       
-      const manualPackage = {
-        company: job.company,
-        role: job.role || job.title,
-        url: job.url,
-        source,
-        score: jobScore,
-        matchReasons,
-        cv: finalCvPath,
-        coverLetter: finalClPath,
-        emailSubject,
-        emailBody,
-        instructions: `Apply manually at: ${job.url}\n\nThis is a ${source} listing and cannot be automated via Lambda (no Puppeteer/Chrome).\n\nSteps:\n1. Click the link above\n2. Upload your CV: ${finalCvPath}\n3. Upload cover letter: ${finalClPath}\n4. Copy the email subject and body below if asked for a cover letter\n5. Submit application`,
-      };
-      
-      const packagePath = join(__dirname, `output/manual-apply-${slug}-${TODAY}.json`);
-      writeFileSync(packagePath, JSON.stringify(manualPackage, null, 2));
-      console.log(`   💾 Manual apply package saved: ${packagePath}`);
+      // If VIP cookie apply failed or non-VIP, generate manual package
+      if (!atsApplied) {
+        const source = platform ? platform.charAt(0).toUpperCase() + platform.slice(1) : 'Job Board';
+        const manualPackage = {
+          company: job.company, role: job.role || job.title, url: job.url,
+          source, score: jobScore, matchReasons,
+          cv: finalCvPath, coverLetter: finalClPath,
+          emailSubject, emailBody,
+          instructions: `Apply at: ${job.url}\n\nSteps:\n1. Click link\n2. Upload CV: ${finalCvPath}\n3. Upload cover letter: ${finalClPath}\n4. Submit`,
+        };
+        const packagePath = join(__dirname, `output/manual-apply-${slug}-${TODAY}.json`);
+        writeFileSync(packagePath, JSON.stringify(manualPackage, null, 2));
+        console.log(`   💾 Manual apply package saved: ${packagePath}`);
+      }
       
     } else if (!DRY_RUN && job.url) {
       // Try automated ATS apply (Greenhouse, Ashby, Lever, custom forms)
