@@ -4,7 +4,7 @@
 FROM public.ecr.aws/lambda/nodejs:22
 
 # Install system dependencies required by Chromium
-RUN yum install -y \
+RUN dnf install -y \
     alsa-lib \
     atk \
     at-spi2-atk \
@@ -25,13 +25,13 @@ RUN yum install -y \
     nss \
     mesa-libEGL \
     mesa-libGL \
-    && yum clean all
+    && dnf clean all
 
 # Install fonts for proper text rendering
-RUN yum install -y \
-    google-noto-sans-fonts-common \
-    google-noto-serif-fonts-common \
-    && yum clean all
+RUN dnf install -y \
+    google-noto-sans-fonts \
+    google-noto-serif-fonts \
+    && dnf clean all
 
 # Copy package files and install dependencies
 COPY lambda/package.json /var/task/package.json
@@ -64,6 +64,10 @@ COPY templates/ /var/task/templates/
 
 # Copy data directory (for blacklist, etc.)
 COPY data/ /var/task/data/
+
+# Copy tracker aliases
+COPY tracker-aliases.json /var/task/tracker-aliases.json
+COPY templates/states.yml /var/task/templates/states.yml
 
 # Copy the Lambda handler
 COPY lambda/index.mjs /var/task/index.mjs
