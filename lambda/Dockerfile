@@ -37,8 +37,14 @@ RUN dnf install -y \
 COPY lambda/package.json /var/task/package.json
 RUN npm install --production
 
-# Copy career-ops code (core files needed for scanning)
+# Copy core pipeline scripts
 COPY scan.mjs /var/task/scan.mjs
+COPY auto-apply.mjs /var/task/auto-apply.mjs
+COPY apply-to-ats.mjs /var/task/apply-to-ats.mjs
+COPY scan-ats-full.mjs /var/task/scan-ats-full.mjs
+COPY generate-pdf.mjs /var/task/generate-pdf.mjs
+COPY generate-cover-letter.mjs /var/task/generate-cover-letter.mjs
+COPY build-cv-html.mjs /var/task/build-cv-html.mjs
 COPY classify-tier.mjs /var/task/classify-tier.mjs
 COPY fingerprint-core.mjs /var/task/fingerprint-core.mjs
 COPY tracker-parse.mjs /var/task/tracker-parse.mjs
@@ -68,6 +74,9 @@ COPY data/ /var/task/data/
 # Copy tracker aliases
 COPY tracker-aliases.json /var/task/tracker-aliases.json
 COPY templates/states.yml /var/task/templates/states.yml
+
+# The Lambda runtime mounts the image as read-only. The pipeline writes
+# to output/, which we redirect to /tmp via the handler script.
 
 # Copy the Lambda handler
 COPY lambda/index.mjs /var/task/index.mjs

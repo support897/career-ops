@@ -13,14 +13,42 @@
 
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs';
+import { readFileSync, existsSync, writeFileSync, mkdirSync, symlinkSync, cpSync, readdirSync, statSync } from 'fs';
 import path from 'path';
 
 const execFileAsync = promisify(execFile);
 
-// Lambda has limited /tmp — use it for scan output
+const TASK_DIR = process.env.LAMBDA_TASK_ROOT || '/var/task';
 const WORK_DIR = '/tmp/career-ops';
-mkdirSync(WORK_DIR, { recursive: true });
+
+// Copy pipeline scripts to writable /tmp so __dirname works for output/ writes
+function prepareWorkDir() {
+  if (existsSync(WORK_DIR + '/auto-apply.mjs')) return; // Already prepared for this warm container
+  mkdirSync(WORK_DIR, { recursive: true });
+  mkdirSync(WORK_DIR + '/output', { recursive: true });
+  
+  // Copy only .mjs files (scripts, not node_modules)
+  for (const entry of readdirSync(TASK_DIR)) {
+    const src = path.join(TASK_DIR, entry);
+    const dst = path.join(WORK_DIR, entry);
+    try {
+      if (entry.endsWith('.mjs') || entry.endsWith('.json') || entry === 'portals.yml') {
+        cpSync(src, dst, { force: true });
+      }
+    } catch {}
+  }
+  
+  // Symlink directories (read-only in source, accessed via symlink)
+  for (const dir of ['lib', 'providers', 'plugins', 'config', 'modes', 'templates', 'data', 'node_modules']) {
+    const src = path.join(TASK_DIR, dir);
+    const dst = path.join(WORK_DIR, dir);
+    try {
+      if (existsSync(src) && !existsSync(dst)) {
+        symlinkSync(src, dst, 'dir');
+      }
+    } catch {}
+  }
+}
 
 export const handler = async (event) => {
   console.log('[Lambda] Event received:', JSON.stringify(event, null, 2));
@@ -43,34 +71,27 @@ export const handler = async (event) => {
 
     console.log(`[Lambda] Action: ${action} for user: ${userId}`);
 
-    // Set working directory to where career-ops code lives
-    const careerOpsDir = process.env.LAMBDA_TASK_ROOT || '/var/task';
-
-    // Ensure DATABASE_URL is available
-    if (!process.env.DATABASE_URL) {
-      throw new Error('DATABASE_URL environment variable is not set');
-    }
+    prepareWorkDir();
 
     let args;
     if (action === 'apply') {
       args = ['auto-apply.mjs', '--userId', userId];
     } else {
       args = ['scan.mjs', '--userId', userId];
-      // Future: pass platform filters from `platforms` if scan.mjs supports it
     }
 
     console.log(`[Lambda] Running: node ${args.join(' ')}`);
-    console.log(`[Lambda] Working directory: ${careerOpsDir}`);
+    console.log(`[Lambda] Working directory: ${WORK_DIR}`);
 
-    // Run the requested script
     const { stdout, stderr } = await execFileAsync('node', args, {
-      cwd: careerOpsDir,
+      cwd: WORK_DIR,
       env: {
         ...process.env,
-        NODE_OPTIONS: '--max-old-space-size=1536', // Lambda has 2GB, leave headroom
+        NODE_PATH: TASK_DIR + '/node_modules',
+        NODE_OPTIONS: '--max-old-space-size=1536',
       },
-      timeout: action === 'apply' ? 300000 : 240000, // apply can take longer
-      maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+      timeout: action === 'apply' ? 300000 : 240000,
+      maxBuffer: 10 * 1024 * 1024,
     });
 
     console.log('[Lambda] Output:', stdout);
