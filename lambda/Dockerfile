@@ -37,7 +37,8 @@ RUN dnf install -y \
 COPY lambda/package.json /var/task/package.json
 RUN npm install --production
 
-# Copy core pipeline scripts
+# Copy cookie crypto for platform auto-apply
+COPY lib/cookie-crypto.mjs /var/task/lib/cookie-crypto.mjs
 COPY scan.mjs /var/task/scan.mjs
 COPY auto-apply.mjs /var/task/auto-apply.mjs
 COPY apply-to-ats.mjs /var/task/apply-to-ats.mjs
