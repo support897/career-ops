@@ -17,7 +17,11 @@ puppeteer.use(StealthPlugin());
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CONFIG_PATH = join(__dirname, '../config/indeed.yml');
 const EMAIL_CONFIG_PATH = join(__dirname, '../config/email.yml');
-const CHROME_PATH = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const CHROME_PATH = process.env.CHROME_PATH
+  || (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium'
+  : existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome'
+  : existsSync('/ms-playwright/chromium-1228/chrome-linux/chrome') ? '/ms-playwright/chromium-1228/chrome-linux/chrome'
+  : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
 
 // ─── Cookie loading ────────────────────────────────────────────────────────
 
@@ -174,8 +178,6 @@ export default {
   name: 'Indeed Jobs',
   
   detect(ctx) {
-    // Cookie-based provider should only run on portal entries that explicitly
-    // set `provider: indeed`. URL auto-detection is never safe here.
     return false;
   },
 
@@ -183,7 +185,138 @@ export default {
     const keywords = entry.scan_query || entry.name || 'AI automation';
     return scrapeIndeedJobs(keywords, 25, ctx?.userId);
   },
+
+  async apply(url, ctx) {
+    return applyToJob(url, ctx?.userId, ctx?.candidateInfo || {}, ctx?.cvPath);
+  },
 };
+
+// ─── Auto-apply to Indeed jobs ──────────────────────────────────────────────
+
+async function applyToJob(url, userId, candidateInfo, cvPath) {
+  const data = await loadCookies(userId);
+  if (!data || data.cookies.length === 0) {
+    return { success: false, error: 'No Indeed cookies available' };
+  }
+
+  const { valid } = checkCookieAge(data.exportedAt);
+  if (!valid) {
+    return { success: false, error: 'Indeed cookies expired' };
+  }
+
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    executablePath: CHROME_PATH,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 800 });
+
+    await page.setCookie(...data.cookies.map(c => ({
+      name: c.name, value: c.value, domain: c.domain || '.indeed.com', path: '/', httpOnly: true, secure: true,
+    })));
+
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+    if (page.url().includes('auth') || page.url().includes('login')) {
+      return { success: false, error: 'Indeed session expired — re-login needed' };
+    }
+
+    await page.waitForSelector('#apply-button, button[id*="apply"], a[id*="apply"], .ia-continueButton', { timeout: 15000 }).catch(() => {});
+
+    const applyBtn = await page.$('#apply-button, button[id*="apply"], a[id*="apply"], .ia-continueButton');
+    if (!applyBtn) {
+      return { success: false, error: 'No Apply button found — may require external redirect' };
+    }
+
+    await applyBtn.click();
+    await new Promise(r => setTimeout(r, 3000));
+
+    const confirmationPatterns = [/thank you/i, /submitted/i, /application complete/i, /application received/i, /you.?ve applied/i];
+    const nextStepSelectors = [
+      'button.ia-continueButton', 'button:has-text("Continue")',
+      'button:has-text("Next")', 'button:has-text("Review")',
+      'button[type="submit"]',
+    ];
+
+    for (let step = 0; step < 8; step++) {
+      if (candidateInfo.email) {
+        await page.evaluate((email) => {
+          const inputs = document.querySelectorAll('input[name*="email"], input[type="email"], input[placeholder*="email" i]');
+          inputs.forEach(i => { i.value = email; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });
+        }, candidateInfo.email);
+      }
+      if (candidateInfo.phone) {
+        await page.evaluate((phone) => {
+          const inputs = document.querySelectorAll('input[name*="phone"], input[type="tel"], input[placeholder*="phone" i]');
+          inputs.forEach(i => { i.value = phone; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });
+        }, candidateInfo.phone);
+      }
+      if (candidateInfo.firstName) {
+        await page.evaluate((name) => {
+          const input = document.querySelector('input[name*="first" i], input[placeholder*="first" i]');
+          if (input) { input.value = name; input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); }
+        }, candidateInfo.firstName);
+      }
+      if (candidateInfo.lastName) {
+        await page.evaluate((name) => {
+          const input = document.querySelector('input[name*="last" i], input[placeholder*="last" i]');
+          if (input) { input.value = name; input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); }
+        }, candidateInfo.lastName);
+      }
+
+      if (cvPath && existsSync(cvPath)) {
+        const fileInputs = await page.$$('input[type="file"]');
+        for (const fi of fileInputs) {
+          const visible = await fi.evaluate(el => el.offsetParent !== null).catch(() => false);
+          if (visible) {
+            try {
+              await fi.uploadFile(cvPath);
+              await new Promise(r => setTimeout(r, 2000));
+            } catch {}
+            break;
+          }
+        }
+      }
+
+      const pageText = await page.evaluate(() => document.body?.innerText || '').catch(() => '');
+      if (confirmationPatterns.some(p => p.test(pageText))) {
+        return { success: true, method: 'Indeed Apply (step ' + step + ')' };
+      }
+
+      let clicked = false;
+      for (const sel of nextStepSelectors) {
+        try {
+          const btn = await page.$(sel);
+          if (btn && await btn.isVisible().catch(() => false)) {
+            await btn.click();
+            clicked = true;
+            break;
+          }
+        } catch {}
+      }
+
+      if (clicked) {
+        await new Promise(r => setTimeout(r, 3000));
+        const afterText = await page.evaluate(() => document.body?.innerText || '').catch(() => '');
+        if (confirmationPatterns.some(p => p.test(afterText))) {
+          return { success: true, method: 'Indeed Apply' };
+        }
+        continue;
+      }
+
+      break;
+    }
+
+    return { success: false, error: 'Could not complete Indeed application form' };
+  } catch (err) {
+    return { success: false, error: err.message };
+  } finally {
+    await browser.close();
+  }
+}
 
 // ─── Standalone testing ────────────────────────────────────────────────────
 

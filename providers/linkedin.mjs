@@ -19,7 +19,11 @@ puppeteer.use(StealthPlugin());
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CONFIG_PATH = join(__dirname, '../config/linkedin.yml');
 const EMAIL_CONFIG_PATH = join(__dirname, '../config/email.yml');
-const CHROME_PATH = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const CHROME_PATH = process.env.CHROME_PATH
+  || (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium'
+  : existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome'
+  : existsSync('/ms-playwright/chromium-1228/chrome-linux/chrome') ? '/ms-playwright/chromium-1228/chrome-linux/chrome'
+  : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
 
 // ─── Cookie loading ────────────────────────────────────────────────────────
 
@@ -223,6 +227,162 @@ async function scrapeLinkedInJobs(keywords, maxJobs = 25, userId) {
   }
 }
 
+// ─── Auto-apply to LinkedIn Easy Apply jobs ──────────────────────────────────
+
+async function applyToJob(url, userId, candidateInfo, cvPath) {
+  const data = await loadCookies(userId);
+  if (!data || data.cookies.length === 0) {
+    return { success: false, error: 'No LinkedIn cookies available' };
+  }
+
+  const { valid } = checkCookieAge(data.exportedAt);
+  if (!valid) {
+    return { success: false, error: 'LinkedIn cookies expired' };
+  }
+
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    executablePath: CHROME_PATH,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 800 });
+
+    await page.setCookie(...data.cookies.map(c => ({
+      name: c.name,
+      value: c.value,
+      domain: c.domain || '.linkedin.com',
+      path: '/',
+      httpOnly: true,
+      secure: true,
+    })));
+
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+    if (page.url().includes('/login') || page.url().includes('authwall')) {
+      return { success: false, error: 'LinkedIn session expired — re-login needed' };
+    }
+
+    await page.waitForSelector('.jobs-apply-button, button[aria-label*="Apply"]', { timeout: 15000 }).catch(() => {});
+
+    const applyBtn = await page.$('.jobs-apply-button, button[aria-label*="Apply"]');
+    if (!applyBtn) {
+      return { success: false, error: 'No Apply button found — may require external redirect' };
+    }
+
+    await applyBtn.click();
+    await page.waitForSelector('.jobs-easy-apply-modal, .artdeco-modal', { timeout: 10000 }).catch(() => {});
+
+    const confirmationPatterns = [/thank you/i, /submitted/i, /application complete/i, /applied/i];
+    const nextStepSelectors = [
+      'button[aria-label="Continue to next step"]',
+      'button[aria-label="Review your application"]',
+      'button:has-text("Next")',
+      'button:has-text("Continue")',
+      'button:has-text("Review")',
+    ];
+    const submitSelectors = [
+      'button[aria-label="Submit application"]',
+      'button:has-text("Submit application")',
+      'button:has-text("Submit")',
+    ];
+
+    for (let step = 0; step < 8; step++) {
+      if (candidateInfo.email) {
+        await page.evaluate((email) => {
+          const inputs = document.querySelectorAll('input[name*="email"], input[type="email"]');
+          inputs.forEach(i => { i.value = email; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });
+        }, candidateInfo.email);
+      }
+      if (candidateInfo.phone) {
+        await page.evaluate((phone) => {
+          const inputs = document.querySelectorAll('input[name*="phone"], input[type="tel"]');
+          inputs.forEach(i => { i.value = phone; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });
+        }, candidateInfo.phone);
+      }
+      if (candidateInfo.firstName) {
+        await page.evaluate((name) => {
+          const inputs = document.querySelectorAll('input[name*="first-name"], input[id*="first-name"]');
+          inputs.forEach(i => { i.value = name; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });
+        }, candidateInfo.firstName);
+      }
+      if (candidateInfo.lastName) {
+        await page.evaluate((name) => {
+          const inputs = document.querySelectorAll('input[name*="last-name"], input[id*="last-name"]');
+          inputs.forEach(i => { i.value = name; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });
+        }, candidateInfo.lastName);
+      }
+
+      if (cvPath && existsSync(cvPath)) {
+        const fileInputs = await page.$$('input[type="file"]');
+        for (const fi of fileInputs) {
+          const accept = await fi.getAttribute('accept') || '';
+          const visible = await fi.evaluate(el => el.offsetParent !== null).catch(() => false);
+          if (visible && (accept.includes('pdf') || accept.includes('document') || accept.includes('image'))) {
+            try {
+              await fi.uploadFile(cvPath);
+              await new Promise(r => setTimeout(r, 2000));
+            } catch {}
+            break;
+          }
+        }
+      }
+
+      const pageText = await page.evaluate(() => document.body?.innerText || '').catch(() => '');
+      if (confirmationPatterns.some(p => p.test(pageText))) {
+        return { success: true, method: 'LinkedIn Easy Apply (step ' + step + ')' };
+      }
+
+      let clicked = false;
+      for (const sel of submitSelectors) {
+        try {
+          const btn = await page.$(sel);
+          if (btn && await btn.isVisible().catch(() => false)) {
+            await btn.click();
+            clicked = true;
+            break;
+          }
+        } catch {}
+      }
+
+      if (clicked) {
+        await new Promise(r => setTimeout(r, 3000));
+        const afterText = await page.evaluate(() => document.body?.innerText || '').catch(() => '');
+        if (confirmationPatterns.some(p => p.test(afterText))) {
+          return { success: true, method: 'LinkedIn Easy Apply' };
+        }
+        continue;
+      }
+
+      for (const sel of nextStepSelectors) {
+        try {
+          const btn = await page.$(sel);
+          if (btn && await btn.isVisible().catch(() => false)) {
+            await btn.click();
+            clicked = true;
+            break;
+          }
+        } catch {}
+      }
+
+      if (clicked) {
+        await new Promise(r => setTimeout(r, 2000));
+        continue;
+      }
+
+      break;
+    }
+
+    return { success: false, error: 'Could not complete LinkedIn application form — may need manual review' };
+  } catch (err) {
+    return { success: false, error: err.message };
+  } finally {
+    await browser.close();
+  }
+}
+
 // ─── Provider interface (default export for registry) ─────────────────────
 
 export default {
@@ -230,15 +390,16 @@ export default {
   name: 'LinkedIn Jobs',
   
   detect(ctx) {
-    // Cookie-based provider should only run on portal entries that explicitly
-    // set `provider: linkedin`. URL auto-detection is never safe because most
-    // company pages are not LinkedIn job listings.
     return false;
   },
 
   async fetch(entry, ctx) {
     const keywords = entry.scan_query || entry.name || 'AI automation';
     return scrapeLinkedInJobs(keywords, 25, ctx?.userId);
+  },
+
+  async apply(url, ctx) {
+    return applyToJob(url, ctx?.userId, ctx?.candidateInfo || {}, ctx?.cvPath);
   },
 };
 
