@@ -1,0 +1,52 @@
+name: Careerflow Cron
+
+on:
+  schedule:
+    # Every hour — triggers Lambda scan (checks each user's schedule)
+    - cron: '0 * * * *'
+    # Daily at 8am UTC = 6pm Brisbane — sends digest email
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  scan:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 * * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger scan
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://jobapply-xi.vercel.app/api/cron/scan")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          
+          echo "HTTP $HTTP_CODE"
+          echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
+          
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+  digest:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 8 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger digest
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://jobapply-xi.vercel.app/api/cron/daily-digest")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          
+          echo "HTTP $HTTP_CODE"
+          echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
+          
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Failed with HTTP $HTTP_CODE"
+            exit 1
+          fi

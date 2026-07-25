@@ -121,3 +121,5 @@ plan/
 
 # Web
 .career-ops-web/logo-cache/
+.vercel
+get-refresh-token.mjs
