@@ -1264,7 +1264,7 @@ async function main() {
             from: emailConfig.defaults?.from_email || 'placenciailse@gmail.com',
             to: draftTo,
             subject: emailSubject,
-            htmlBody: `<div style="font-family:Arial,sans-serif;max-width:600px;">${emailBody.replace(/\n/g, '<br>')}</div>`,
+            body: emailBody,
             attachments: [
               finalCvPath && { path: finalCvPath },
               finalClPath && { path: finalClPath },
