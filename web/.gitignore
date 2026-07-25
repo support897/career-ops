@@ -14,3 +14,4 @@ next-env.d.ts
 
 # agent session memory — internal notes, never in the public repo
 .claude/
+.vercel

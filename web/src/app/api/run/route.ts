@@ -7,7 +7,7 @@ import { acquireTrackerWrite, releaseTrackerWrite } from "@/lib/core/run-registr
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 800; // a real oferta evaluation / pdf-mode CV tailoring + render is heavy and multi-step
+export const maxDuration = 300;
 
 // The web ORCHESTRATES the real career-ops engine — it does NOT reimplement it.
 // kind "evaluate" runs the REAL modes/oferta.md and persists the canonical

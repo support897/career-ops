@@ -7,7 +7,7 @@ import { getSession } from "@/lib/apply/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 320;
+export const maxDuration = 300;
 
 /**
  * Pull a JSON object out of an LLM's text answer, tolerating code fences,

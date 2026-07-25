@@ -1,0 +1,480 @@
+import { neon, NeonQueryFunction } from "@neondatabase/serverless";
+
+/**
+ * Database layer for Careerflow cloud deployment.
+ * Replaces filesystem reads (careerOpsRoot, readApplications, etc.)
+ * with Neon PostgreSQL queries.
+ *
+ * This allows the web app to run on Vercel without local file access.
+ */
+
+let sql: NeonQueryFunction<false, false>;
+
+function getSql(): NeonQueryFunction<false, false> {
+  if (!sql) {
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL not configured");
+    }
+    sql = neon(dbUrl);
+  }
+  return sql;
+}
+
+// ── Types ────────────────────────────────────────────────────────────
+
+export type UserProfile = {
+  id: string;
+  user_id: string;
+  email: string | null;
+  full_name: string | null;
+  location: string | null;
+  timezone: string;
+  scanning_enabled: boolean;
+  scan_mode: 'schedule' | 'interval' | 'disabled';
+  scan_frequency_hours: number;
+  preferred_days: number[];
+  preferred_hours: number[];
+  platforms: string[];
+  keywords: string[];
+  location_filter: string[];
+  cv_data: Record<string, unknown> | null;
+  profile_config: Record<string, unknown> | null;
+  created_at: Date;
+  updated_at: Date;
+  last_scan_at: Date | null;
+};
+
+export type Application = {
+  id: string;
+  user_id: string;
+  num: string;
+  date: string | null;
+  company: string;
+  role: string;
+  score: string | null;
+  status: string;
+  pdf_generated: boolean;
+  report_path: string | null;
+  notes: string | null;
+  via: string | null;
+  created_at: Date;
+  updated_at: Date;
+};
+
+export type InboxJob = {
+  id: string;
+  user_id: string;
+  url: string;
+  company: string;
+  role: string;
+  location: string | null;
+  compensation: string | null;
+  done: boolean;
+  processed_at: Date | null;
+  created_at: Date;
+  updated_at: Date;
+};
+
+export type ScanHistoryEntry = {
+  id: string;
+  user_id: string;
+  url: string;
+  company: string | null;
+  title: string | null;
+  location: string | null;
+  ats_source: string | null;
+  first_seen: string;
+  last_seen: string;
+  created_at: Date;
+};
+
+export type ScanRun = {
+  id: string;
+  user_id: string;
+  started_at: Date;
+  completed_at: Date | null;
+  users_scanned: number;
+  new_offers: number;
+  total_offers: number;
+  errors: number;
+  created_at: Date;
+};
+
+export type Report = {
+  id: string;
+  user_id: string;
+  report_num: string;
+  company_slug: string;
+  report_date: string;
+  content: string;
+  created_at: Date;
+};
+
+export type PortalsConfig = {
+  id: string;
+  user_id: string;
+  title_filter: { positive: string[]; negative: string[] } | null;
+  location_filter: { allow: string[]; block: string[]; always_allow: string[] } | null;
+  tracked_companies: Record<string, unknown>[] | null;
+  created_at: Date;
+  updated_at: Date;
+};
+
+// ── User Profile Operations ──────────────────────────────────────────
+
+export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM user_profiles WHERE user_id = ${userId} LIMIT 1
+  `;
+  return (rows[0] as UserProfile) || null;
+}
+
+export async function upsertUserProfile(
+  userId: string,
+  data: Partial<UserProfile>
+): Promise<UserProfile> {
+  const sql = getSql();
+  const rows = await sql`
+    INSERT INTO user_profiles (user_id, email, full_name, location, timezone, scanning_enabled, scan_mode, scan_frequency_hours, preferred_days, preferred_hours, platforms, keywords, location_filter, cv_data, profile_config)
+    VALUES (
+      ${userId},
+      ${data.email || null},
+      ${data.full_name || null},
+      ${data.location || null},
+      ${data.timezone || "UTC"},
+      ${data.scanning_enabled ?? true},
+      ${data.scan_mode || "interval"},
+      ${data.scan_frequency_hours || 6},
+      ${data.preferred_days || [1,2,3,4,5]},
+      ${data.preferred_hours || [9,13,18]},
+      ${data.platforms || []},
+      ${data.keywords || []},
+      ${data.location_filter || []},
+      ${data.cv_data ? JSON.stringify(data.cv_data) : null}::jsonb,
+      ${data.profile_config ? JSON.stringify(data.profile_config) : null}::jsonb
+    )
+    ON CONFLICT (user_id) DO UPDATE SET
+      email = COALESCE(${data.email}, user_profiles.email),
+      full_name = COALESCE(${data.full_name}, user_profiles.full_name),
+      location = COALESCE(${data.location}, user_profiles.location),
+      timezone = ${data.timezone || "UTC"},
+      scanning_enabled = ${data.scanning_enabled ?? true},
+      scan_mode = ${data.scan_mode || "interval"},
+      scan_frequency_hours = ${data.scan_frequency_hours || 6},
+      preferred_days = ${data.preferred_days || [1,2,3,4,5]},
+      preferred_hours = ${data.preferred_hours || [9,13,18]},
+      platforms = ${data.platforms || []},
+      keywords = ${data.keywords || []},
+      location_filter = ${data.location_filter || []},
+      cv_data = COALESCE(${data.cv_data ? JSON.stringify(data.cv_data) : null}::jsonb, user_profiles.cv_data),
+      profile_config = COALESCE(${data.profile_config ? JSON.stringify(data.profile_config) : null}::jsonb, user_profiles.profile_config),
+      updated_at = NOW()
+    RETURNING *
+  `;
+  return rows[0] as UserProfile;
+}
+
+// ── Application Operations ───────────────────────────────────────────
+
+export async function getApplications(userId: string): Promise<Application[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM applications WHERE user_id = ${userId} ORDER BY num::integer DESC
+  `;
+  return rows as Application[];
+}
+
+export async function getApplication(userId: string, num: string): Promise<Application | null> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM applications WHERE user_id = ${userId} AND num = ${num} LIMIT 1
+  `;
+  return (rows[0] as Application) || null;
+}
+
+export async function upsertApplication(
+  userId: string,
+  data: Partial<Application> & { num: string; company: string; role: string }
+): Promise<Application> {
+  const sql = getSql();
+  const rows = await sql`
+    INSERT INTO applications (user_id, num, date, company, role, score, status, pdf_generated, report_path, notes, via)
+    VALUES (
+      ${userId},
+      ${data.num},
+      ${data.date || null},
+      ${data.company},
+      ${data.role},
+      ${data.score || null},
+      ${data.status || "Evaluated"},
+      ${data.pdf_generated ?? false},
+      ${data.report_path || null},
+      ${data.notes || null},
+      ${data.via || null}
+    )
+    ON CONFLICT (user_id, num) DO UPDATE SET
+      date = COALESCE(${data.date}, applications.date),
+      company = ${data.company},
+      role = ${data.role},
+      score = COALESCE(${data.score}, applications.score),
+      status = ${data.status || "Evaluated"},
+      pdf_generated = ${data.pdf_generated ?? false},
+      report_path = COALESCE(${data.report_path}, applications.report_path),
+      notes = COALESCE(${data.notes}, applications.notes),
+      via = COALESCE(${data.via}, applications.via),
+      updated_at = NOW()
+    RETURNING *
+  `;
+  return rows[0] as Application;
+}
+
+export async function updateApplicationStatus(
+  userId: string,
+  num: string,
+  status: string
+): Promise<boolean> {
+  const sql = getSql();
+  const result = await sql`
+    UPDATE applications SET status = ${status}, updated_at = NOW()
+    WHERE user_id = ${userId} AND num = ${num}
+    RETURNING id
+  `;
+  return result.length > 0;
+}
+
+// ── Job Inbox Operations ─────────────────────────────────────────────
+
+export async function getInboxJobs(userId: string): Promise<InboxJob[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM job_inbox WHERE user_id = ${userId} ORDER BY created_at DESC
+  `;
+  return rows as InboxJob[];
+}
+
+export async function addInboxJob(
+  userId: string,
+  job: { url: string; company: string; role: string; location?: string; compensation?: string }
+): Promise<InboxJob> {
+  const sql = getSql();
+  const rows = await sql`
+    INSERT INTO job_inbox (user_id, url, company, role, location, compensation)
+    VALUES (
+      ${userId},
+      ${job.url},
+      ${job.company},
+      ${job.role},
+      ${job.location || null},
+      ${job.compensation || null}
+    )
+    ON CONFLICT (user_id, url) DO NOTHING
+    RETURNING *
+  `;
+  return rows[0] as InboxJob;
+}
+
+export async function markInboxJobDone(userId: string, url: string): Promise<boolean> {
+  const sql = getSql();
+  const result = await sql`
+    UPDATE job_inbox SET done = true, processed_at = NOW(), updated_at = NOW()
+    WHERE user_id = ${userId} AND url = ${url}
+    RETURNING id
+  `;
+  return result.length > 0;
+}
+
+// ── Scan History Operations ──────────────────────────────────────────
+
+export async function getScanHistory(userId: string): Promise<ScanHistoryEntry[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM scan_history WHERE user_id = ${userId} ORDER BY first_seen DESC
+  `;
+  return rows as ScanHistoryEntry[];
+}
+
+export async function getScanDates(userId: string): Promise<Map<string, string>> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT url, first_seen FROM scan_history WHERE user_id = ${userId}
+  `;
+  const dates = new Map<string, string>();
+  for (const row of rows) {
+    const url = row.url as string;
+    const firstSeen = row.first_seen as string;
+    if (!dates.has(url)) {
+      dates.set(url, firstSeen);
+    }
+  }
+  return dates;
+}
+
+export async function addScanHistoryEntry(
+  userId: string,
+  entry: { url: string; company?: string; title?: string; location?: string; ats_source?: string }
+): Promise<ScanHistoryEntry | null> {
+  const sql = getSql();
+  const today = new Date().toISOString().split("T")[0];
+  const rows = await sql`
+    INSERT INTO scan_history (user_id, url, company, title, location, ats_source, first_seen, last_seen)
+    VALUES (
+      ${userId},
+      ${entry.url},
+      ${entry.company || null},
+      ${entry.title || null},
+      ${entry.location || null},
+      ${entry.ats_source || null},
+      ${today},
+      ${today}
+    )
+    ON CONFLICT (user_id, url) DO UPDATE SET
+      last_seen = ${today},
+      company = COALESCE(${entry.company || null}, scan_history.company),
+      title = COALESCE(${entry.title || null}, scan_history.title),
+      location = COALESCE(${entry.location || null}, scan_history.location),
+      ats_source = COALESCE(${entry.ats_source || null}, scan_history.ats_source)
+    RETURNING *
+  `;
+  return (rows[0] as ScanHistoryEntry) || null;
+}
+
+// ── Scan Run Operations ──────────────────────────────────────────────
+
+export async function createScanRun(userId: string): Promise<ScanRun> {
+  const sql = getSql();
+  const rows = await sql`
+    INSERT INTO scan_runs (user_id, started_at)
+    VALUES (${userId}, NOW())
+    RETURNING *
+  `;
+  return rows[0] as ScanRun;
+}
+
+export async function completeScanRun(
+  runId: string,
+  stats: { users_scanned: number; new_offers: number; total_offers: number; errors: number }
+): Promise<boolean> {
+  const sql = getSql();
+  const result = await sql`
+    UPDATE scan_runs SET
+      completed_at = NOW(),
+      users_scanned = ${stats.users_scanned},
+      new_offers = ${stats.new_offers},
+      total_offers = ${stats.total_offers},
+      errors = ${stats.errors}
+    WHERE id = ${runId}
+    RETURNING id
+  `;
+  return result.length > 0;
+}
+
+// ── Report Operations ────────────────────────────────────────────────
+
+export async function getReports(userId: string): Promise<Report[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM reports WHERE user_id = ${userId} ORDER BY report_num::integer DESC
+  `;
+  return rows as Report[];
+}
+
+export async function getReport(userId: string, reportNum: string): Promise<Report | null> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM reports WHERE user_id = ${userId} AND report_num = ${reportNum} LIMIT 1
+  `;
+  return (rows[0] as Report) || null;
+}
+
+export async function upsertReport(
+  userId: string,
+  data: { report_num: string; company_slug: string; report_date: string; content: string }
+): Promise<Report> {
+  const sql = getSql();
+  const rows = await sql`
+    INSERT INTO reports (user_id, report_num, company_slug, report_date, content)
+    VALUES (
+      ${userId},
+      ${data.report_num},
+      ${data.company_slug},
+      ${data.report_date},
+      ${data.content}
+    )
+    ON CONFLICT (user_id, report_num) DO UPDATE SET
+      company_slug = ${data.company_slug},
+      report_date = ${data.report_date},
+      content = ${data.content}
+    RETURNING *
+  `;
+  return rows[0] as Report;
+}
+
+// ── Portals Config Operations ────────────────────────────────────────
+
+export async function getPortalsConfig(userId: string): Promise<PortalsConfig | null> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM portals_config WHERE user_id = ${userId} LIMIT 1
+  `;
+  return (rows[0] as PortalsConfig) || null;
+}
+
+export async function upsertPortalsConfig(
+  userId: string,
+  data: Partial<PortalsConfig>
+): Promise<PortalsConfig> {
+  const sql = getSql();
+  const rows = await sql`
+    INSERT INTO portals_config (user_id, title_filter, location_filter, tracked_companies)
+    VALUES (
+      ${userId},
+      ${data.title_filter ? JSON.stringify(data.title_filter) : null}::jsonb,
+      ${data.location_filter ? JSON.stringify(data.location_filter) : null}::jsonb,
+      ${data.tracked_companies ? JSON.stringify(data.tracked_companies) : null}::jsonb
+    )
+    ON CONFLICT (user_id) DO UPDATE SET
+      title_filter = COALESCE(${data.title_filter ? JSON.stringify(data.title_filter) : null}::jsonb, portals_config.title_filter),
+      location_filter = COALESCE(${data.location_filter ? JSON.stringify(data.location_filter) : null}::jsonb, portals_config.location_filter),
+      tracked_companies = COALESCE(${data.tracked_companies ? JSON.stringify(data.tracked_companies) : null}::jsonb, portals_config.tracked_companies),
+      updated_at = NOW()
+    RETURNING *
+  `;
+  return rows[0] as PortalsConfig;
+}
+
+// ── Utility Functions ────────────────────────────────────────────────
+
+export async function deleteUser(userId: string): Promise<boolean> {
+  const sql = getSql();
+  await sql`DELETE FROM reports WHERE user_id = ${userId}`;
+  await sql`DELETE FROM scan_history WHERE user_id = ${userId}`;
+  await sql`DELETE FROM scan_runs WHERE user_id = ${userId}`;
+  await sql`DELETE FROM job_inbox WHERE user_id = ${userId}`;
+  await sql`DELETE FROM applications WHERE user_id = ${userId}`;
+  await sql`DELETE FROM portals_config WHERE user_id = ${userId}`;
+  await sql`DELETE FROM user_profiles WHERE user_id = ${userId}`;
+  return true;
+}
+
+export async function getUserStats(userId: string): Promise<{
+  applications: number;
+  inboxJobs: number;
+  scanHistory: number;
+  reports: number;
+}> {
+  const sql = getSql();
+  const [appCount, inboxCount, scanCount, reportCount] = await Promise.all([
+    sql`SELECT COUNT(*)::integer as count FROM applications WHERE user_id = ${userId}`,
+    sql`SELECT COUNT(*)::integer as count FROM job_inbox WHERE user_id = ${userId}`,
+    sql`SELECT COUNT(*)::integer as count FROM scan_history WHERE user_id = ${userId}`,
+    sql`SELECT COUNT(*)::integer as count FROM reports WHERE user_id = ${userId}`,
+  ]);
+  return {
+    applications: (appCount[0] as any).count,
+    inboxJobs: (inboxCount[0] as any).count,
+    scanHistory: (scanCount[0] as any).count,
+    reports: (reportCount[0] as any).count,
+  };
+}

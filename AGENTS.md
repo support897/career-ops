@@ -470,3 +470,83 @@ Write one TSV file per evaluation to `batch/tracker-additions/{num}-{company-slu
 - No markdown bold (`**`) in status field
 - No dates in status field (use the date column)
 - No extra text (use the notes column)
+
+---
+
+## Cloud Deployment (2026-07-24)
+
+### Context
+
+User requested the website and dashboard to run 24/7 without their MacBook being on, with scanning running according to user settings. After deep analysis, implemented AWS Lambda + EventBridge solution.
+
+### Changes Made
+
+1. **`vercel.json`** — Added Vercel Cron configuration for daily scanning
+2. **`web/src/app/api/cron/scan/route.ts`** — Cron endpoint that triggers Lambda scanning
+3. **`schema.sql`** — Neon PostgreSQL schema for cloud data storage
+4. **`web/src/lib/db.ts`** — Database helper module replacing filesystem reads
+5. **`lambda/index.mjs`** — Updated Lambda handler with scheduled scanning support
+6. **`setup-aws.sh`** — Automated AWS Lambda + EventBridge setup script
+7. **`DEPLOYMENT.md`** — Comprehensive deployment guide
+8. **`.env`** — Added CRON_SECRET and LAMBDA_SCAN_URL variables
+9. **`web/package.json`** — Added @neondatabase/serverless dependency
+10. **`lambda/package.json`** — Added @neondatabase/serverless dependency
+
+### Architecture
+
+- **Vercel**: Web dashboard + Vercel Cron (triggers Lambda)
+- **AWS Lambda**: Job scanning engine (runs every 6 hours)
+- **EventBridge**: Schedules Lambda executions
+- **Neon PostgreSQL**: Cloud database for all user data
+
+### Cost
+
+- **Lambda**: Free tier (1M requests/month)
+- **Neon**: Free tier (512 MB storage)
+- **Vercel**: Free tier (Hobby plan)
+- **Total**: ~$0/month for typical usage
+
+### Deployment Steps
+
+1. Run `./setup-aws.sh` to deploy Lambda + EventBridge
+2. Deploy web app: `vercel deploy`
+3. Set environment variables in Vercel dashboard
+4. Verify scanning in Lambda logs
+
+### Next Steps
+
+- [ ] Add authentication (Clerk, Auth.js)
+- [ ] Set up monitoring alerts
+- [ ] Configure custom domain
+- [ ] Add CI/CD pipeline
+
+---
+
+## OpenCode Session Tracking
+
+This section tracks changes made during OpenCode sessions.
+
+### Session: 2026-07-24 — Cloud Deployment
+
+**Task**: Implement 24/7 scanning with AWS Lambda + EventBridge
+
+**Status**: ✅ Completed
+
+**Files Modified**:
+- `vercel.json` (new)
+- `web/src/app/api/cron/scan/route.ts` (new)
+- `schema.sql` (new)
+- `web/src/lib/db.ts` (new)
+- `lambda/index.mjs` (updated)
+- `setup-aws.sh` (new)
+- `DEPLOYMENT.md` (new)
+- `.env` (updated)
+- `web/package.json` (updated)
+- `lambda/package.json` (updated)
+
+**Next Actions**:
+1. Run `./setup-aws.sh` to deploy AWS infrastructure
+2. Run `psql $DATABASE_URL < schema.sql` to set up database
+3. Deploy to Vercel with `vercel deploy`
+4. Set environment variables in Vercel dashboard
+5. Test scanning by triggering Lambda manually

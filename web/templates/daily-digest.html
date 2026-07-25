@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Careerflow Daily Report</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f7f6f3;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;color:#1a1a2e;">
+
+<!-- Preheader (hidden preview text) -->
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+  {{PREHEADER}}
+</div>
+
+<!-- Outer wrapper -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f7f6f3;">
+<tr><td align="center" style="padding:24px 12px;">
+
+<!-- Email container -->
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+
+<!-- ═══ HEADER ═══ -->
+<tr>
+<td style="background:linear-gradient(135deg,hsl(26,73%,51%) 0%,hsl(26,60%,45%) 100%);padding:32px 32px 28px;text-align:center;">
+  <div style="font-size:11px;letter-spacing:3px;color:rgba(255,255,255,0.7);text-transform:uppercase;margin-bottom:4px;">Careerflow</div>
+  <div style="font-size:22px;font-weight:700;color:#ffffff;margin-bottom:6px;">Daily Report</div>
+  <div style="font-size:14px;color:rgba(255,255,255,0.85);">{{DATE}}</div>
+</td>
+</tr>
+
+<!-- ═══ GREETING ═══ -->
+<tr>
+<td style="padding:28px 32px 0;">
+  <div style="font-size:15px;color:#555;">Good {{TIME_OF_DAY}}, Ilse</div>
+</td>
+</tr>
+
+<!-- ═══ SNAPSHOT STATS ═══ -->
+<tr>
+<td style="padding:20px 32px 0;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td style="padding:16px;background-color:#f7f6f3;border-radius:8px;text-align:center;" width="20%">
+      <div style="font-size:28px;font-weight:700;color:hsl(26,73%,51%);line-height:1;">{{STAT_SCANNED}}</div>
+      <div style="font-size:11px;color:#888;margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;">Scanned</div>
+    </td>
+    <td width="4%"></td>
+    <td style="padding:16px;background-color:#f7f6f3;border-radius:8px;text-align:center;" width="20%">
+      <div style="font-size:28px;font-weight:700;color:hsl(187,74%,32%);line-height:1;">{{STAT_APPLIED}}</div>
+      <div style="font-size:11px;color:#888;margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;">Applied</div>
+    </td>
+    <td width="4%"></td>
+    <td style="padding:16px;background-color:#f7f6f3;border-radius:8px;text-align:center;" width="20%">
+      <div style="font-size:28px;font-weight:700;color:hsl(270,70%,45%);line-height:1;">{{STAT_EVALUATED}}</div>
+      <div style="font-size:11px;color:#888;margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;">Evaluated</div>
+    </td>
+    <td width="4%"></td>
+    <td style="padding:16px;background-color:#f7f6f3;border-radius:8px;text-align:center;" width="20%">
+      <div style="font-size:28px;font-weight:700;color:hsl(140,50%,35%);line-height:1;">{{STAT_ACTIVE}}</div>
+      <div style="font-size:11px;color:#888;margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;">Active</div>
+    </td>
+    <td width="4%"></td>
+    <td style="padding:16px;background-color:#f7f6f3;border-radius:8px;text-align:center;" width="20%">
+      <div style="font-size:28px;font-weight:700;color:#555;line-height:1;">{{STAT_INBOX}}</div>
+      <div style="font-size:11px;color:#888;margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;">Inbox</div>
+    </td>
+  </tr>
+  </table>
+</td>
+</tr>
+
+<!-- ═══ NEW SCANS ═══ -->
+{{#if SCANS.length}}
+<tr>
+<td style="padding:28px 32px 0;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+  <tr><td style="font-size:13px;font-weight:700;color:hsl(26,73%,51%);text-transform:uppercase;letter-spacing:1px;padding-bottom:4px;">🔍 New Scans</td></tr>
+  <tr><td style="font-size:12px;color:#999;padding-bottom:12px;">{{SCANS.length}} new jobs from {{PORTAL_COUNT}} portals today</td></tr>
+  </table>
+
+  {{SCANS_HTML}}
+
+  {{#if SCANS_MORE}}
+  <div style="text-align:center;padding:12px 0 0;">
+    <a href="https://web-gamma-azure-44.vercel.app/explore" style="display:inline-block;font-size:13px;color:hsl(187,74%,32%);text-decoration:none;font-weight:600;">See all {{SCANS_TOTAL}} jobs →</a>
+  </div>
+  {{/if}}
+</td>
+</tr>
+<tr><td style="padding:16px 32px 0;"><div style="border-top:1px solid #eee;"></div></td></tr>
+{{/if}}
+
+<!-- ═══ PORTAL BREAKDOWN ═══ -->
+{{#if PORTALS.length}}
+<tr>
+<td style="padding:20px 32px 0;">
+  <div style="font-size:13px;font-weight:700;color:hsl(26,73%,51%);text-transform:uppercase;letter-spacing:1px;padding-bottom:8px;">Portal Coverage</div>
+  <div style="font-size:13px;color:#666;line-height:1.8;">
+    {{PORTALS_HTML}}
+  </div>
+</td>
+</tr>
+<tr><td style="padding:16px 32px 0;"><div style="border-top:1px solid #eee;"></div></td></tr>
+{{/if}}
+
+<!-- ═══ PIPELINE STATUS ═══ -->
+{{#if PIPELINE_TOTAL}}
+<tr>
+<td style="padding:20px 32px 0;">
+  <div style="font-size:13px;font-weight:700;color:hsl(26,73%,51%);text-transform:uppercase;letter-spacing:1px;padding-bottom:12px;">📊 Pipeline Status</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    {{PIPELINE_CELLS}}
+  </tr>
+  </table>
+  <div style="font-size:12px;color:#999;margin-top:8px;">{{PIPELINE_SUMMARY}}</div>
+</td>
+</tr>
+<tr><td style="padding:16px 32px 0;"><div style="border-top:1px solid #eee;"></div></td></tr>
+{{/if}}
+
+<!-- ═══ FOLLOW-UPS DUE ═══ -->
+{{#if FOLLOWUPS.length}}
+<tr>
+<td style="padding:20px 32px 0;">
+  <div style="font-size:13px;font-weight:700;color:hsl(26,73%,51%);text-transform:uppercase;letter-spacing:1px;padding-bottom:12px;">⏰ Follow-ups Due</div>
+  {{FOLLOWUPS_HTML}}
+</td>
+</tr>
+<tr><td style="padding:16px 32px 0;"><div style="border-top:1px solid #eee;"></div></td></tr>
+{{/if}}
+
+<!-- ═══ EMAILS & COVER LETTERS ═══ -->
+{{#if EMAILS_SECTION}}
+<tr>
+<td style="padding:20px 32px 0;">
+  <div style="font-size:13px;font-weight:700;color:hsl(26,73%,51%);text-transform:uppercase;letter-spacing:1px;padding-bottom:12px;">✉️ Emails & Cover Letters</div>
+  {{EMAILS_HTML}}
+</td>
+</tr>
+<tr><td style="padding:16px 32px 0;"><div style="border-top:1px solid #eee;"></div></td></tr>
+{{/if}}
+
+<!-- ═══ TOP MATCHES ═══ -->
+{{#if SCORED.length}}
+<tr>
+<td style="padding:20px 32px 0;">
+  <div style="font-size:13px;font-weight:700;color:hsl(26,73%,51%);text-transform:uppercase;letter-spacing:1px;padding-bottom:12px;">🎯 Top Matches</div>
+  {{SCORED_HTML}}
+</td>
+</tr>
+<tr><td style="padding:16px 32px 0;"><div style="border-top:1px solid #eee;"></div></td></tr>
+{{/if}}
+
+<!-- ═══ EMPTY STATE ═══ -->
+{{#if ALL_EMPTY}}
+<tr>
+<td style="padding:32px;text-align:center;">
+  <div style="font-size:32px;margin-bottom:8px;">✨</div>
+  <div style="font-size:14px;color:#888;">Nothing new today. I'll keep scanning tomorrow.</div>
+</td>
+</tr>
+{{/if}}
+
+<!-- ═══ CTA BUTTON ═══ -->
+<tr>
+<td style="padding:24px 32px 0;text-align:center;">
+  <a href="https://web-gamma-azure-44.vercel.app" style="display:inline-block;padding:14px 32px;background-color:hsl(26,73%,51%);color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;letter-spacing:0.3px;">View Dashboard →</a>
+</td>
+</tr>
+
+<!-- ═══ FOOTER ═══ -->
+<tr>
+<td style="padding:28px 32px 24px;text-align:center;">
+  <div style="font-size:11px;color:#bbb;line-height:1.6;">
+    Generated by <strong style="color:#999;">Careerflow</strong> · {{EMAIL}}<br>
+    <span style="font-size:10px;">This is an automated daily digest. All data is real and pulled from your pipeline.</span>
+  </div>
+</td>
+</tr>
+
+</table>
+<!-- /Email container -->
+
+</td></tr>
+</table>
+<!-- /Outer wrapper -->
+
+</body>
+</html>

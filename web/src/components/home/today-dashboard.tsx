@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, CircleHelp, Sparkles, ArrowRight } from "lucide-react";
+import { Bell, CircleHelp, Sparkles, ArrowRight, Clock } from "lucide-react";
 import { instrumentSerif } from "@/lib/fonts";
 import { HeroGlow } from "@/components/hero-glow";
 import type { Application, InboxJob } from "@/lib/career-ops";
@@ -12,6 +12,7 @@ import { DiscoveryCard } from "@/components/explore/discovery-card";
 import { FollowUpCard, type FollowUp } from "@/components/home/follow-up-card";
 import { DecisionCard } from "@/components/home/decision-card";
 import { QuickEvaluate } from "@/components/quick-evaluate";
+import { ScanSettingsCard } from "@/components/scan-settings-card";
 
 // The retention "Today": a dual-loop action queue (the maintainer's
 // "N new matches this week · M follow-ups due"). SUPPLY loop = fresh free-scan
@@ -112,6 +113,11 @@ export function TodayDashboard({
           </div>
           {inBetween && <QuickEvaluate />}
         </div>
+      </section>
+
+      {/* Scan Settings */}
+      <section className="mt-8">
+        <ScanSettingsCard />
       </section>
 
       {/* A. Follow-ups due (demand loop) */}
