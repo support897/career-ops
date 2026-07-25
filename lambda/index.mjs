@@ -103,10 +103,12 @@ async function scheduledScan() {
     //   scan_mode = 'interval'  → check last_scan_at + frequency <= NOW()
     //   scan_mode = 'schedule'  → check current DOW + hour match preferred_days/hours
     const users = await sql`
-      SELECT user_id, scan_mode, scan_frequency_hours, preferred_days, preferred_hours,
-             timezone, platforms, keywords, location_filter, last_scan_at
-      FROM user_profiles
-      WHERE scanning_enabled = true
+      SELECT up.user_id, up.scan_mode, up.scan_frequency_hours, up.preferred_days, up.preferred_hours,
+             up.timezone, up.platforms, up.keywords, up.location_filter, up.last_scan_at,
+             u.vip
+      FROM user_profiles up
+      JOIN users u ON u.id = up.user_id
+      WHERE up.scanning_enabled = true
         AND (
           -- Interval mode: enough time has passed since last scan
           (scan_mode = 'interval'
@@ -177,14 +179,38 @@ async function scheduledScan() {
           WHERE user_id = ${user.user_id}
         `;
 
+        // Auto-apply for VIP users after scan (creates Gmail drafts, never sends)
+        let applied = 0;
+        if (user.vip && newOffers > 0) {
+          console.log(`[Lambda] VIP user ${user.user_id} — running auto-apply for ${newOffers} new jobs...`);
+          try {
+            const { stdout: applyStdout } = await execFileAsync('node', ['auto-apply.mjs', '--userId', user.user_id], {
+              cwd: WORK_DIR,
+              env: {
+                ...process.env,
+                NODE_PATH: TASK_DIR + '/node_modules',
+                NODE_OPTIONS: '--max-old-space-size=1536',
+              },
+              timeout: 600000, // 10 minutes for auto-apply
+              maxBuffer: 10 * 1024 * 1024,
+            });
+            const appliedMatch = applyStdout.match(/Applied:\s+(\d+)/);
+            applied = appliedMatch ? parseInt(appliedMatch[1], 10) : 0;
+            console.log(`[Lambda] Auto-apply complete: ${applied} Gmail drafts created`);
+          } catch (applyErr) {
+            console.error(`[Lambda] Auto-apply failed for ${user.user_id}:`, applyErr.message);
+          }
+        }
+
         results.push({
           userId: user.user_id,
           success: true,
           newOffers,
           totalFound,
+          applied,
         });
 
-        console.log(`[Lambda] User ${user.user_id}: ${newOffers} new offers`);
+        console.log(`[Lambda] User ${user.user_id}: ${newOffers} new offers, ${applied} drafts created`);
 
       } catch (error) {
         console.error(`[Lambda] Error scanning user ${user.user_id}:`, error.message);
@@ -197,17 +223,19 @@ async function scheduledScan() {
 
     // Log scan run
     const totalNewOffers = results.reduce((sum, r) => sum + (r.newOffers || 0), 0);
+    const totalApplied = results.reduce((sum, r) => sum + (r.applied || 0), 0);
     await sql`
       INSERT INTO scan_runs (user_id, started_at, completed_at, users_scanned, new_offers, total_offers, errors)
       VALUES ('system', NOW(), NOW(), ${users.length}, ${totalNewOffers}, ${results.length}, ${errors.length})
     `;
 
-    console.log(`[Lambda] Scheduled scan complete. Scanned: ${results.length}, New offers: ${totalNewOffers}, Errors: ${errors.length}`);
+    console.log(`[Lambda] Scheduled scan complete. Scanned: ${results.length}, New offers: ${totalNewOffers}, Gmail drafts: ${totalApplied}, Errors: ${errors.length}`);
 
     return {
       success: true,
       scannedUsers: results.length,
       totalNewOffers,
+      totalApplied,
       errors: errors.length,
       results,
     };

@@ -119,6 +119,14 @@ export async function writeApplication(userId, jobId, applicationData) {
       applicationData.resumeHtml || null,
     ]
   );
+  
+  // Store Gmail draft ID if provided
+  if (applicationData.gmailDraftId) {
+    await pool.query(
+      'UPDATE applications SET gmail_draft_id = $1 WHERE user_id = $2 AND job_id = $3',
+      [applicationData.gmailDraftId, userId, jobId]
+    );
+  }
 }
 
 /**

@@ -1246,22 +1246,71 @@ async function main() {
       console.log(`   🖥️  [DRY RUN] Would apply via ATS: ${job.url}`);
     }
     
-    // Send email to company — VIP only (non-VIP gets drafts)
+    // Send email to company — VIP only (non-VIP gets file drafts)
     let companyEmail = await findCompanyEmail(job);
     
-    if (isVip && !DRY_RUN && companyEmail) {
-      // VIP: send email automatically
-      console.log(`   📧 Sending personalized email to ${companyEmail}...`);
-      const result = await sendEmail({
-        to: companyEmail,
-        subject: emailSubject,
-        body: emailBody,
-        attachments: [finalCvPath, finalClPath].filter(Boolean),
-      });
-      if (result.success) console.log(`   ✅ Email sent to ${companyEmail}`);
-      else console.log(`   ⚠️  Email failed: ${result.error}`);
+    if (isVip && !DRY_RUN) {
+      // VIP: create Gmail draft (NEVER send — draft only)
+      const draftTo = companyEmail || '';
+      console.log(`   📧 Creating Gmail draft${draftTo ? ` for ${draftTo}` : ' (no recruiter email found)'}...`);
+      
+      let gmailDraftResult;
+      try {
+        const { createGmailDraft, hasGmailCredentials } = await import('./lib/gmail-draft.mjs');
+        
+        if (hasGmailCredentials()) {
+          const emailConfig = yaml.parse(readFileSync(join(__dirname, 'config/email.yml'), 'utf-8'));
+          gmailDraftResult = await createGmailDraft({
+            from: emailConfig.defaults?.from_email || 'placenciailse@gmail.com',
+            to: draftTo,
+            subject: emailSubject,
+            body: emailBody,
+            attachments: [
+              finalCvPath && { path: finalCvPath },
+              finalClPath && { path: finalClPath },
+            ].filter(Boolean),
+          });
+          
+          if (gmailDraftResult.success) {
+            console.log(`   ✅ Gmail draft created (ID: ${gmailDraftResult.draftId})`);
+          } else {
+            console.log(`   ⚠️  Gmail draft failed: ${gmailDraftResult.error}`);
+            console.log(`   💡 Falling back to file draft...`);
+          }
+        } else {
+          console.log(`   ⚠️  Gmail OAuth2 not configured — saving file draft`);
+          gmailDraftResult = { success: false, error: 'OAuth2 not configured' };
+        }
+      } catch (err) {
+        console.log(`   ⚠️  Gmail draft error: ${err.message}`);
+        gmailDraftResult = { success: false, error: err.message };
+      }
+      
+      // Always save file draft as backup
+      if (!gmailDraftResult?.success) {
+        const draftPath = join(__dirname, `output/draft-${slug}-${TODAY}.md`);
+        const draftContent = `# Draft Email — ${job.company} — ${job.role || job.title}
+
+**To:** ${companyEmail || '(no email found — find recruiter email manually)'}
+**Subject:** ${emailSubject}
+**Score:** ${jobScore}/5
+**URL:** ${job.url || 'N/A'}
+
+---
+
+${emailBody}
+
+---
+
+**Attachments:**
+- ${finalCvPath || cv.pdfPath || 'CV not generated'}
+- ${finalClPath || clPath || 'Cover letter not generated'}
+`;
+        writeFileSync(draftPath, draftContent);
+        console.log(`   💾 File draft saved: ${draftPath}`);
+      }
     } else if (!isVip && !DRY_RUN) {
-      // Non-VIP: save as draft (no email sending)
+      // Non-VIP: save as file draft (no email sending)
       console.log(`   📧 Non-VIP — saving email as draft...`);
       const draftPath = join(__dirname, `output/draft-${slug}-${TODAY}.md`);
       const draftContent = `# Draft Email — ${job.company} — ${job.role || job.title}
@@ -1283,7 +1332,7 @@ ${emailBody}
       writeFileSync(draftPath, draftContent);
       console.log(`   💾 Draft saved: ${draftPath}`);
     } else if (DRY_RUN) {
-      console.log(`   📧 [DRY RUN] Would email ${companyEmail || '(no email found — would save as draft)'}`);
+      console.log(`   📧 [DRY RUN] Would create Gmail draft for ${companyEmail || '(no email found)'}`);
       console.log(`   📧 Preview:\n${emailBody.slice(0, 300)}...`);
     }
     
@@ -1294,7 +1343,7 @@ ${emailBody}
       company: job.company,
       role: job.role,
       method,
-      status: atsApplied ? 'Submitted' : (DRY_RUN ? 'Dry Run' : 'Email Sent'),
+      status: atsApplied ? 'Submitted' : (DRY_RUN ? 'Dry Run' : (isVip ? 'Gmail Draft' : 'Draft')),
       atsUrl,
     });
     
@@ -1324,6 +1373,7 @@ ${emailBody}
           emailSubject,
           status: atsApplied ? 'applied' : 'draft',
           resumeHtml,
+          gmailDraftId: gmailDraftResult?.draftId || null,
         });
         await dbWriter.updateJobStatus(job.dbId, atsApplied ? 'auto-applied' : 'pending');
         // Update score with enhanced scoring
