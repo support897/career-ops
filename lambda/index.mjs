@@ -99,16 +99,12 @@ async function scheduledScan() {
 
   try {
     // Query only users whose schedule is due right now
-    // Two modes:
-    //   scan_mode = 'interval'  → check last_scan_at + frequency <= NOW()
-    //   scan_mode = 'schedule'  → check current DOW + hour match preferred_days/hours
     const users = await sql`
-      SELECT up.user_id, up.scan_mode, up.scan_frequency_hours, up.preferred_days, up.preferred_hours,
-             up.timezone, up.platforms, up.keywords, up.location_filter, up.last_scan_at,
-             u.vip
-      FROM user_profiles up
-      JOIN users u ON u.id = up.user_id
-      WHERE up.scanning_enabled = true
+      SELECT user_id, scan_mode, scan_frequency_hours, preferred_days, preferred_hours,
+             timezone, platforms, keywords, location_filter, last_scan_at,
+             is_vip, score_threshold
+      FROM user_profiles
+      WHERE scanning_enabled = true
         AND (
           -- Interval mode: enough time has passed since last scan
           (scan_mode = 'interval'
@@ -120,16 +116,16 @@ async function scheduledScan() {
            AND EXTRACT(DOW FROM NOW() AT TIME ZONE COALESCE(timezone, 'UTC'))::int = ANY(preferred_days)
            AND EXTRACT(HOUR FROM NOW() AT TIME ZONE COALESCE(timezone, 'UTC'))::int = ANY(preferred_hours)
            AND (last_scan_at IS NULL OR last_scan_at < NOW() - INTERVAL '55 minutes'))
+          OR
+          -- VIP users always get hourly checks
+          (is_vip = true
+           AND (last_scan_at IS NULL OR last_scan_at < NOW() - INTERVAL '55 minutes'))
         )
     `;
 
     if (users.length === 0) {
       console.log('[Lambda] No users due for scanning right now');
-      return {
-        success: true,
-        message: 'No users due',
-        scannedUsers: 0,
-      };
+      return { success: true, message: 'No users due', scannedUsers: 0 };
     }
 
     console.log(`[Lambda] ${users.length} user(s) due for scanning`);
@@ -140,53 +136,27 @@ async function scheduledScan() {
 
     for (const user of users) {
       try {
-        console.log(`[Lambda] Scanning user: ${user.user_id} (mode: ${user.scan_mode})`);
+        console.log(`[Lambda] Scanning user: ${user.user_id} (mode: ${user.scan_mode}, vip: ${user.is_vip})`);
 
         // Build scan arguments
-        const args = ['scan.mjs', '--userId', user.user_id];
+        const args = ['scan.mjs', '--userId', user.user_id, '--db'];
 
-        // Add platform filters if specified
-        if (user.platforms && user.platforms.length > 0) {
-          args.push('--ats', user.platforms.join(','));
-        }
+        if (user.platforms && user.platforms.length > 0) args.push('--ats', user.platforms.join(','));
+        if (user.keywords && user.keywords.length > 0) args.push('--keywords', user.keywords.join(','));
+        if (user.location_filter && user.location_filter.length > 0) args.push('--location', user.location_filter[0]);
 
-        // Add location filter if specified
-        if (user.location_filter && user.location_filter.length > 0) {
-          args.push('--location', user.location_filter[0]);
-        }
-
-        const { stdout, stderr } = await execFileAsync('node', args, {
+        const { stdout } = await execFileAsync('node', args, {
           cwd: WORK_DIR,
-          env: {
-            ...process.env,
-            NODE_PATH: TASK_DIR + '/node_modules',
-            NODE_OPTIONS: '--max-old-space-size=1536',
-          },
-          timeout: 240000, // 4 minutes per user
+          env: { ...process.env, NODE_PATH: TASK_DIR + '/node_modules', NODE_OPTIONS: '--max-old-space-size=1536', CAREER_OPS_USER_ID: user.user_id },
+          timeout: 240000,
           maxBuffer: 10 * 1024 * 1024,
         });
 
-        // Parse results
         const newOffersMatch = stdout.match(/New offers added:\s+(\d+)/);
         const newOffers = newOffersMatch ? parseInt(newOffersMatch[1], 10) : 0;
-
         const totalFoundMatch = stdout.match(/Total found:\s+(\d+)/);
         const totalFound = totalFoundMatch ? parseInt(totalFoundMatch[1], 10) : 0;
 
-        // Update last_scan_at in database
-        await sql`
-          UPDATE user_profiles SET last_scan_at = NOW(), updated_at = NOW()
-          WHERE user_id = ${user.user_id}
-        `;
-
-        // Auto-apply for VIP users after scan (creates Gmail drafts, never sends)
-        let applied = 0;
-        if (user.vip && newOffers > 0) {
-          console.log(`[Lambda] VIP user ${user.user_id} — running auto-apply for ${newOffers} new jobs...`);
-          try {
-            const { stdout: applyStdout } = await execFileAsync('node', ['auto-apply.mjs', '--userId', user.user_id], {
-              cwd: WORK_DIR,
-              env: {
                 ...process.env,
                 NODE_PATH: TASK_DIR + '/node_modules',
                 NODE_OPTIONS: '--max-old-space-size=1536',

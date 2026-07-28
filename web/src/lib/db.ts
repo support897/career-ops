@@ -70,10 +70,24 @@ export type InboxJob = {
   role: string;
   location: string | null;
   compensation: string | null;
+  salary: string | null;
+  apply_url: string | null;
+  posted_at: string | null;
   done: boolean;
   processed_at: Date | null;
   created_at: Date;
   updated_at: Date;
+  // AI pipeline fields (from schema-v2.sql)
+  score: number | null;
+  score_breakdown: Record<string, number> | null;
+  why_match: string | null;
+  jd_text: string | null;
+  cv_html: string | null;
+  cover_letter: string | null;
+  email_draft: string | null;
+  doc_status: 'pending' | 'generating' | 'ready' | 'failed';
+  job_status: 'new' | 'applied' | 'discarded';
+  gmail_draft_id: string | null;
 };
 
 export type ScanHistoryEntry = {
@@ -256,23 +270,109 @@ export async function getInboxJobs(userId: string): Promise<InboxJob[]> {
 
 export async function addInboxJob(
   userId: string,
-  job: { url: string; company: string; role: string; location?: string; compensation?: string }
-): Promise<InboxJob> {
+  job: {
+    url: string;
+    company: string;
+    role: string;
+    location?: string;
+    compensation?: string;
+    salary?: string;
+    apply_url?: string;
+    posted_at?: string;
+    jd_text?: string;
+  }
+): Promise<InboxJob | null> {
   const sql = getSql();
   const rows = await sql`
-    INSERT INTO job_inbox (user_id, url, company, role, location, compensation)
+    INSERT INTO job_inbox (user_id, url, company, role, location, compensation, salary, apply_url, posted_at, jd_text, doc_status, job_status)
     VALUES (
       ${userId},
       ${job.url},
       ${job.company},
       ${job.role},
       ${job.location || null},
-      ${job.compensation || null}
+      ${job.compensation || null},
+      ${job.salary || null},
+      ${job.apply_url || job.url},
+      ${job.posted_at || null},
+      ${job.jd_text || null},
+      'pending',
+      'new'
     )
     ON CONFLICT (user_id, url) DO NOTHING
     RETURNING *
   `;
-  return rows[0] as InboxJob;
+  return (rows[0] as InboxJob) || null;
+}
+
+/**
+ * Update a job's AI pipeline fields (score, documents).
+ * Called by the Lambda after scoring/generation.
+ */
+export async function updateInboxJobPipeline(
+  userId: string,
+  jobId: string,
+  data: {
+    score?: number;
+    score_breakdown?: Record<string, number>;
+    why_match?: string;
+    cv_html?: string;
+    cover_letter?: string;
+    email_draft?: string;
+    doc_status?: 'pending' | 'generating' | 'ready' | 'failed';
+    gmail_draft_id?: string;
+  }
+): Promise<boolean> {
+  const sql = getSql();
+  const result = await sql`
+    UPDATE job_inbox SET
+      score = COALESCE(${data.score ?? null}, score),
+      score_breakdown = COALESCE(${data.score_breakdown ? JSON.stringify(data.score_breakdown) : null}::jsonb, score_breakdown),
+      why_match = COALESCE(${data.why_match ?? null}, why_match),
+      cv_html = COALESCE(${data.cv_html ?? null}, cv_html),
+      cover_letter = COALESCE(${data.cover_letter ?? null}, cover_letter),
+      email_draft = COALESCE(${data.email_draft ?? null}, email_draft),
+      doc_status = ${data.doc_status ?? 'pending'},
+      gmail_draft_id = COALESCE(${data.gmail_draft_id ?? null}, gmail_draft_id),
+      updated_at = NOW()
+    WHERE id = ${jobId} AND user_id = ${userId}
+    RETURNING id
+  `;
+  return result.length > 0;
+}
+
+/**
+ * Update a job's user-facing status (applied / discarded / new).
+ */
+export async function updateInboxJobStatus(
+  userId: string,
+  jobId: string,
+  status: 'new' | 'applied' | 'discarded'
+): Promise<boolean> {
+  const sql = getSql();
+  const result = await sql`
+    UPDATE job_inbox SET
+      job_status = ${status},
+      done = ${status !== 'new'},
+      updated_at = NOW()
+    WHERE id = ${jobId} AND user_id = ${userId}
+    RETURNING id
+  `;
+  return result.length > 0;
+}
+
+/**
+ * Get jobs by status for the jobs dashboard.
+ */
+export async function getInboxJobsByStatus(
+  userId: string,
+  status?: 'new' | 'applied' | 'discarded'
+): Promise<InboxJob[]> {
+  const sql = getSql();
+  const rows = status
+    ? await sql`SELECT * FROM job_inbox WHERE user_id = ${userId} AND job_status = ${status} ORDER BY score DESC NULLS LAST, created_at DESC`
+    : await sql`SELECT * FROM job_inbox WHERE user_id = ${userId} ORDER BY job_status ASC, score DESC NULLS LAST, created_at DESC`;
+  return rows as InboxJob[];
 }
 
 export async function markInboxJobDone(userId: string, url: string): Promise<boolean> {

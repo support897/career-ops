@@ -1,2 +1,26 @@
 {
+  "crons": [
+    {
+      "path": "/api/cron/scan",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/daily-digest",
+      "schedule": "0 6 * * *"
+    }
+  ],
+  "functions": {
+    "src/app/api/run/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/scan/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cv-pdf/route.ts": {
+      "maxDuration": 120
+    },
+    "src/app/api/apply/**": {
+      "maxDuration": 60
+    }
+  }
 }
