@@ -71,6 +71,27 @@ On contradiction, add exactly one flag line at the top of Block B in the report,
 
 The flag is an additive line only — Block B's existing content stays unchanged below it, and no flag line appears when there is no contradiction.
 
+### Work-authorization check
+
+After the Role Summary table, compare the candidate's work authorization against what the JD says about sponsorship and work eligibility. Read the candidate's work rights from `config/profile.yml` → `location.authorized_in` (list of countries/regions where they already hold authorization) and `location.needs_sponsorship`, falling back to the free-text `location.visa_status` when those structured keys are absent. Classify into exactly one tier:
+
+- ✅ **Sponsors** — the JD explicitly offers visa sponsorship or relocation, and the role is in a country **not** in `authorized_in`.
+- ➖ **Not needed** — the role is in a country listed in `authorized_in` (or is genuinely location-agnostic remote the candidate can work from an authorized country), **or** `needs_sponsorship` is false.
+- ⚠️ **Unstated** — the role is outside `authorized_in` and the JD says nothing about sponsorship. Silence is absence of signal, not a refusal — this tier is **NEUTRAL**.
+- ⛔ **No sponsorship** — the JD explicitly states it will **not** sponsor (e.g. "no visa sponsorship", "must have existing work authorization", "we are unable to sponsor"), **and** the role is outside `authorized_in`.
+
+Rules (mirror the Geo-mismatch discipline):
+- Quote the JD **verbatim** — never paraphrase the sponsorship language.
+- A generic "must be authorized to work in {country}" where {country} **is** in `authorized_in` is ➖ Not needed, not ⛔.
+- If the profile has no `authorized_in`/`needs_sponsorship` keys and only the free-text `visa_status`, infer conservatively and default to ⚠️ Unstated rather than guessing a blocker.
+- **Scoring (aligns with `modes/_profile.md` "Your Location Policy"):** ✅ / ➖ / ⚠️ are score-neutral — do **not** apply a location or relocation penalty. Only ⛔ **No sponsorship** for a role the candidate cannot take from an authorized country is a genuine hard blocker: score location low and record it as a `hard_stop`.
+
+On a ⛔ determination, add exactly one flag line at the top of Block B in the report, quoting the evidence **verbatim**:
+
+`⛔ **No sponsorship:** JD states "{verbatim JD line}" and role is outside your authorized_in`
+
+The flag is additive only; ✅ / ➖ / ⚠️ emit no flag line.
+
 ## Block B — Match with CV
 
 Read `cv.md`. Create a table with each JD requirement mapped to exact lines in the CV.
@@ -294,6 +315,22 @@ If this mismatch is present, append a short, non-alarmist note to the report:
 
 This signal does not change the High Confidence / Proceed with Caution / Suspicious tier below — it is orthogonal to ghost-job detection and is reported separately.
 
+**9. Third-Party Platform Location Tag vs. Employer's Own Posting Mismatch** (conditional — only when both sources are available):
+
+Possible causes include the job board auto-guessing or mis-scraping the location field, or a recruiter selecting the wrong region tag when cross-posting the same requisition to multiple markets. This can result in a candidate applying based on the platform-displayed location (thinking it's local), when the role is actually in a different country entirely — and not finding out until much later in the process.
+
+This signal only triggers when **both** a third-party platform's displayed location (e.g. LinkedIn, Indeed) **and** the employer's own job page's stated location are available to compare, **and** both sources can be confirmed to refer to the same requisition/job ID (e.g. a matching req number or job ID visible on both sides) — not merely the same title or company, which can still represent two genuinely different requisitions. Evidence may come from what the user pasted/screenshotted, or — only when running the browser-backed `auto-pipeline` (not `openai-eval.mjs`, which passes JD text only into Block G and has no Playwright/browser access) — from `auto-pipeline`'s Playwright snapshot if it captures both. If only one source is available, or the two sources cannot be confirmed to share a requisition/job ID, skip this signal entirely.
+
+When both are available, compare the two stated locations. Flag only if they name **different countries** — not just different cities within the same country, which is a much weaker/more ambiguous signal (e.g. genuine multi-office companies with several valid postings).
+
+If triggered, append a short, non-alarmist note to the report:
+
+> ⚠️ **Location tag mismatch signal:** This posting shows "{platform location}" on {platform name}, but the employer's own job page for the same posting states "{employer-page location}." Confirm the actual work location directly with the employer before assuming the platform-displayed location is accurate — this is sometimes a cross-posting/tagging error, not necessarily deceptive.
+
+This signal does not change the High Confidence / Proceed with Caution / Suspicious tier below — it is orthogonal to ghost-job detection and is reported separately.
+
+**Scope note:** This signal is prompt-instruction-only for now — the agent manually compares the two sources when both are present in what the user provided. It does not modify `check-liveness.mjs` or `liveness-core.mjs` to automatically fetch and compare both pages; that is out of scope for this pass and left as a future decision.
+
 ### Output format:
 
 **Assessment:** One of three tiers:
@@ -430,6 +467,7 @@ Save full evaluation in `reports/{###}-{company-slug}-{YYYY-MM-DD}.md`.
 **Archetype:** {detected}
 **Score:** {X/5}
 **Legitimacy:** {High Confidence | Proceed with Caution | Suspicious}
+**Work Auth:** {✅ Sponsors | ➖ Not needed | ⚠️ Unstated | ⛔ No sponsorship}
 **PDF:** {path or pending}
 
 ---

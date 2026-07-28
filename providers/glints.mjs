@@ -25,7 +25,7 @@ import { BROWSER_LIKE_USER_AGENT } from './_http.mjs';
 const DEFAULT_API = 'https://glints.com/api/v2-alc/graphql';
 const DEFAULT_COUNTRY = 'ID';
 const DEFAULT_PAGE_SIZE = 30;
-const DEFAULT_MAX_PAGES = 10;
+const DEFAULT_MAX_PAGES = 3;
 
 const ALLOWED_GLINTS_HOSTS = new Set([
   'glints.com',
@@ -219,12 +219,6 @@ export default {
       try {
         json = /** @type {any} */ (await graphqlPage(apiUrl, query, variables, ctx));
       } catch (err) {
-        // Glints firewall frequently blocks automated requests (403).
-        // Return empty instead of crashing the scan.
-        if (err.status === 403 || (err.message && err.message.includes('403'))) {
-          console.error(`glints: blocked by firewall (HTTP 403) — skipping`);
-          return [];
-        }
         if (page === 1) throw err;
         console.error(`glints: page ${page} fetch failed — ${err.message}`);
         break;
