@@ -159,9 +159,10 @@ export function doctorState(userId?: string): {
     }
   };
   const cvFile = userId === "support_worker" ? "cv-support.md" : "cv.md";
+  const profileFile = userId === "support_worker" ? "config/profile-support-worker.yml" : "config/profile.yml";
   const prereqs: [string, string][] = [
     [cvFile, cvFile],
-    ["config/profile.yml", "config/profile.yml"],
+    [profileFile, profileFile],
     ["modes/_profile.md", "modes/_profile.md"],
     ["portals.yml", "portals.yml"],
   ];

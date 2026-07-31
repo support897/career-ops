@@ -65,8 +65,12 @@ export async function POST(req: Request) {
   const proposed = patchToProfile(patch);
   if (Object.keys(proposed).length === 0) return Response.json({ error: "nothing to write" }, { status: 400 });
 
+  const { getUserId } = await import("@/lib/user-context");
+  const userId = getUserId(req);
+  const profileFile = userId === "support_worker" ? "profile-support-worker.yml" : "profile.yml";
+
   const root = careerOpsRoot();
-  const file = path.join(root, "config", "profile.yml");
+  const file = path.join(root, "config", profileFile);
   let base: Record<string, unknown> = {};
   let seeded = false;
   // DATA-LOSS GUARD (maintainer, bug-class #649/#704/#920/#958): distinguish
