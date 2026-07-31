@@ -38,6 +38,8 @@ const LOCAL_VIP = process.argv.includes('--local-vip');  // Force VIP for local 
 const MIN_SCORE_ARG = parseFloat(process.argv.find((_, i, a) => a[i - 1] === '--min-score') || '0') || null;
 const NO_ATS_SUBMIT = process.argv.includes('--no-ats-submit'); // Skip ATS form submission (draft only)
 const TODAY = new Date().toISOString().split('T')[0];
+const KEEP_PIPELINE = process.argv.includes('--keep-pipeline');
+const READ_LOCAL_PIPELINE = process.argv.includes('--read-local-pipeline');
 const userIdArg = process.argv.includes('--userId')
   ? process.argv[process.argv.indexOf('--userId') + 1]
   : null;
@@ -581,6 +583,10 @@ async function scanForJobs() {
 }
 
 function markJobCompletedInPipeline(url) {
+  if (KEEP_PIPELINE) {
+    console.log(`   ⏭️  [KEEP_PIPELINE] Skipping markdown check-off for: ${url}`);
+    return;
+  }
   try {
     const pipelinePath = join(__dirname, 'data/pipeline.md');
     if (!existsSync(pipelinePath)) return;
@@ -1022,7 +1028,7 @@ async function main() {
   // Step 1: Get pending jobs
   let pending = [];
   
-  if (userId && dbReader) {
+  if (userId && dbReader && !READ_LOCAL_PIPELINE) {
     // DB mode: read pending jobs from database
     console.log('📡 Reading pending jobs from database...');
     const dbJobs = await dbReader.getUserPendingJobs(userId, LIMIT);
