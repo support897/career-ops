@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowLeft, FileText, ExternalLink, ChevronDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useState } from "react";
 import type { Application } from "@/lib/career-ops";
 import { Badge } from "@/components/ui/badge";
 import { scoreTone, scoreNum, legitimacyTone, parseReport } from "@/lib/format";
@@ -76,15 +79,53 @@ export function ReportView({
   app,
   report,
   canDelete = false,
+  dbCoverLetter = null,
+  dbCvHtml = null,
+  dbEmailDraft = null,
+  dbGmailDraftId = null,
+  dbReferenceLetter = null,
 }: {
   id: string;
   app: Application | null;
   report: string | null;
-  /** kept in the props contract (the page passes it) but no longer surfaced —
-   *  the raw .md filename is a dev artifact, not header content. */
   file?: string | null;
   canDelete?: boolean;
+  dbCoverLetter?: string | null;
+  dbCvHtml?: string | null;
+  dbEmailDraft?: string | null;
+  dbGmailDraftId?: string | null;
+  dbReferenceLetter?: string | null;
 }) {
+  const [showCL, setShowCL] = useState(false);
+  const [showTailoredCv, setShowTailoredCv] = useState(false);
+  const [showEmail, setShowEmail] = useState(false);
+  const [showReference, setShowReference] = useState(false);
+  const [sendingDraft, setSendingDraft] = useState(false);
+  const [gmailDraftId, setGmailDraftId] = useState<string | null>(dbGmailDraftId ?? null);
+
+  const handleSendGmailDraft = async () => {
+    setSendingDraft(true);
+    try {
+      const res = await fetch("/api/gmail/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: `00000000-0000-0000-0000-000000000${id.padStart(3, "0")}` }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGmailDraftId(data.uid || 'created');
+        alert("Draft successfully uploaded to Gmail drafts folder!");
+      } else {
+        const data = await res.json();
+        alert(`Error: ${data.error || "Failed to create draft"}`);
+      }
+    } catch (e: any) {
+      alert(`Error: ${e.message}`);
+    } finally {
+      setSendingDraft(false);
+    }
+  };
+
   const meta = report ? parseReport(report) : null;
   const field = (label: string) => meta?.fields.find((f) => f.label === label)?.value;
   const score = app?.score || field("Score");
@@ -124,6 +165,63 @@ export function ReportView({
           {app && <StatusSelect n={id} current={app.status} />}
           <GeneratePdfButton n={id} company={app?.company ?? meta?.title ?? id} pdfReady={(app?.pdf ?? "").includes("✅")} />
           <ApplyButton n={id} url={url && url.startsWith("http") ? url : undefined} company={app?.company ?? meta?.title ?? id} pdfReady={(app?.pdf ?? "").includes("✅")} />
+          
+          {url && url.startsWith("http") && (
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-surface-hover transition max-sm:min-h-[36px]"
+            >
+              🔗 View Job
+            </a>
+          )}
+
+          {dbCvHtml && (
+            <button
+              onClick={() => setShowTailoredCv(true)}
+              className="inline-flex items-center justify-center rounded-lg bg-pink-500/10 text-pink-500 border border-pink-500/20 px-3 py-1.5 text-xs font-semibold hover:bg-pink-500/20 transition max-sm:min-h-[36px]"
+            >
+              🌸 View Tailored CV
+            </button>
+          )}
+          {dbCoverLetter && (
+            <button
+              onClick={() => setShowCL(true)}
+              className="inline-flex items-center justify-center rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-surface-hover transition max-sm:min-h-[36px]"
+            >
+              ✉️ View Cover Letter
+            </button>
+          )}
+          <button
+            onClick={() => setShowReference(true)}
+            className="inline-flex items-center justify-center rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-surface-hover transition max-sm:min-h-[36px]"
+          >
+            📜 View Reference Letter
+          </button>
+          {dbEmailDraft && (
+            <button
+              onClick={() => setShowEmail(true)}
+              className="inline-flex items-center justify-center rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-surface-hover transition max-sm:min-h-[36px]"
+            >
+              📧 Email Draft
+            </button>
+          )}
+          {dbEmailDraft && (
+            gmailDraftId ? (
+              <span className="inline-flex items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 px-3 py-1.5 text-xs font-semibold border border-emerald-500/20 max-sm:min-h-[36px]">
+                📬 In Gmail
+              </span>
+            ) : (
+              <button
+                onClick={handleSendGmailDraft}
+                disabled={sendingDraft}
+                className="inline-flex items-center justify-center rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 text-xs font-semibold transition disabled:opacity-55 max-sm:min-h-[36px]"
+              >
+                {sendingDraft ? "📬 Sending..." : "📬 Send to Gmail"}
+              </button>
+            )
+          )}
         </div>
 
         {app && canDelete && (
@@ -243,6 +341,87 @@ export function ReportView({
           No report file found for #{id} in <code className="text-foreground">reports/</code>.
         </div>
       )}
+
+      {showTailoredCv && dbCvHtml && (
+        <DocModal
+          title={`Tailored CV — ${app?.company ?? meta?.title ?? "Position"}`}
+          content={dbCvHtml}
+          isHtml={true}
+          onClose={() => setShowTailoredCv(false)}
+        />
+      )}
+      {showCL && dbCoverLetter && (
+        <DocModal
+          title={`Cover Letter — ${app?.company ?? meta?.title ?? "Job"}`}
+          content={dbCoverLetter}
+          onClose={() => setShowCL(false)}
+          company={app?.company ?? meta?.title ?? id}
+        />
+      )}
+      {showEmail && dbEmailDraft && (
+        <DocModal
+          title={`Email Outreach — ${app?.company ?? meta?.title ?? "Job"}`}
+          content={dbEmailDraft}
+          onClose={() => setShowEmail(false)}
+        />
+      )}
+      {showReference && (
+        <DocModal
+          title={`Reference Letter — Taylor Chorley (Evolve Marketing)`}
+          content={dbReferenceLetter || `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Reference Letter for Ilse Placencia</title><style>body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#1a1a2e;line-height:1.6;max-width:680px;margin:40px auto;padding:0 30px;background:#ffffff;}.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #107b89;padding-bottom:20px;margin-bottom:30px;}.brand{font-size:28px;font-weight:800;letter-spacing:-1px;color:#107b89;}.brand span{color:#8b5cf6;}.brand-sub{font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#64748b;font-weight:600;}.title{font-size:20px;font-weight:700;color:#0f172a;margin-bottom:15px;}.meta{font-size:13px;color:#475569;background:#f8fafc;padding:12px 16px;border-radius:8px;margin-bottom:25px;border-left:4px solid #107b89;}.meta p{margin:3px 0;}.content p{font-size:14px;color:#334155;margin-bottom:16px;}.signature-block{margin-top:35px;padding-top:20px;border-top:1px solid #e2e8f0;}.sign-name{font-family:'Brush Script MT','cursive',sans-serif;font-size:24px;color:#0f172a;margin-bottom:5px;}.sign-title{font-size:13px;font-weight:600;color:#0f172a;}.sign-contact{font-size:12px;color:#64748b;}</style></head><body><div class="header"><div><div class="brand">ev<span>o</span>lve</div><div class="brand-sub">MARKETING</div></div></div><div class="title">Reference Letter for Ilse Placencia</div><div class="meta"><p><strong>From:</strong> Taylor Chorley</p><p><strong>Position:</strong> Digital Marketing Supervisor, Evolve Marketing</p><p><strong>Date:</strong> October 26th, 2025</p></div><div class="content"><p>To Whom It May Concern,</p><p>I've worked with Ilse Placencia since January 2024, when she joined Evolve Marketing as a Digital Marketing Assistant, and I'm genuinely glad to write this on her behalf.</p><p>What stands out most, honestly, isn't just her skill set, it's how she works. Ilse brings this steady, positive energy to everything, even on the weeks that get hectic. She's the kind of person who checks in on how you're doing before diving into the task list, and that made a real difference on a fully remote team where it's easy to feel disconnected.</p><p>That said, she's also just really good at the job, and not just in one thing either. She's sharp across marketing and AI alike, and she's always finding new tools to make the work faster or better. If a tool she needs doesn't exist yet, she'll just build her own. That kind of resourcefulness isn't something you can teach. She has a genuine feel for what makes people click, and her social content consistently landed on brand, well timed, and built for whatever platform it was going on.</p><p>She's also reliable, something really hard to find nowadays. She meets deadlines, communicates clearly, and shows up prepared to strategy conversations with actual value, not just notes. Her analytics work and customer research made our campaigns improve across the board.</p><p>I'd hire Ilse again without hesitation. She's hardworking, kind, easy to work with, and any team would be lucky to have her.</p><p>Happy to talk more if it's helpful.</p><p>Warmest regards,</p></div><div class="signature-block"><div class="sign-name">Taylor Chorley</div><div class="sign-title">Taylor Chorley</div><div class="sign-contact">Digital Marketing Supervisor, Evolve Marketing</div><div class="sign-contact">taylorchorley@gmail.com | +1 (604) 551-8229</div></div></body></html>`}
+          isHtml={true}
+          onClose={() => setShowReference(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function DocModal({
+  title, content, onClose, isHtml = false, company,
+}: {
+  title: string; content: string; onClose: () => void; isHtml?: boolean; company?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="relative w-full max-w-3xl rounded-2xl border border-border bg-background p-6 shadow-2xl flex flex-col max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between pb-4 border-b border-border">
+          <h3 className="text-lg font-bold text-foreground">{title}</h3>
+          <div className="flex items-center gap-2">
+            {company && (
+              <a
+                href={`/api/cl-pdf?company=${encodeURIComponent(company)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center rounded-lg bg-brand px-3.5 py-1.5 text-xs font-semibold text-brand-foreground shadow-sm hover:bg-brand-200 transition max-sm:min-h-[36px]"
+              >
+                📥 Download PDF
+              </a>
+            )}
+            <button
+              className="inline-flex items-center justify-center rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-surface-hover transition"
+              onClick={() => {
+                navigator.clipboard.writeText(content).then(() => {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                });
+              }}
+            >
+              {copied ? "✓ Copied!" : "Copy"}
+            </button>
+            <button className="text-2xl hover:opacity-75" onClick={onClose}>×</button>
+          </div>
+        </div>
+        <div className="mt-4 overflow-y-auto flex-1 text-sm text-foreground">
+          {isHtml ? (
+            <iframe srcDoc={content} className="w-full h-[55vh] border-0 rounded-lg" title={title} />
+          ) : (
+            <pre className="whitespace-pre-wrap font-mono p-4 bg-surface rounded-xl border border-border leading-relaxed">{content}</pre>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
