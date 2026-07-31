@@ -30,8 +30,10 @@ function dirCount(rel: string, ext: string): number {
   }
 }
 
-export async function GET() {
-  const doctor = doctorState();
+export async function GET(req: Request) {
+  const { getUserId } = await import("@/lib/user-context");
+  const userId = getUserId(req);
+  const doctor = doctorState(userId);
   // "candidate" = a line that LOOKS like a row; parsed = what the tolerant
   // reader accepted. A gap between the two is the data-contract fingerprint.
   const inboxCandidates = lineCount("data/pipeline.md", (l) => /^\s*-\s*\[[ xX]\]/.test(l));

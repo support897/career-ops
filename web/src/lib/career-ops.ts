@@ -144,7 +144,7 @@ export type LifecyclePhase = "first-run" | "in-between" | "established";
  *   - established → all 4 prereqs present.
  * onboardingNeeded mirrors doctor.mjs: true if ANY prereq is missing → show banner.
  */
-export function doctorState(): {
+export function doctorState(userId?: string): {
   phase: LifecyclePhase;
   onboardingNeeded: boolean;
   missing: string[];
@@ -158,14 +158,15 @@ export function doctorState(): {
       return false;
     }
   };
+  const cvFile = userId === "support_worker" ? "cv-support.md" : "cv.md";
   const prereqs: [string, string][] = [
-    ["cv.md", "cv.md"],
+    [cvFile, cvFile],
     ["config/profile.yml", "config/profile.yml"],
     ["modes/_profile.md", "modes/_profile.md"],
     ["portals.yml", "portals.yml"],
   ];
   const missing = prereqs.filter(([rel]) => !has(rel)).map(([, label]) => label);
-  const hasCv = has("cv.md");
+  const hasCv = has(cvFile);
   const hasData = readApplications().length > 0 || readInbox().some((j) => !j.done);
   const onboardingNeeded = missing.length > 0;
   const phase: LifecyclePhase = !hasCv && !hasData ? "first-run" : onboardingNeeded ? "in-between" : "established";
@@ -205,7 +206,7 @@ export function findReportFile(n: string): string | null {
   } catch {
     return null;
   }
-  const match = files.find((f) => f.endsWith(".md") && parseInt(f, 10) === target);
+  const match = files.find((f) => f.endsWith(".md") && !f.includes("-RESERVED") && parseInt(f, 10) === target);
   return match ? path.join(careerOpsRoot(), "reports", match) : null;
 }
 
