@@ -124,11 +124,15 @@ export async function POST(req: Request) {
       if (!resolved) return fail(`CLI '${cliId}' not found on this machine`);
       const { spec, binPath } = resolved;
 
+      const { getUserId } = await import("@/lib/user-context");
+      const userId = getUserId(req);
+      const cvFile = userId === "support_worker" ? "cv-support.md" : "cv.md";
+
       const fieldsList = s.fields
         .map((f) => `${f.id}\t${f.type}${f.required ? "*" : ""}\t${f.label}${f.options ? `\t[options: ${f.options.join(" | ")}]` : ""}`)
         .join("\n");
       const mem = readMemory().trim();
-      const prompt = `You are pre-filling a job application for the user (company/role: ${s.title}). Read cv.md and config/profile.yml; if a matching report for this company exists in reports/, read it too. Ground EVERY answer in the REAL candidate — never invent facts.${mem ? `\n\nDurable notes about the user:\n${mem}` : ""}
+      const prompt = `You are pre-filling a job application for the user (company/role: ${s.title}). Read ${cvFile} and config/profile.yml; if a matching report for this company exists in reports/, read it too. Ground EVERY answer in the REAL candidate — never invent facts.${mem ? `\n\nDurable notes about the user:\n${mem}` : ""}
 
 FIELDS (id ⇥ type ⇥ label ⇥ options):
 ${fieldsList}
