@@ -178,7 +178,23 @@ export default {
   },
 
   async fetch(entry, ctx) {
-    const keywords = entry.scan_query || entry.name || 'AI automation';
+    const { readFileSync, existsSync } = await import('fs');
+    const yaml = await import('js-yaml');
+    let defaultQuery = '"AI Trainer" OR "Video Editor" OR "Webflow" OR "Virtual Assistant" OR "QA"';
+    try {
+      if (existsSync('portals.yml')) {
+        const config = yaml.load(readFileSync('portals.yml', 'utf8'));
+        const positive = config?.title_filter?.positive || [];
+        const mainKeywords = positive.filter(k => k.length >= 2 && k.length <= 25);
+        if (mainKeywords.length > 0) {
+          const selected = [...new Set(mainKeywords)].slice(0, 8);
+          defaultQuery = selected.map(k => `"${k}"`).join(' OR ');
+        }
+      }
+    } catch (e) {
+      // Fallback to default
+    }
+    const keywords = entry.scan_query || entry.searchKeywords || defaultQuery;
     return scrapeSEEKJobs(keywords, 25, ctx?.userId);
   },
 

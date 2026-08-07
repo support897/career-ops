@@ -114,14 +114,26 @@ async function scrapeIndeedJobs(keywords, maxJobs = 25, userId) {
   
   if (days > 25) console.log(`  ⚠️  Indeed: Cookies expiring in ${30 - days} days.`);
   
+  const SCRAPERAPI_KEY = process.env.SCRAPERAPI_KEY || '07f176678ee9a68d033796692296c2bf';
+
   const browser = await puppeteer.launch({
     headless: 'new',
     executablePath: CHROME_PATH,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--proxy-server=http://proxy-server.scraperapi.com:8001',
+      '--ignore-certificate-errors'
+    ],
   });
   
   try {
     const page = await browser.newPage();
+    await page.authenticate({
+      username: 'scraperapi',
+      password: SCRAPERAPI_KEY
+    });
+    
     await page.setCookie(...data.cookies.map(c => ({
       name: c.name, value: c.value, domain: c.domain || '.indeed.com', path: '/', httpOnly: true, secure: true,
     })));
@@ -182,7 +194,23 @@ export default {
   },
 
   async fetch(entry, ctx) {
-    const keywords = entry.scan_query || entry.name || 'AI automation';
+    const { readFileSync, existsSync } = await import('fs');
+    const yaml = await import('js-yaml');
+    let defaultQuery = '"AI Trainer" OR "Video Editor" OR "Webflow" OR "Virtual Assistant" OR "QA"';
+    try {
+      if (existsSync('portals.yml')) {
+        const config = yaml.load(readFileSync('portals.yml', 'utf8'));
+        const positive = config?.title_filter?.positive || [];
+        const mainKeywords = positive.filter(k => k.length >= 2 && k.length <= 25);
+        if (mainKeywords.length > 0) {
+          const selected = [...new Set(mainKeywords)].slice(0, 8);
+          defaultQuery = selected.map(k => `"${k}"`).join(' OR ');
+        }
+      }
+    } catch (e) {
+      // Fallback to default
+    }
+    const keywords = entry.scan_query || entry.searchKeywords || defaultQuery;
     return scrapeIndeedJobs(keywords, 25, ctx?.userId);
   },
 
