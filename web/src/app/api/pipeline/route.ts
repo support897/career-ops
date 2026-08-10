@@ -107,62 +107,67 @@ ${row.why_match || ""}
   let inbox: any[] = [];
   let applications: any[] = [];
 
-
+  // Fast local pipeline data load
   try {
-    const sql = getSql();
-    const inboxRows = await sql`
-      SELECT * FROM job_inbox 
-      WHERE user_id = ${userId} OR user_id = 'user_3GfaXsz2WyxzFl0LcD4ktVnNsCS' OR user_id = 'default'
-      ORDER BY created_at DESC
-    `;
-    inbox = inboxRows.map((r: any) => ({
-      id: r.id,
-      url: r.url,
-      company: r.company,
-      role: r.role,
-      location: r.location,
-      salary: r.salary,
-      score: r.score ? `${r.score}/5` : null,
-      why_match: r.why_match,
-      doc_status: r.doc_status,
-      job_status: r.job_status,
-      postedAt: safeIsoDate(r.posted_at),
-      done: r.job_status === 'discarded',
-    }));
-
-    const appRows = await sql`
-      SELECT * FROM job_inbox 
-      WHERE (user_id = ${userId} OR user_id = 'user_3GfaXsz2WyxzFl0LcD4ktVnNsCS' OR user_id = 'default')
-      ORDER BY created_at DESC
-    `;
-    applications = appRows.map((r: any, idx: number) => ({
-      num: String(idx + 1),
-      date: safeYmdDate(r.posted_at),
-      company: r.company,
-      role: r.role,
-      score: r.score ? `${r.score}/5` : '4.50/5',
-      status: r.job_status === 'applied' ? 'Applied' : 'Evaluated',
-      pdf: '✅',
-      report: '',
-      notes: r.why_match || '',
-    }));
-
+    const s = pipelineSummary();
+    const careKeywords = ['support coordinator', 'disability support', 'aged care', 'care coordinator', 'kinsela care', 'hireup', 'aspect care'];
+    inbox = s.inbox;
+    applications = s.applications.filter((a: any) => {
+      const lower = `${a.company} ${a.role}`.toLowerCase();
+      return !careKeywords.some(k => lower.includes(k));
+    });
   } catch (e) {
-    console.error('[api/pipeline] Error fetching tenant data from DB:', e);
+    console.error('[api/pipeline] Error loading local summary:', e);
   }
 
-
-  // Unbreakable guarantee: if DB is empty or unreachable, fall back to local pipelineSummary
+  // DB fallback / enrichment if local empty
   if (!inbox || inbox.length === 0 || !applications || applications.length === 0) {
     try {
-      const s = pipelineSummary();
-      if (!inbox || inbox.length === 0) inbox = s.inbox;
-      if (!applications || applications.length === 0) applications = s.applications;
+      const sql = getSql();
+      const inboxRows = await sql`
+        SELECT * FROM job_inbox 
+        WHERE user_id = ${userId} OR user_id = 'user_3GfaXsz2WyxzFl0LcD4ktVnNsCS' OR user_id = 'default'
+        ORDER BY created_at DESC
+      `;
+      if (inboxRows && inboxRows.length > 0) {
+        inbox = inboxRows.map((r: any) => ({
+          id: r.id,
+          url: r.url,
+          company: r.company,
+          role: r.role,
+          location: r.location,
+          salary: r.salary,
+          score: r.score ? `${r.score}/5` : null,
+          why_match: r.why_match,
+          doc_status: r.doc_status,
+          job_status: r.job_status,
+          postedAt: safeIsoDate(r.posted_at),
+          done: r.job_status === 'discarded',
+        }));
+      }
+
+      const appRows = await sql`
+        SELECT * FROM job_inbox 
+        WHERE (user_id = ${userId} OR user_id = 'user_3GfaXsz2WyxzFl0LcD4ktVnNsCS' OR user_id = 'default')
+        ORDER BY created_at DESC
+      `;
+      if (appRows && appRows.length > 0 && (!applications || applications.length === 0)) {
+        applications = appRows.map((r: any, idx: number) => ({
+          num: String(idx + 1),
+          date: safeYmdDate(r.posted_at),
+          company: r.company,
+          role: r.role,
+          score: r.score ? `${r.score}/5` : '4.50/5',
+          status: r.job_status === 'applied' ? 'Applied' : 'Evaluated',
+          pdf: '✅',
+          report: '',
+          notes: r.why_match || '',
+        }));
+      }
     } catch (e) {
-      console.error('[api/pipeline] Error loading local pipeline summary:', e);
+      console.error('[api/pipeline] DB query error:', e);
     }
   }
-
 
   return Response.json({
     inbox,

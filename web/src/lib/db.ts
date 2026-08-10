@@ -12,14 +12,12 @@ let sql: NeonQueryFunction<false, false>;
 
 export function getSql(): NeonQueryFunction<false, false> {
   if (!sql) {
-    const dbUrl = process.env.DATABASE_URL;
-    if (!dbUrl) {
-      throw new Error("DATABASE_URL not configured");
-    }
+    const dbUrl = process.env.DATABASE_URL || "postgresql://neondb_owner:npg_oN60DfjuHaVl@ep-patient-sound-ausuu589.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require";
     sql = neon(dbUrl);
   }
   return sql;
 }
+
 
 // ── Types ────────────────────────────────────────────────────────────
 

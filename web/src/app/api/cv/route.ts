@@ -7,15 +7,8 @@ const MAX_CV_BYTES = 200_000;
 export async function GET(req: NextRequest) {
   try {
     const userId = getUserId(req);
-    const profile = await getUserProfile(userId).catch(() => null);
-    if (profile) {
-      const cvText = (profile as Record<string, unknown>).cv_markdown || (profile as Record<string, unknown>).cv_text;
-      if (typeof cvText === "string" && cvText.trim().length > 10) {
-        return NextResponse.json({ content: cvText, exists: true });
-      }
-    }
 
-    // Local file fallbacks per tenant
+    // Fast local file read
     const { careerOpsRoot } = await import("@/lib/career-ops");
     const fs = await import("node:fs");
     const path = await import("node:path");
@@ -25,7 +18,17 @@ export async function GET(req: NextRequest) {
     const filePath = path.join(root, relPath);
     if (fs.existsSync(filePath)) {
       const content = fs.readFileSync(filePath, "utf8");
-      return NextResponse.json({ content, exists: true });
+      if (content.trim().length > 10) {
+        return NextResponse.json({ content, exists: true });
+      }
+    }
+
+    const profile = await getUserProfile(userId).catch(() => null);
+    if (profile) {
+      const cvText = (profile as Record<string, unknown>).cv_markdown || (profile as Record<string, unknown>).cv_text;
+      if (typeof cvText === "string" && cvText.trim().length > 10) {
+        return NextResponse.json({ content: cvText, exists: true });
+      }
     }
 
     return NextResponse.json({ content: "", exists: false });
@@ -34,6 +37,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "failed to read CV" }, { status: 500 });
   }
 }
+
 
 
 export async function POST(req: NextRequest) {
