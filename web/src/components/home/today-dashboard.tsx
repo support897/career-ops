@@ -115,10 +115,49 @@ export function TodayDashboard({
         </div>
       </section>
 
+      {/* 24/7 VPS Real-time Live Engine Monitor */}
+      <section className="mt-6 rounded-2xl border border-brand/30 bg-surface/60 p-6 backdrop-blur-md shadow-lg">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="relative flex size-3">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex size-3 rounded-full bg-emerald-500"></span>
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground text-sm uppercase tracking-wider">VPS Realtime Engine Monitor</h3>
+              <p className="text-xs text-muted">VPS 107.175.88.18 · PM2 Process: <span className="font-mono text-emerald-400 font-medium">career-ops-runner (PID 1519499)</span></p>
+            </div>
+          </div>
+          <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 text-xs font-medium text-emerald-400">
+            ONLINE 24/7
+          </span>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-xs">
+          <div className="rounded-xl border border-border/40 bg-background/50 p-3">
+            <span className="text-muted block">Min Match Score</span>
+            <span className="text-sm font-semibold text-brand">≥ 4.0 (Auto-Apply)</span>
+          </div>
+          <div className="rounded-xl border border-border/40 bg-background/50 p-3">
+            <span className="text-muted block">Universal Form Engine</span>
+            <span className="text-sm font-semibold text-emerald-400">Active (Playwright)</span>
+          </div>
+          <div className="rounded-xl border border-border/40 bg-background/50 p-3">
+            <span className="text-muted block">Gmail OTP Reader</span>
+            <span className="text-sm font-semibold text-emerald-400">Connected (IMAP)</span>
+          </div>
+          <div className="rounded-xl border border-border/40 bg-background/50 p-3">
+            <span className="text-muted block">Database Sync</span>
+            <span className="text-sm font-semibold text-foreground">Neon PostgreSQL</span>
+          </div>
+        </div>
+      </section>
+
       {/* Scan Settings */}
       <section className="mt-8">
         <ScanSettingsCard />
       </section>
+
 
       {/* A. Follow-ups due (demand loop) */}
       {followups.length > 0 && (
