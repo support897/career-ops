@@ -9,6 +9,28 @@ import { getUserId } from "@/lib/user-context";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function safeIsoDate(val: any): string {
+  if (!val) return new Date().toISOString();
+  try {
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return new Date().toISOString();
+    return d.toISOString();
+  } catch {
+    return new Date().toISOString();
+  }
+}
+
+function safeYmdDate(val: any): string {
+  if (!val) return new Date().toISOString().slice(0, 10);
+  try {
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return new Date().toISOString().slice(0, 10);
+    return d.toISOString().slice(0, 10);
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
+
 export async function GET(req: Request) {
   const userId = getUserId(req);
 
@@ -85,6 +107,7 @@ ${row.why_match || ""}
   let inbox: any[] = [];
   let applications: any[] = [];
 
+
   try {
     const sql = getSql();
     const inboxRows = await sql`
@@ -103,7 +126,7 @@ ${row.why_match || ""}
       why_match: r.why_match,
       doc_status: r.doc_status,
       job_status: r.job_status,
-      postedAt: r.posted_at ? new Date(r.posted_at).toISOString() : new Date().toISOString(),
+      postedAt: safeIsoDate(r.posted_at),
       done: r.job_status === 'discarded',
     }));
 
@@ -114,7 +137,7 @@ ${row.why_match || ""}
     `;
     applications = appRows.map((r: any, idx: number) => ({
       num: String(idx + 1),
-      date: r.posted_at ? new Date(r.posted_at).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+      date: safeYmdDate(r.posted_at),
       company: r.company,
       role: r.role,
       score: r.score ? `${r.score}/5` : '4.50/5',
@@ -127,6 +150,7 @@ ${row.why_match || ""}
   } catch (e) {
     console.error('[api/pipeline] Error fetching tenant data from DB:', e);
   }
+
 
   // Unbreakable guarantee: if DB is empty or unreachable, fall back to local pipelineSummary
   if (!inbox || inbox.length === 0 || !applications || applications.length === 0) {
