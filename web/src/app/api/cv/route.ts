@@ -7,9 +7,12 @@ const MAX_CV_BYTES = 200_000;
 export async function GET(req: NextRequest) {
   try {
     const userId = getUserId(req);
-    const profile = await getUserProfile(userId);
-    if (profile && profile.cv_markdown) {
-      return NextResponse.json({ content: profile.cv_markdown, exists: true });
+    const profile = await getUserProfile(userId).catch(() => null);
+    if (profile) {
+      const cvText = (profile as Record<string, unknown>).cv_markdown || (profile as Record<string, unknown>).cv_text;
+      if (typeof cvText === "string" && cvText.trim().length > 10) {
+        return NextResponse.json({ content: cvText, exists: true });
+      }
     }
 
     // Local file fallbacks per tenant
@@ -18,7 +21,7 @@ export async function GET(req: NextRequest) {
     const path = await import("node:path");
     const root = careerOpsRoot();
 
-    const relPath = userId === "support_worker" ? "cv-support.md" : "cv.md";
+    const relPath = userId === "support_worker" ? "config/cv-support-worker.md" : "cv.md";
     const filePath = path.join(root, relPath);
     if (fs.existsSync(filePath)) {
       const content = fs.readFileSync(filePath, "utf8");
@@ -31,6 +34,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "failed to read CV" }, { status: 500 });
   }
 }
+
 
 export async function POST(req: NextRequest) {
   try {
