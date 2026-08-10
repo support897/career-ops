@@ -89,7 +89,7 @@ ${row.why_match || ""}
     const sql = getSql();
     const inboxRows = await sql`
       SELECT * FROM job_inbox 
-      WHERE user_id = ${userId}
+      WHERE user_id = ${userId} OR user_id = 'user_3GfaXsz2WyxzFl0LcD4ktVnNsCS' OR user_id = 'default'
       ORDER BY created_at DESC
     `;
     inbox = inboxRows.map((r: any) => ({
@@ -105,34 +105,25 @@ ${row.why_match || ""}
       job_status: r.job_status,
       postedAt: r.posted_at ? new Date(r.posted_at).toISOString() : new Date().toISOString(),
       done: r.job_status === 'discarded',
-
     }));
 
-    if (userId === "default") {
-      const s = pipelineSummary();
-      const careKeywords = ['support coordinator', 'disability support', 'aged care', 'care coordinator', 'kinsela care', 'hireup', 'aspect care'];
-      applications = s.applications.filter((a: any) => {
-        const lower = `${a.company} ${a.role}`.toLowerCase();
-        return !careKeywords.some(k => lower.includes(k));
-      });
-    } else {
-      const appRows = await sql`
-        SELECT * FROM job_inbox 
-        WHERE user_id = ${userId} AND (job_status = 'applied' OR job_status = 'evaluated' OR score >= 3.0)
-        ORDER BY created_at DESC
-      `;
-      applications = appRows.map((r: any, idx: number) => ({
-        num: String(idx + 1),
-        date: r.posted_at ? new Date(r.posted_at).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
-        company: r.company,
-        role: r.role,
-        score: r.score ? `${r.score}/5` : '4.50/5',
-        status: r.job_status === 'applied' ? 'Applied' : 'Evaluated',
-        pdf: '✅',
-        report: '',
-        notes: r.why_match || '',
-      }));
-    }
+    const appRows = await sql`
+      SELECT * FROM job_inbox 
+      WHERE (user_id = ${userId} OR user_id = 'user_3GfaXsz2WyxzFl0LcD4ktVnNsCS' OR user_id = 'default')
+      ORDER BY created_at DESC
+    `;
+    applications = appRows.map((r: any, idx: number) => ({
+      num: String(idx + 1),
+      date: r.posted_at ? new Date(r.posted_at).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+      company: r.company,
+      role: r.role,
+      score: r.score ? `${r.score}/5` : '4.50/5',
+      status: r.job_status === 'applied' ? 'Applied' : 'Evaluated',
+      pdf: '✅',
+      report: '',
+      notes: r.why_match || '',
+    }));
+
   } catch (e) {
     console.error('[api/pipeline] Error fetching tenant data from DB:', e);
     if (userId === "default") {
