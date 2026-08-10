@@ -82,12 +82,13 @@ export function PipelineView({
     const seen = new Set<string>();
     const out: InboxJob[] = [];
     for (const j of inbox) {
-      if (j.done || seen.has(j.url)) continue;
+      if (!j.url || seen.has(j.url)) continue;
       seen.add(j.url);
       out.push(j);
     }
     return out;
   }, [inbox]);
+
 
   const filtered = useMemo(() => {
     if (tab === "INBOX") return [];
