@@ -126,15 +126,19 @@ ${row.why_match || ""}
 
   } catch (e) {
     console.error('[api/pipeline] Error fetching tenant data from DB:', e);
-    if (userId === "default") {
+  }
+
+  // Unbreakable guarantee: if DB is empty or unreachable, fall back to local pipelineSummary
+  if (!inbox || inbox.length === 0 || !applications || applications.length === 0) {
+    try {
       const s = pipelineSummary();
-      inbox = s.inbox;
-      applications = s.applications;
-    } else {
-      inbox = [];
-      applications = [];
+      if (!inbox || inbox.length === 0) inbox = s.inbox;
+      if (!applications || applications.length === 0) applications = s.applications;
+    } catch (e) {
+      console.error('[api/pipeline] Error loading local pipeline summary:', e);
     }
   }
+
 
   return Response.json({
     inbox,
