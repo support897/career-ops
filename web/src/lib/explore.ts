@@ -28,15 +28,39 @@ export type ExploreFilters = {
 };
 
 export const DEFAULT_FILTERS: ExploreFilters = {
-  positive: [],
-  negative: [],
-  allow: [],
-  block: [],
+  positive: [
+    "AI Automation",
+    "AI Testing",
+    "AI Evaluator",
+    "Data Annotation",
+    "QA",
+    "Testing",
+    "Quality Assurance",
+    "Video Editor",
+    "Web Designer",
+    "Spanish",
+    "Social Media Coordinator",
+    "digital marketing",
+    "website builder",
+  ],
+  negative: [
+    "engineer",
+    "architect",
+    "senior researcher",
+    "staff engineer",
+    "devops",
+    "platform engineer",
+    "support worker",
+    "ndis coordinator",
+  ],
+  allow: ["Remote", "Work from home", "WFH", "Australia", "Worldwide"],
+  block: ["On-site", "Onsite", "United States", "USA", "US Only", "US-Only", "USA Only", "US Remote", "Remote - US", "Remote (US)", "United States Only", "Remotely in the USA"],
   alwaysAllow: [],
   sinceDays: 7,
   ats: [...ATS_SOURCES],
   limitPerAts: 150,
 };
+
 
 export type DiscoveredOffer = {
   url: string;
