@@ -66,11 +66,17 @@ config/benchmarks.yml
 config/linkedin.yml
 config/indeed.yml
 config/seek.yml
+config/email.yml
 modes/_profile.md
 modes/_custom.md
 .update-dismissed
 .update-lock
 .manifesto-noted
+
+# Lambda build secrets (never commit — keep local copies only)
+build-lambda/config/*.yml
+!build-lambda/config/*.example.yml
+!build-lambda/config/plugins.example.yml
 
 # Plugin layer — opt-in toggles + user-installed plugins + integrity lock (never auto-updated)
 config/plugins.yml

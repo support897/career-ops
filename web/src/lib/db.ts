@@ -1,4 +1,5 @@
 import { neon, NeonQueryFunction } from "@neondatabase/serverless";
+import { resolveDataOwner } from "@/lib/user-context";
 
 /**
  * Database layer for Careerflow cloud deployment.
@@ -12,7 +13,12 @@ let sql: NeonQueryFunction<false, false>;
 
 export function getSql(): NeonQueryFunction<false, false> {
   if (!sql) {
-    const dbUrl = process.env.DATABASE_URL || "postgresql://neondb_owner:npg_oN60DfjuHaVl@ep-patient-sound-ausuu589.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require";
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error(
+        "DATABASE_URL is not set. Set it in web/.env.local (see .env.example) or in the platform env for production."
+      );
+    }
     sql = neon(dbUrl);
   }
   return sql;
@@ -137,10 +143,11 @@ export type PortalsConfig = {
 // ── User Profile Operations ──────────────────────────────────────────
 
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const rows = await sql`
     SELECT * FROM user_profiles 
-    WHERE user_id = ${userId} OR user_id = 'user_3GfaXsz2WyxzFl0LcD4ktVnNsCS' OR user_id = 'default' 
+    WHERE user_id = ${owner}
     ORDER BY updated_at DESC LIMIT 1
   `;
   return (rows[0] as UserProfile) || null;
@@ -150,11 +157,12 @@ export async function upsertUserProfile(
   userId: string,
   data: Partial<UserProfile>
 ): Promise<UserProfile> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const rows = await sql`
     INSERT INTO user_profiles (user_id, email, full_name, location, timezone, scanning_enabled, scan_mode, scan_frequency_hours, preferred_days, preferred_hours, platforms, keywords, location_filter, cv_data, cv_markdown, profile_config)
     VALUES (
-      ${userId},
+      ${owner},
       ${data.email || null},
       ${data.full_name || null},
       ${data.location || null},
@@ -196,20 +204,22 @@ export async function upsertUserProfile(
 // ── Application Operations ───────────────────────────────────────────
 
 export async function getApplications(userId: string): Promise<Application[]> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const rows = await sql`
     SELECT * FROM applications 
-    WHERE user_id = ${userId} OR user_id = 'user_3GfaXsz2WyxzFl0LcD4ktVnNsCS' OR user_id = 'default' 
+    WHERE user_id = ${owner}
     ORDER BY num::integer DESC
   `;
   return rows as Application[];
 }
 
 export async function getApplication(userId: string, num: string): Promise<Application | null> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const rows = await sql`
     SELECT * FROM applications 
-    WHERE (user_id = ${userId} OR user_id = 'user_3GfaXsz2WyxzFl0LcD4ktVnNsCS' OR user_id = 'default') AND num = ${num} 
+    WHERE user_id = ${owner} AND num = ${num} 
     LIMIT 1
   `;
   return (rows[0] as Application) || null;
@@ -219,11 +229,12 @@ export async function upsertApplication(
   userId: string,
   data: Partial<Application> & { num: string; company: string; role: string }
 ): Promise<Application> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const rows = await sql`
     INSERT INTO applications (user_id, num, date, company, role, score, status, pdf_generated, report_path, notes, via)
     VALUES (
-      ${userId},
+      ${owner},
       ${data.num},
       ${data.date || null},
       ${data.company},
@@ -256,10 +267,11 @@ export async function updateApplicationStatus(
   num: string,
   status: string
 ): Promise<boolean> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const result = await sql`
     UPDATE applications SET status = ${status}, updated_at = NOW()
-    WHERE (user_id = ${userId} OR user_id = 'user_3GfaXsz2WyxzFl0LcD4ktVnNsCS' OR user_id = 'default') AND num = ${num}
+    WHERE user_id = ${owner} AND num = ${num}
     RETURNING id
   `;
   return result.length > 0;
@@ -268,10 +280,11 @@ export async function updateApplicationStatus(
 // ── Job Inbox Operations ─────────────────────────────────────────────
 
 export async function getInboxJobs(userId: string): Promise<InboxJob[]> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const rows = await sql`
     SELECT * FROM job_inbox 
-    WHERE user_id = ${userId} OR user_id = 'user_3GfaXsz2WyxzFl0LcD4ktVnNsCS' OR user_id = 'default' 
+    WHERE user_id = ${owner}
     ORDER BY created_at DESC
   `;
   return rows as InboxJob[];
@@ -292,11 +305,12 @@ export async function addInboxJob(
     jd_text?: string;
   }
 ): Promise<InboxJob | null> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const rows = await sql`
     INSERT INTO job_inbox (user_id, url, company, role, location, compensation, salary, apply_url, posted_at, jd_text, doc_status, job_status)
     VALUES (
-      ${userId},
+      ${owner},
       ${job.url},
       ${job.company},
       ${job.role},
@@ -340,6 +354,7 @@ export async function updateInboxJobPipeline(
     return false;
   }
 
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const result = await sql`
     UPDATE job_inbox SET
@@ -352,7 +367,7 @@ export async function updateInboxJobPipeline(
       doc_status = ${data.doc_status ?? 'pending'},
       gmail_draft_id = COALESCE(${data.gmail_draft_id ?? null}, gmail_draft_id),
       updated_at = NOW()
-    WHERE id = ${jobId} AND user_id = ${userId}
+    WHERE id = ${jobId} AND user_id = ${owner}
     RETURNING id
   `;
   return result.length > 0;
@@ -372,13 +387,14 @@ export async function updateInboxJobStatus(
     return false;
   }
 
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const result = await sql`
     UPDATE job_inbox SET
       job_status = ${status},
       done = ${status !== 'new'},
       updated_at = NOW()
-    WHERE id = ${jobId} AND user_id = ${userId}
+    WHERE id = ${jobId} AND user_id = ${owner}
     RETURNING id
   `;
   return result.length > 0;
@@ -391,18 +407,20 @@ export async function getInboxJobsByStatus(
   userId: string,
   status?: 'new' | 'applied' | 'discarded'
 ): Promise<InboxJob[]> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const rows = status
-    ? await sql`SELECT * FROM job_inbox WHERE user_id = ${userId} AND job_status = ${status} ORDER BY score DESC NULLS LAST, created_at DESC`
-    : await sql`SELECT * FROM job_inbox WHERE user_id = ${userId} ORDER BY job_status ASC, score DESC NULLS LAST, created_at DESC`;
+    ? await sql`SELECT * FROM job_inbox WHERE user_id = ${owner} AND job_status = ${status} ORDER BY score DESC NULLS LAST, created_at DESC`
+    : await sql`SELECT * FROM job_inbox WHERE user_id = ${owner} ORDER BY job_status ASC, score DESC NULLS LAST, created_at DESC`;
   return rows as InboxJob[];
 }
 
 export async function markInboxJobDone(userId: string, url: string): Promise<boolean> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const result = await sql`
     UPDATE job_inbox SET done = true, processed_at = NOW(), updated_at = NOW()
-    WHERE user_id = ${userId} AND url = ${url}
+    WHERE user_id = ${owner} AND url = ${url}
     RETURNING id
   `;
   return result.length > 0;
@@ -411,17 +429,19 @@ export async function markInboxJobDone(userId: string, url: string): Promise<boo
 // ── Scan History Operations ──────────────────────────────────────────
 
 export async function getScanHistory(userId: string): Promise<ScanHistoryEntry[]> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const rows = await sql`
-    SELECT * FROM scan_history WHERE user_id = ${userId} ORDER BY first_seen DESC
+    SELECT * FROM scan_history WHERE user_id = ${owner} ORDER BY first_seen DESC
   `;
   return rows as ScanHistoryEntry[];
 }
 
 export async function getScanDates(userId: string): Promise<Map<string, string>> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const rows = await sql`
-    SELECT url, first_seen FROM scan_history WHERE user_id = ${userId}
+    SELECT url, first_seen FROM scan_history WHERE user_id = ${owner}
   `;
   const dates = new Map<string, string>();
   for (const row of rows) {
@@ -438,12 +458,13 @@ export async function addScanHistoryEntry(
   userId: string,
   entry: { url: string; company?: string; title?: string; location?: string; ats_source?: string }
 ): Promise<ScanHistoryEntry | null> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const today = new Date().toISOString().split("T")[0];
   const rows = await sql`
     INSERT INTO scan_history (user_id, url, company, title, location, ats_source, first_seen, last_seen)
     VALUES (
-      ${userId},
+      ${owner},
       ${entry.url},
       ${entry.company || null},
       ${entry.title || null},
@@ -466,10 +487,11 @@ export async function addScanHistoryEntry(
 // ── Scan Run Operations ──────────────────────────────────────────────
 
 export async function createScanRun(userId: string): Promise<ScanRun> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const rows = await sql`
     INSERT INTO scan_runs (user_id, started_at)
-    VALUES (${userId}, NOW())
+    VALUES (${owner}, NOW())
     RETURNING *
   `;
   return rows[0] as ScanRun;
@@ -496,17 +518,19 @@ export async function completeScanRun(
 // ── Report Operations ────────────────────────────────────────────────
 
 export async function getReports(userId: string): Promise<Report[]> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const rows = await sql`
-    SELECT * FROM reports WHERE user_id = ${userId} ORDER BY report_num::integer DESC
+    SELECT * FROM reports WHERE user_id = ${owner} ORDER BY report_num::integer DESC
   `;
   return rows as Report[];
 }
 
 export async function getReport(userId: string, reportNum: string): Promise<Report | null> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const rows = await sql`
-    SELECT * FROM reports WHERE user_id = ${userId} AND report_num = ${reportNum} LIMIT 1
+    SELECT * FROM reports WHERE user_id = ${owner} AND report_num = ${reportNum} LIMIT 1
   `;
   return (rows[0] as Report) || null;
 }
@@ -515,11 +539,12 @@ export async function upsertReport(
   userId: string,
   data: { report_num: string; company_slug: string; report_date: string; content: string }
 ): Promise<Report> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const rows = await sql`
     INSERT INTO reports (user_id, report_num, company_slug, report_date, content)
     VALUES (
-      ${userId},
+      ${owner},
       ${data.report_num},
       ${data.company_slug},
       ${data.report_date},
@@ -537,9 +562,10 @@ export async function upsertReport(
 // ── Portals Config Operations ────────────────────────────────────────
 
 export async function getPortalsConfig(userId: string): Promise<PortalsConfig | null> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const rows = await sql`
-    SELECT * FROM portals_config WHERE user_id = ${userId} LIMIT 1
+    SELECT * FROM portals_config WHERE user_id = ${owner} LIMIT 1
   `;
   return (rows[0] as PortalsConfig) || null;
 }
@@ -548,11 +574,12 @@ export async function upsertPortalsConfig(
   userId: string,
   data: Partial<PortalsConfig>
 ): Promise<PortalsConfig> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const rows = await sql`
     INSERT INTO portals_config (user_id, title_filter, location_filter, tracked_companies)
     VALUES (
-      ${userId},
+      ${owner},
       ${data.title_filter ? JSON.stringify(data.title_filter) : null}::jsonb,
       ${data.location_filter ? JSON.stringify(data.location_filter) : null}::jsonb,
       ${data.tracked_companies ? JSON.stringify(data.tracked_companies) : null}::jsonb
@@ -570,14 +597,15 @@ export async function upsertPortalsConfig(
 // ── Utility Functions ────────────────────────────────────────────────
 
 export async function deleteUser(userId: string): Promise<boolean> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
-  await sql`DELETE FROM reports WHERE user_id = ${userId}`;
-  await sql`DELETE FROM scan_history WHERE user_id = ${userId}`;
-  await sql`DELETE FROM scan_runs WHERE user_id = ${userId}`;
-  await sql`DELETE FROM job_inbox WHERE user_id = ${userId}`;
-  await sql`DELETE FROM applications WHERE user_id = ${userId}`;
-  await sql`DELETE FROM portals_config WHERE user_id = ${userId}`;
-  await sql`DELETE FROM user_profiles WHERE user_id = ${userId}`;
+  await sql`DELETE FROM reports WHERE user_id = ${owner}`;
+  await sql`DELETE FROM scan_history WHERE user_id = ${owner}`;
+  await sql`DELETE FROM scan_runs WHERE user_id = ${owner}`;
+  await sql`DELETE FROM job_inbox WHERE user_id = ${owner}`;
+  await sql`DELETE FROM applications WHERE user_id = ${owner}`;
+  await sql`DELETE FROM portals_config WHERE user_id = ${owner}`;
+  await sql`DELETE FROM user_profiles WHERE user_id = ${owner}`;
   return true;
 }
 
@@ -587,12 +615,13 @@ export async function getUserStats(userId: string): Promise<{
   scanHistory: number;
   reports: number;
 }> {
+  const owner = resolveDataOwner(userId);
   const sql = getSql();
   const [appCount, inboxCount, scanCount, reportCount] = await Promise.all([
-    sql`SELECT COUNT(*)::integer as count FROM applications WHERE user_id = ${userId}`,
-    sql`SELECT COUNT(*)::integer as count FROM job_inbox WHERE user_id = ${userId}`,
-    sql`SELECT COUNT(*)::integer as count FROM scan_history WHERE user_id = ${userId}`,
-    sql`SELECT COUNT(*)::integer as count FROM reports WHERE user_id = ${userId}`,
+    sql`SELECT COUNT(*)::integer as count FROM applications WHERE user_id = ${owner}`,
+    sql`SELECT COUNT(*)::integer as count FROM job_inbox WHERE user_id = ${owner}`,
+    sql`SELECT COUNT(*)::integer as count FROM scan_history WHERE user_id = ${owner}`,
+    sql`SELECT COUNT(*)::integer as count FROM reports WHERE user_id = ${owner}`,
   ]);
   return {
     applications: (appCount[0] as any).count,

@@ -67,7 +67,7 @@ export async function POST(req: Request) {
 
   const { getUserId } = await import("@/lib/user-context");
   const userId = getUserId(req);
-  const profileFile = userId === "support_worker" ? "profile-support-worker.yml" : "profile.yml";
+  const profileFile = userId === "support_worker" ? "config/profile-support-worker.yml" : "profile.yml";
 
   const root = careerOpsRoot();
   const file = path.join(root, "config", profileFile);

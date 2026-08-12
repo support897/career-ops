@@ -10,7 +10,32 @@
  * This runs server-side only.
  */
 
+import fs from "node:fs";
+import path from "node:path";
+import { careerOpsRoot } from "@/lib/career-ops";
+
 export const VIP_EMAIL = "placenciailse@gmail.com";
+
+/**
+ * The single canonical database owner for this deployment. All data in the
+ * shared Neon DB is keyed to this row (`users.id`); every query resolves any
+ * tenant-ish alias (e.g. "default") back to this owner so no one else's rows
+ * ever leak into a user's view.
+ */
+export const PRINCIPAL_USER_ID = "user_3GfaXsz2WyxzFl0LcD4ktVnNsCS";
+
+/** The care-worker profile (NDIS/Disability/Aged Care) is a real tenant. */
+export const SUPPORT_WORKER_USER_ID = "support_worker";
+
+/**
+ * Map any incoming userId to the actual data owner. Aliases that are not real
+ * tenants ("default", "anonymous", empty) collapse to the principal user so
+ * every query hits exactly ONE owner — never an OR across owners.
+ */
+export function resolveDataOwner(userId: string): string {
+  if (!userId || userId === "default" || userId === "anonymous") return PRINCIPAL_USER_ID;
+  return userId;
+}
 
 /**
  * Get userId from a Next.js request (server component, API route, or middleware).
@@ -41,12 +66,20 @@ export function isVipUser(userId: string): boolean {
 }
 
 /**
- * The Gmail credentials for VIP (from env or fallback to hardcoded config).
- * These are loaded at runtime on Lambda/Vercel — never committed to source.
+ * The Gmail credentials for VIP — env first, then the gitignored
+ * config/email.yml (kept on-disk on the server; never committed).
  */
-export function getGmailCredentials() {
-  return {
-    user: process.env.GMAIL_USER ?? VIP_EMAIL,
-    password: process.env.GMAIL_APP_PASSWORD ?? "hptfiylhorjaakno",
-  };
+export function getGmailCredentials(): { user: string; password: string } {
+  if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+    return { user: process.env.GMAIL_USER, password: process.env.GMAIL_APP_PASSWORD };
+  }
+  try {
+    const raw = fs.readFileSync(path.join(careerOpsRoot(), "config", "email.yml"), "utf8");
+    const user = /^\s*user:\s*["']?([^"'\s@]+@[^"'\s]+)["']?\s*$/m.exec(raw)?.[1] ?? process.env.GMAIL_USER ?? VIP_EMAIL;
+    const password = /^\s*app_password:\s*["']?([^"'\s]+)["']?\s*$/m.exec(raw)?.[1] ?? "";
+    if (user && password) return { user, password };
+  } catch {
+    // fall through — file missing is fine, callers handle empty creds
+  }
+  return { user: process.env.GMAIL_USER ?? VIP_EMAIL, password: "" };
 }

@@ -242,6 +242,7 @@ function tailorCvToJd(
     education: parsed.education,
     certifications: parsed.certifications,
     skills: parsed.skills,
+    isVolunteer: parsed.isVolunteer,
   };
 }
 
@@ -393,7 +394,7 @@ export async function POST(req: NextRequest) {
 
   const root = careerOpsRoot();
 
-  const cvPath = userId === "support_worker" ? "cv-support.md" : "cv.md";
+  const cvPath = userId === "support_worker" ? "config/cv-support-worker.md" : "cv.md";
   const profilePath = userId === "support_worker" ? "config/profile-support-worker.yml" : "config/profile.yml";
 
   // Check required career-ops files exist

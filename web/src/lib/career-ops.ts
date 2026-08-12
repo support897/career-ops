@@ -158,7 +158,7 @@ export function doctorState(userId?: string): {
       return false;
     }
   };
-  const cvFile = userId === "support_worker" ? "cv-support.md" : "cv.md";
+  const cvFile = userId === "support_worker" ? "config/cv-support-worker.md" : "cv.md";
   const profileFile = userId === "support_worker" ? "config/profile-support-worker.yml" : "config/profile.yml";
   const prereqs: [string, string][] = [
     [cvFile, cvFile],

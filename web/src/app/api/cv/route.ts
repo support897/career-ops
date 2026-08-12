@@ -8,6 +8,16 @@ export async function GET(req: NextRequest) {
   try {
     const userId = getUserId(req);
 
+    // DB is the source of truth (the web editor writes to it), so return it
+    // first — the local file is only a fallback when a profile row is missing.
+    const profile = await getUserProfile(userId).catch(() => null);
+    if (profile) {
+      const cvText = (profile as Record<string, unknown>).cv_markdown || (profile as Record<string, unknown>).cv_text;
+      if (typeof cvText === "string" && cvText.trim().length > 10) {
+        return NextResponse.json({ content: cvText, exists: true });
+      }
+    }
+
     // Fast local file read
     const { careerOpsRoot } = await import("@/lib/career-ops");
     const fs = await import("node:fs");
@@ -20,14 +30,6 @@ export async function GET(req: NextRequest) {
       const content = fs.readFileSync(filePath, "utf8");
       if (content.trim().length > 10) {
         return NextResponse.json({ content, exists: true });
-      }
-    }
-
-    const profile = await getUserProfile(userId).catch(() => null);
-    if (profile) {
-      const cvText = (profile as Record<string, unknown>).cv_markdown || (profile as Record<string, unknown>).cv_text;
-      if (typeof cvText === "string" && cvText.trim().length > 10) {
-        return NextResponse.json({ content: cvText, exists: true });
       }
     }
 

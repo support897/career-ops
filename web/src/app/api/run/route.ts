@@ -17,7 +17,7 @@ export const maxDuration = 300;
 // so a web evaluation is byte-identical to a CLI one (single source of truth, no
 // drift). kind "research" stays read-only. Streams progress as NDJSON events.
 function buildPrompt(kind: string, input: string, memory: string, today: string, userId: string): string {
-  const cvFile = userId === "support_worker" ? "cv-support.md" : "cv.md";
+  const cvFile = userId === "support_worker" ? "config/cv-support-worker.md" : "cv.md";
   const profileFile = userId === "support_worker" ? "config/profile-support-worker.yml" : "config/profile.yml";
   const mem = memory.trim() ? `\n\nDurable notes about the user (from their profile):\n${memory.trim()}\n` : "";
   if (kind === "research") {
@@ -103,7 +103,7 @@ export async function POST(req: Request) {
 
   // An A–F score is meaningless without a CV to score against — the CLI would
   // hallucinate a fit narrative and still emit a VERDICT. Require cv.md first.
-  const cvFile = userId === "support_worker" ? "cv-support.md" : "cv.md";
+  const cvFile = userId === "support_worker" ? "config/cv-support-worker.md" : "cv.md";
   if ((kind === "evaluate" || kind === "pdf") && !fs.existsSync(path.join(careerOpsRoot(), cvFile))) {
     return new Response(
       JSON.stringify({ error: "Add your CV first so I can score this against you — drop it on the home page." }),

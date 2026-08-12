@@ -81,8 +81,8 @@ export async function POST(req: Request) {
   const { getUserId } = await import("@/lib/user-context");
   const userId = getUserId(req);
   const { hasCv, onboardingNeeded, missing } = doctorState(userId);
-  const cvFile = userId === "support_worker" ? "cv-support.md" : "cv.md";
-  const profileFile = userId === "support_worker" ? "profile-support-worker.yml" : "profile.yml";
+  const cvFile = userId === "support_worker" ? "config/cv-support-worker.md" : "cv.md";
+  const profileFile = userId === "support_worker" ? "config/profile-support-worker.yml" : "profile.yml";
   const setupLine = onboardingNeeded
     ? `\n\nSETUP STATE (authoritative — the SAME signal the home screen uses; trust it over guessing, and do NOT re-ask for anything already on file):\n- CV on file (${cvFile}): ${hasCv ? "YES — do NOT ask for it again; read it to be concrete" : "NO — this is the first thing to collect"}\n- Still missing: ${missing.length ? missing.join(", ") : "nothing"}\nWhen onboarding, START at the first item actually missing. If the CV is already on file, SKIP step 1 entirely and go straight to the next missing prerequisite (usually the profile — target roles, comp, location).`
     : `\n\nSETUP STATE: this user is fully set up (CV + profile + scanner all on file). Do NOT run onboarding or ask for a CV — just help them with what they actually asked.`;
