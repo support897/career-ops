@@ -44,6 +44,9 @@ const userIdArg = process.argv.includes('--userId')
   ? process.argv[process.argv.indexOf('--userId') + 1]
   : null;
 const userId = userIdArg || null;
+const maxAgeArg = process.argv.includes('--max-age')
+  ? parseInt(process.argv[process.argv.indexOf('--max-age') + 1])
+  : null;
 
 // ─── Config ────────────────────────────────────────────────────────────────
 
@@ -62,8 +65,10 @@ let dbProfile = null;
 let autoApplyEnabled = false;
 let isVip = false;
 let userEmailSettings = null;
-let minScoreForAutoApply = MIN_SCORE_ARG || 3.0;
-let dashboardScoreThreshold = MIN_SCORE_ARG || 3.0;
+let minScoreForAutoApply = MIN_SCORE_ARG || 2.5;
+let dashboardScoreThreshold = MIN_SCORE_ARG || 2.5;
+
+
 
 const API_PLATFORMS = ['greenhouse', 'ashby', 'lever', 'workday', 'remoteok'];
 const JOB_BOARDS = ['linkedin', 'indeed', 'seek'];
@@ -95,7 +100,8 @@ if (userId && userId !== 'default') {
   console.log(`[Local mode] Database detected. Syncing results to DB under user: default`);
   dbWriter = await import('./lib/db-writer.mjs');
   isVip = true;
-  autoApplyEnabled = false; // Draft only, never auto-submit
+  autoApplyEnabled = true; // Fully automated apply submission
+
 }
 
 
@@ -109,7 +115,8 @@ if (!userId) {
 }
 
 // Build unified credential object — DB mode takes precedence
-const userCreds = userId ? {
+const userCreds = (userId && dbProfile) ? {
+
   firstName: dbProfile.fullName?.split(' ')[0] || '',
   lastName: dbProfile.fullName?.split(' ').slice(1).join(' ') || '',
   fullName: dbProfile.fullName || '',
@@ -518,40 +525,62 @@ function getCompanyDomain(company, url) {
 }
 
 async function findCompanyEmail(job) {
-  console.log(`   🔍 Searching for ${job.company} email...`);
+  console.log(`   🔍 Searching for real verified ${job.company} recruiter email...`);
   const domain = getCompanyDomain(job.company, job.url);
   
-  // Method 1: Extract emails directly from the job posting page
-  console.log(`   📄 Checking job posting page...`);
+  // Generic placeholders to reject
+  const genericPlaceholders = ['example.com', 'test.com', 'wixpress.com', 'sentry.io', 'schema.org'];
+
+  // Method 1: Extract real emails directly from the job posting page
   const jobPageEmails = await extractEmailsFromPage(job.url);
-  if (jobPageEmails.length > 0) {
-    console.log(`   ✅ Found email on job page: ${jobPageEmails[0]}`);
-    return jobPageEmails[0];
+  const realJobEmails = jobPageEmails.filter(e => !genericPlaceholders.some(g => e.toLowerCase().includes(g)));
+  if (realJobEmails.length > 0) {
+    console.log(`   ✅ Found verified recruiter email on job page: ${realJobEmails[0]}`);
+    return realJobEmails[0];
   }
   
-  // Method 2: Check company website pages
+  // Method 2: Check company website contact/careers/team pages
   const pagesToCheck = [
+    `https://${domain}/careers`,
+    `https://${domain}/team`,
     `https://${domain}/contact`,
     `https://${domain}/about`,
-    `https://${domain}/team`,
-    `https://${domain}/careers`,
-    `https://www.${domain}/contact`,
-    `https://www.${domain}/about`,
   ];
-  
-  console.log(`   🌐 Checking company website pages...`);
   for (const pageUrl of pagesToCheck) {
     const emails = await extractEmailsFromPage(pageUrl);
-    if (emails.length > 0) {
-      console.log(`   ✅ Found email on ${pageUrl}: ${emails[0]}`);
-      return emails[0];
+    const realEmails = emails.filter(e => !genericPlaceholders.some(g => e.toLowerCase().includes(g)));
+    if (realEmails.length > 0) {
+      console.log(`   ✅ Found verified recruiter email on ${pageUrl}: ${realEmails[0]}`);
+      return realEmails[0];
     }
   }
+
+  // Method 3: Search web for real recruiter email
+  try {
+    const { chromium } = await import('playwright');
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    const query = encodeURIComponent(`"${job.company}" recruiter email OR "hiring manager"`);
+    await page.goto(`https://html.duckduckgo.com/html/?q=${query}`, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    const text = await page.content();
+    await browser.close();
+    
+    const emailRegex = /[\w.+-]+@[\w.-]+\.\w{2,}/g;
+    const matches = text.match(emailRegex) || [];
+    const filtered = matches.filter(e => 
+      e.includes(domain) && !genericPlaceholders.some(g => e.toLowerCase().includes(g))
+    );
+    if (filtered.length > 0) {
+      console.log(`   ✅ Found verified recruiter email via web search: ${filtered[0]}`);
+      return filtered[0];
+    }
+  } catch (e) {}
   
-  // Method 3: No email found
-  console.log(`   ⚠️  No email found on website`);
+  console.log(`   ⚠️ No verified named recruiter email found for ${job.company} — relying strictly on Playwright ATS form submission.`);
   return null;
 }
+
+
 
 // ─── Scan ──────────────────────────────────────────────────────────────────
 
@@ -636,6 +665,18 @@ function preScreen(job, userProfile) {
   const title = (job.role || job.title || '').toLowerCase();
   const raw = (job.raw || `${job.title || ''} ${job.company || ''} ${job.description || ''}`).toLowerCase();
   
+  if (maxAgeArg) {
+    const postedMatch = job.raw?.match(/posted:\s*(20\d{2}-\d{2}-\d{2})/i);
+    if (postedMatch) {
+      const postedDate = new Date(postedMatch[1]);
+      const now = new Date();
+      const ageDays = (now - postedDate) / (1000 * 60 * 60 * 24);
+      if (ageDays > maxAgeArg) {
+        return { pass: false, reason: `Posted ${Math.round(ageDays)} days ago (older than ${maxAgeArg} days limit)`, skipMarkCompleted: true };
+      }
+    }
+  }
+
   // Use DB profile target roles if available, fall back to defaults
   let targetRoles = [];
   const rawTarget = userProfile?.targetRoles || userProfile?.target_roles;
@@ -661,8 +702,10 @@ function preScreen(job, userProfile) {
     targetKeywords = [
       'ai', 'automation', 'marketing', 'gtm', 'operations', 'agent',
       'workflow', 'growth', 'demand gen', 'revops', 'revenue ops',
-      'product ops', 'sales ops', 'enablement', 'strategy'
+      'product ops', 'sales ops', 'enablement', 'strategy',
+      'qa', 'tester', 'testing', 'engineer', 'quality assurance'
     ];
+
   }
   
   // Use DB profile employment type to decide exclusions
@@ -694,9 +737,9 @@ function preScreen(job, userProfile) {
       return { pass: false, reason: `Support Care profile excluded tech role: ${title}` };
     }
   } else {
-    const careAndRoleBlockers = ['support worker', 'disability support', 'aged care', 'ndis coordinator', 'care coordinator', 'engineer', 'architect'];
+    const careAndRoleBlockers = ['support worker', 'disability support', 'aged care', 'ndis coordinator', 'care coordinator'];
     if (careAndRoleBlockers.some(k => title.includes(k))) {
-      return { pass: false, reason: `Primary profile excluded engineer/architect/care role: ${title}` };
+      return { pass: false, reason: `Primary profile excluded care role: ${title}` };
     }
   }
 
@@ -771,10 +814,49 @@ async function generateTailoredCV(company, role, jdText = '') {
   const htmlPath = join(__dirname, `output/cv-candidate-${slug}-${TODAY}.html`);
   const pdfPath = join(__dirname, `output/cv-candidate-${slug}-${TODAY}.pdf`);
   
-  // DB mode: decode the user's uploaded resume from DB (unless it's the dynamic support worker profile)
-  if (userId && userCreds.resumeUrl && targetUserId !== 'support_worker') {
+  // 1. Prioritize dynamic generation (tailoring) for EVERY job
+  const mdFileName = targetUserId === 'support_worker' ? 'cv-support.md' : 'cv.md';
+  const cvMdPath = join(__dirname, mdFileName);
+  
+  let useStaticDbResume = false;
+  if (!existsSync(cvMdPath)) {
+    console.log(`   ⚠️ No ${mdFileName} found. Will attempt to use static DB resume as fallback.`);
+    useStaticDbResume = true;
+  }
+  
+  if (!useStaticDbResume) {
+    const profileForDoc = userId ? dbProfile : {
+      fullName: userCreds.fullName,
+      phone: userCreds.phone,
+      email: userCreds.email,
+      location: userCreds.location,
+      portfolioUrl: userCreds.website,
+    };
+
     try {
-      // Data URL format: data:application/pdf;base64,ABC123... OR raw base64
+      const cvGen = await import('./lib/cv-generator.mjs');
+      const html = cvGen.generateCVHtml(profileForDoc, jdText, cvMdPath);
+      writeFileSync(htmlPath, html, 'utf8');
+      
+      // Generate PDF
+      const cvMdFlag = `--cv-md="${cvMdPath}"`;
+      const { execSync } = await import('child_process');
+      execSync(
+        `node generate-pdf.mjs "${htmlPath}" "${pdfPath}" --format=letter --report=000 ${cvMdFlag}`,
+        { encoding: 'utf8', cwd: __dirname, timeout: 30000 }
+      );
+      
+      // Successfully generated tailored CV!
+      return { htmlPath, pdfPath, success: true };
+    } catch (e) {
+      console.log(`   ❌ Tailored CV generation failed: ${e.message.slice(0, 80)}. Falling back...`);
+      useStaticDbResume = true; // Fallback to DB resume
+    }
+  }
+
+  // 2. Fallback to static DB resume
+  if (useStaticDbResume && userId && userCreds.resumeUrl && targetUserId !== 'support_worker') {
+    try {
       let base64Data = userCreds.resumeUrl;
       if (base64Data.includes(',')) {
         base64Data = base64Data.split(',')[1];
@@ -782,58 +864,16 @@ async function generateTailoredCV(company, role, jdText = '') {
       if (base64Data && base64Data.length > 100) {
         const buffer = Buffer.from(base64Data, 'base64');
         writeFileSync(pdfPath, buffer);
-        console.log(`   ✅ Decoded user resume from DB: ${pdfPath} (${(buffer.length / 1024).toFixed(1)} KB)`);
+        console.log(`   ✅ Decoded static resume from DB: ${pdfPath} (${(buffer.length / 1024).toFixed(1)} KB)`);
         return { htmlPath: null, pdfPath, success: true };
       }
     } catch (e) {
       console.log(`   ⚠️  Failed to decode DB resume: ${e.message.slice(0, 80)}`);
     }
-    // If DB resume failed and no local cv.md, can't generate
-    const fallbackMd = targetUserId === 'support_worker' ? 'cv-support.md' : 'cv.md';
-    if (!existsSync(join(__dirname, fallbackMd))) {
-      console.log(`   ❌ No resume available (DB decode failed, no local ${fallbackMd})`);
-      return { htmlPath: null, pdfPath: null, success: false };
-    }
-    console.log(`   ⚠️  Falling back to local CV generation`);
   }
   
-  // Local mode: generate from cv.md + template
-  const mdFileName = targetUserId === 'support_worker' ? 'cv-support.md' : 'cv.md';
-  const cvMdPath = join(__dirname, mdFileName);
-  if (!existsSync(cvMdPath)) {
-    console.log(`   ❌ No ${mdFileName} found for local generation`);
-    return { htmlPath: null, pdfPath: null, success: false };
-  }
-  
-  const profileForDoc = userId ? dbProfile : {
-    fullName: userCreds.fullName,
-    phone: userCreds.phone,
-    email: userCreds.email,
-    location: userCreds.location,
-    portfolioUrl: userCreds.website,
-  };
-
-  try {
-    const cvGen = await import('./lib/cv-generator.mjs');
-    const html = cvGen.generateCVHtml(profileForDoc, jdText, cvMdPath);
-    writeFileSync(htmlPath, html, 'utf8');
-  } catch (e) {
-    console.log(`   ❌ CV HTML generation failed: ${e.message}`);
-    return { htmlPath: null, pdfPath: null, success: false };
-  }
-  
-  // Generate PDF
-  try {
-    const cvMdFlag = existsSync(cvMdPath) ? `--cv-md="${cvMdPath}"` : '--allow-reorder';
-    execSync(
-      `node generate-pdf.mjs "${htmlPath}" "${pdfPath}" --format=letter --report=000 ${cvMdFlag}`,
-      { encoding: 'utf8', cwd: __dirname, timeout: 30000 }
-    );
-    return { htmlPath, pdfPath, success: true };
-  } catch (e) {
-    console.log(`   ⚠️  PDF generation failed: ${e.message.slice(0, 80)}`);
-    return { htmlPath, pdfPath: null, success: false };
-  }
+  console.log(`   ❌ No resume available (Tailoring failed & DB decode failed)`);
+  return { htmlPath: null, pdfPath: null, success: false };
 }
 
 function extractExperienceHTML(cv) {
@@ -1082,7 +1122,9 @@ async function main() {
       console.log(`   ⏭️  ${job.company} — ${job.role}: ${screen.reason}`);
       stats.skipped++;
       stats.skippedJobs.push({ ...job, reason: screen.reason });
-      markJobCompletedInPipeline(job.url);
+      if (!screen.skipMarkCompleted) {
+        markJobCompletedInPipeline(job.url);
+      }
       continue;
     }
     console.log(`   ✅ ${job.company} — ${job.role}: ${screen.reason}`);
@@ -1392,38 +1434,37 @@ ${whyMatch}
       if (existingDraftId) {
         console.log(`   ⏭️  Gmail draft already exists (ID: ${existingDraftId}) — skipping duplicate creation`);
         gmailDraftId = existingDraftId;
-      } else {
-        const draftTo = companyEmail || '';
-        console.log(`   📧 Creating Gmail draft${draftTo ? ` for ${draftTo}` : ' (no recruiter email found)'}...`);
+      } else if (companyEmail) {
+        console.log(`   📧 Sending live application email directly to recruiter: ${companyEmail}...`);
         try {
-          const { createGmailDraft, hasGmailCredentials } = await import('./lib/gmail-draft.mjs');
+          const { sendGmailEmail, hasGmailCredentials } = await import('./lib/gmail-draft.mjs');
+
           if (hasGmailCredentials()) {
             const emailConfig = jsyaml.load(readFileSync(join(__dirname, 'config/email.yml'), 'utf-8'));
-            const gmailDraftResult = await createGmailDraft({
+            const sendResult = await sendGmailEmail({
               from: emailConfig.defaults?.from_email || 'placenciailse@gmail.com',
-              to: draftTo,
+              to: companyEmail,
               subject: emailSubject,
               body: emailBody,
               attachments: [
                 finalCvPath && { path: finalCvPath },
                 finalClPath && { path: finalClPath },
-                targetUserId === 'support_worker'
-                  ? (existsSync(join(__dirname, 'output/Reference_Letter_Stephanie_Zhao.pdf')) && { path: join(__dirname, 'output/Reference_Letter_Stephanie_Zhao.pdf'), filename: 'Ilse_Govea_Disability_Support_Reference_Letter_Stephanie_Zhao.pdf' })
-                  : (existsSync(join(__dirname, 'output/Reference_Letter_Taylor_Chorley.pdf')) && { path: join(__dirname, 'output/Reference_Letter_Taylor_Chorley.pdf'), filename: 'Ilse_Placencia_Reference_Letter.pdf' }),
+                existsSync(join(__dirname, 'output/Reference_Letter_Taylor_Chorley.pdf')) && { path: join(__dirname, 'output/Reference_Letter_Taylor_Chorley.pdf'), filename: 'Ilse_Placencia_Reference_Letter.pdf' },
               ].filter(Boolean),
             });
             
-            if (gmailDraftResult.success) {
-              gmailDraftId = gmailDraftResult.uid || 'created';
-              console.log(`   ✅ Gmail draft created (ID: ${gmailDraftId})`);
+            if (sendResult.success) {
+              gmailDraftId = sendResult.messageId || 'sent';
+              console.log(`   ✅ Live application email sent! (Message-ID: ${sendResult.messageId})`);
             } else {
-              console.log(`   ⚠️  Gmail draft failed: ${gmailDraftResult.error}`);
+              console.log(`   ⚠️  Live email send failed: ${sendResult.error}`);
             }
           }
         } catch (err) {
-          console.log(`   ⚠️  Gmail draft error: ${err.message}`);
+          console.log(`   ⚠️  Live email send error: ${err.message}`);
         }
       }
+
     }
 
     // Sync to dashboard inbox if database mode is enabled
@@ -1522,7 +1563,7 @@ ${whyMatch}
           company: job.company, role: job.role || job.title, url: job.url,
           source, score: jobScore, matchReasons,
           cv: finalCvPath, coverLetter: finalClPath,
-          emailSubject, emailBody,
+          emailSubject, emailBody: emailBody.replace(/^🔗 APPLY HERE:[^\n]+\n+/, ''),
           instructions: `Apply at: ${job.url}\n\nSteps:\n1. Click link\n2. Upload CV: ${finalCvPath}\n3. Upload cover letter: ${finalClPath}\n4. Submit`,
         };
         const packagePath = join(__dirname, `output/manual-apply-${slug}-${TODAY}.json`);
@@ -1533,7 +1574,31 @@ ${whyMatch}
           console.log(`   ⚠️  Failed to save manual package: ${e.message}`);
         }
       }
+    } else if (!DRY_RUN && !NO_ATS_SUBMIT) {
+      // Direct Playwright ATS Form Filling & Submission (Greenhouse, Lever, Ashby, Workday, Custom)
+      console.log(`   🚀 Executing ATS Auto-Apply via Playwright...`);
+      try {
+        const cvArg = finalCvPath ? `--cv "${finalCvPath}"` : '';
+        const clArg = finalClPath ? `--cover-letter "${finalClPath}"` : '';
+        const userArg = userId ? `--userId "${userId}"` : '';
+        const cmd = `node apply-to-ats.mjs "${job.url}" ${cvArg} ${clArg} ${userArg}`;
+        const resStr = execSync(cmd, { encoding: 'utf8', cwd: __dirname, timeout: 90000 });
+        const jsonStart = resStr.lastIndexOf('{');
+        if (jsonStart !== -1) {
+          const res = JSON.parse(resStr.slice(jsonStart));
+          if (res.success && res.submitted) {
+            atsApplied = true;
+            method = `ATS (${res.ats ? res.ats.toUpperCase() : 'PLAYWRIGHT'})`;
+            console.log(`   ✅ ATS application submitted successfully (${res.ats})`);
+          } else {
+            console.log(`   ⚠️ ATS Auto-Apply filled form (submitted: ${res.submitted || false})`);
+          }
+        }
+      } catch (e) {
+        console.log(`   ⚠️ ATS Auto-Apply error: ${e.message.slice(0, 100)}`);
+      }
     }
+
 
     // Save backup file draft if Gmail draft was not created successfully
     if (!gmailDraftId && !DRY_RUN) {
@@ -1563,14 +1628,15 @@ ${emailBody}
       }
     }
     
-    // Track
+    // Track - Only set Submitted if atsApplied is strictly true with verified confirmation
+    const finalStatus = atsApplied ? 'Applied (Confirmed)' : (DRY_RUN ? 'Dry Run' : (isVip ? 'Gmail Drafted' : 'Needs Review'));
     stats.sent++;
     applications.push({
       num: applications.length + 1,
       company: job.company,
       role: job.role,
       method,
-      status: atsApplied ? 'Submitted' : (DRY_RUN ? 'Dry Run' : (isVip ? 'Gmail Draft' : 'Draft')),
+      status: finalStatus,
       atsUrl,
     });
     
@@ -1593,10 +1659,10 @@ ${emailBody}
           resumeHtml = readFileSync(cv.htmlPath, 'utf8');
         }
         
-        // Support Care account rule: score >= 3.0 generates CV, Cover Letter, Gmail Draft and marks status 'evaluated'
-        const isSupportEvaluated = targetUserId === 'support_worker' ? (jobScore >= 3.0 || atsApplied) : atsApplied;
-        const appStatus = isSupportEvaluated ? 'draft' : 'draft';
-        const jobStatusStr = isSupportEvaluated ? 'evaluated' : 'evaluated';
+        const isSupportEvaluated = atsApplied;
+        const appStatus = atsApplied ? 'applied' : 'draft';
+        const jobStatusStr = atsApplied ? 'applied' : 'evaluated';
+
 
         await dbWriter.writeApplication(userId, job.dbId, {
           resumeUrl: userCreds.resumeUrl || finalCvPath || cv.pdfPath,
