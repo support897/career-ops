@@ -1,8 +1,38 @@
 #!/usr/bin/env node
 import tls from 'tls';
+import { readFileSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+function emailCredentials() {
+  const user = process.env.GMAIL_USER || '';
+  const pass = process.env.GMAIL_APP_PASSWORD || '';
+  if (user && pass) return { user, pass };
+  try {
+    const cfgPath = join(__dirname, 'config', 'email.yml');
+    if (existsSync(cfgPath)) {
+      const raw = readFileSync(cfgPath, 'utf8');
+      return {
+        user: user || raw.match(/^\s*user:\s*["']?([^"'\s@]+@[^"'\s]+)["']?\s*$/m)?.[1] || '',
+        pass: pass || raw.match(/^\s*app_password:\s*["']?([^"'\s]+)["']?\s*$/m)?.[1] || '',
+      };
+    }
+  } catch {
+    // fall through
+  }
+  return { user, pass };
+}
+
+const { user: GMAIL_USER, pass: GMAIL_PASS } = emailCredentials();
+if (!GMAIL_USER || !GMAIL_PASS) {
+  console.error('Missing credentials. Set GMAIL_USER/GMAIL_APP_PASSWORD in the environment, or add them to the gitignored config/email.yml.');
+  process.exit(1);
+}
 
 const MSG = [
-  'From: placenciailse@gmail.com',
+  `From: ${GMAIL_USER}`,
   'To: test@example.com',
   'Subject: Test Draft from Careerflow',
   'MIME-Version: 1.0',
@@ -58,4 +88,4 @@ socket.on('data', (data) => {
 
 socket.on('error', (err) => { console.error('Error:', err.message); process.exit(1); });
 
-setTimeout(() => send('LOGIN placenciailse@gmail.com hptfiylhorjaakno'), 500);
+setTimeout(() => send(`LOGIN ${GMAIL_USER} ${GMAIL_PASS}`), 500);

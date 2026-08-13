@@ -16,14 +16,45 @@
 
 import { chromium } from 'playwright';
 import { encryptCookies, fromPlaywrightCookies } from './lib/cookie-crypto.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const USER_ID = 'user_3GfaXsz2WyxzFl0LcD4ktVnNsCS';
-const INDEED_EMAIL = 'placenciailse@gmail.com';
-const INDEED_PASS = '20inPG05';
-const SEEK_EMAIL = 'placenciailse@gmail.com';
-const SEEK_PASS = '20inPG05';
-const LINKEDIN_EMAIL = 'placenciailse@gmail.com';
-const LINKEDIN_PASS = '20inPG05';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Credentials come from the environment, falling back to the gitignored
+// config/email.yml (kept on-disk). NEVER hardcode secrets in this file.
+function loadCreds() {
+  const envUser = process.env.USER_ID;
+  const envEmail = process.env.GMAIL_USER || process.env.JOB_BOARD_EMAIL;
+  const envPass = process.env.GMAIL_APP_PASSWORD || process.env.JOB_BOARD_PASSWORD;
+  let email = envEmail || '';
+  let pass = envPass || '';
+  if (!email || !pass) {
+    try {
+      const raw = fs.readFileSync(path.join(__dirname, 'config', 'email.yml'), 'utf8');
+      if (!email) email = /^\s*user:\s*["']?([^"'\s@]+@[^"'\s]+)["']?\s*$/m.exec(raw)?.[1] || '';
+      if (!pass) pass = /^\s*password:\s*["']?([^"'\s]+)["']?\s*$/m.exec(raw)?.[1] || '';
+    } catch {
+      // config/email.yml missing — env must provide everything
+    }
+  }
+  return { userId: envUser || 'user_3GfaXsz2WyxzFl0LcD4ktVnNsCS', email, pass };
+}
+
+const creds = loadCreds();
+if (!creds.email || !creds.pass) {
+  console.error('Missing credentials. Set GMAIL_USER/GMAIL_APP_PASSWORD (and USER_ID) in the environment, or add them to the gitignored config/email.yml.');
+  process.exit(1);
+}
+
+const USER_ID = creds.userId;
+const INDEED_EMAIL = creds.email;
+const INDEED_PASS = creds.pass;
+const SEEK_EMAIL = creds.email;
+const SEEK_PASS = creds.pass;
+const LINKEDIN_EMAIL = creds.email;
+const LINKEDIN_PASS = creds.pass;
 
 const args = process.argv.slice(2);
 const doIndeed = args.includes('--indeed') || args.includes('--all') || args.length === 0;

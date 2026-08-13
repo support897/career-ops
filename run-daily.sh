@@ -42,9 +42,19 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Secrets come from a gitignored .env next to this script — NEVER hardcode them here.
+# Template: .env.example (copy to .env and fill in).
+if [ -f "$SCRIPT_DIR/.env" ]; then
+  set -a
+  . "$SCRIPT_DIR/.env"
+  set +a
+fi
+
 # DB connection for VIP mode (loads profile, VIP status, encrypted credentials from Neon)
-export DATABASE_URL="postgresql://neondb_owner:npg_oN60DfjuHaVl@ep-patient-sound-ausuu589.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require"
-export ENCRYPTION_KEY="e6372655010edff3b49a51385cc08e23f3e4126616e11f0963a7711c5a402503"
+: "${DATABASE_URL:?DATABASE_URL is not set — copy .env.example to .env and fill in}"
+: "${ENCRYPTION_KEY:?ENCRYPTION_KEY is not set — copy .env.example to .env and fill in}"
+export DATABASE_URL
+export ENCRYPTION_KEY
 
 mkdir -p "$LOG_DIR"
 
