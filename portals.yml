@@ -52,21 +52,37 @@
 
 location_filter:
   always_allow:
-    - "Remote"
     - "Worldwide"
     - "Global"
     - "Anywhere"
+    - "Australia"
+    - "AEST"
+    - "APAC"
   allow:
-    - "Remote"
     - "Worldwide"
     - "Global"
     - "Anywhere"
+    - "Australia"
+    - "AEST"
+    - "APAC"
+    - "Remote"
   block:
+    - "United States"
+    - "USA"
+    - "US Only"
+    - "US-Only"
+    - "USA Only"
+    - "US Remote"
+    - "Remote - US"
+    - "Remote (US)"
+    - "United States Only"
+    - "Remotely in the USA"
     - "On-site"
     - "Onsite"
     - "Hybrid"
     - "India"
     - "Bengaluru"
+
 
 # -- Salary filter (optional) --
 # Filter scanned jobs by annual compensation range. Applied AFTER location
@@ -173,60 +189,74 @@ location_filter:
 
 title_filter:
   positive:
-    # -- AI Trainer / Freelance roles --
+    # -- AI Automation & Testing roles --
+    - "AI Automation"
+    - "Automation"
+    - "Automation Engineer"
+    - "QA"
+    - "Testing"
+    - "Tester"
+    - "Quality Assurance"
+    - "Software Tester"
+    - "Automation Specialist"
+    # -- AI Trainer / Evaluator roles --
     - "AI Trainer"
-    - "Training Data"
+    - "AI Training"
     - "Model Training"
-    - "Prompt Engineer"
+    - "AI Evaluator"
     - "AI Evaluation"
     - "Data Labeling"
     - "Data Annotation"
-    # -- AI/Automation roles --
-    - "AI Automation"
-    - "AI Marketing"
-    - "AI Operations"
-    - "AI Agent"
-    - "Automation Engineer"
-    - "Automation Specialist"
-    - "Marketing Automation"
-    - "Growth Engineer"
-    - "GTM Engineer"
-    - "RevOps"
-    - "Business Systems"
-    - "Voice AI"
-    - "Conversational AI"
-    - "n8n"
-    - "Make"
-    - "Zapier"
-    # -- Marketing roles --
-    - "Marketing Engineer"
-    - "Digital Marketing"
-    - "Content Marketing"
-    - "Growth Marketing"
+    - "Data Annotator"
+    - "Data Curation"
+    - "Prompt Evaluator"
+    - "AI Content"
+    - "AI Editor"
+    - "Outlier"
+    - "Scale AI"
+    # -- Video & Creative roles --
+    - "Video Editor"
+    - "Video Specialist"
+    - "Video Producer"
+    - "Content Specialist"
+    - "Media Creator"
+    - "Creative Editor"
+    - "Video Creator"
+    - "Creative Specialist"
+    # -- Web Design & Junior Front End roles --
+    - "Web Designer"
+    - "Web Design"
+    - "Framer"
+    - "Webflow"
+    - "WordPress"
+    - "Junior Front End"
+    - "Junior Frontend"
+    - "Junior Developer"
+    - "Web Creator"
+    # -- Technical Virtual Assistant & Operations roles --
+    - "Virtual Assistant"
+    - "Technical Assistant"
+    - "Operations Assistant"
+    - "Support Assistant"
+    - "Data Entry"
+    # -- Spanish Speaker / Bilingual roles --
+    - "Spanish"
+    - "Bilingual Spanish"
+    - "Español"
+    - "Spanish Speaker"
+    - "Spanish Content"
+    - "Spanish Translator"
+    # -- Marketing & Content Scheduling (No call) --
+    - "Social Media Coordinator"
+    - "Social Media Specialist"
+    - "Content Coordinator"
     - "Email Marketing"
-    - "Marketing Operations"
-    - "Marketing Technologist"
-    - "Demand Generation"
-    - "Lead Generation"
-    # -- Part-time / Contract --
-    - "Part-Time"
-    - "Casual"
-    - "Contract"
-    - "Freelance"
-    # -- Assistant / Operations --
-    - "Executive Assistant"
-    - "Operations Manager"
-    - "Operations Specialist"
-    - "Chief of Staff"
-    - "Business Operations"
-    # -- General AI --
-    - "AI"
-    - "Automation"
-    - "Low-Code"
-    - "No-Code"
+    - "Newsletter"
+    - "SEO Specialist"
+    - "SEO Coordinator"
+    - "Asset Designer"
+    - "Creative Asset"
   negative:
-    - "Junior"
-    - "Intern"
     - "On-site"
     - "Onsite"
     - "Relocation"
@@ -261,99 +291,84 @@ title_filter:
 # The scanner extracts title, URL, and company from results.
 
 search_queries:
-  # -- AI Trainer / Freelance / Contract roles --
-  - name: AI Trainer — Freelance Remote
-    query: '"AI trainer" OR "AI training" OR "training data" OR "model training" remote freelance contract'
+  # -- AI Automation & Testing roles --
+  - name: AI Automation Specialist
+    query: '"AI Automation" OR "Automation Specialist" OR "Automation Engineer" remote'
     enabled: true
 
-  - name: AI Trainer — Australia Remote
-    query: '"AI trainer" OR "AI training" OR "training data" remote Australia'
+  - name: QA Testing / Quality Assurance
+    query: '"QA" OR "Software Tester" OR "QA Engineer" OR "Automation Tester" remote'
     enabled: true
 
-  - name: Freelance AI Consultant
-    query: '"freelance AI" OR "AI consultant" OR "AI contract" remote'
+  # -- AI Trainer / Evaluator roles --
+  - name: AI Trainer — Remote
+    query: '"AI trainer" OR "AI training" OR "training data" OR "AI evaluator" OR "AI evaluation" remote freelance'
     enabled: true
 
-  - name: Part-Time AI Operations
-    query: '"part-time AI" OR "casual AI" OR "contract automation" remote'
+  - name: Data Annotation & Labeling Remote
+    query: '"data annotation" OR "data annotator" OR "data labeling" OR "prompt evaluator" remote'
     enabled: true
 
-  - name: AI Model Training Remote
-    query: '"model training" OR "training data specialist" OR "AI evaluation" remote'
+  - name: Outlier / Scale AI training
+    query: '"Outlier" OR "Scale AI" "AI Trainer" OR "Domain Expert" OR "Evaluator" remote'
     enabled: true
 
-  - name: Prompt Engineering Contract
-    query: '"prompt engineer" OR "prompt engineering" remote contract freelance'
+  # -- Video & Creative roles --
+  - name: Video Editor — Remote
+    query: '"video editor" OR "video editing" OR "video specialist" OR "creative editor" remote'
     enabled: true
 
-  - name: Virtual Assistant AI
-    query: '"virtual assistant" AI remote'
+  - name: Video Creator / Producer
+    query: '"video creator" OR "video producer" OR "content specialist" remote'
     enabled: true
 
-  - name: Small Business AI Consultant
-    query: '"small business" "AI" OR "artificial intelligence" remote consultant'
+  # -- Web Design & Junior Front End roles --
+  - name: Web Designer — Framer / Webflow
+    query: '"web designer" OR "Framer" OR "Webflow" OR "WordPress" remote'
     enabled: true
 
-  - name: AI Content Training Remote
-    query: '"content training" OR "content moderation" AI remote contract'
+  - name: Junior Front End / Web Creator
+    query: '"junior front end" OR "junior frontend" OR "junior developer" OR "web creator" remote'
     enabled: true
 
-  - name: AI Data Labeling Remote
-    query: '"data labeling" OR "data annotation" OR "data curation" AI remote'
+  # -- Technical Virtual Assistant & Operations Assistant --
+  - name: Technical Virtual Assistant — Remote
+    query: '"virtual assistant" OR "technical assistant" OR "operations assistant" remote'
     enabled: true
 
-  # -- AI Automation roles --
-  - name: AI Automation — Remote
-    query: '"AI Automation" OR "Automation Engineer" OR "Automation Specialist" remote site:job-boards.greenhouse.io OR site:jobs.ashbyhq.com OR site:jobs.lever.co'
+  - name: Data Entry & Admin Support
+    query: '"data entry" OR "admin assistant" OR "support assistant" remote'
     enabled: true
 
-  - name: Marketing Automation — Remote
-    query: '"Marketing Automation" OR "Marketing Engineer" OR "Marketing Operations" remote site:job-boards.greenhouse.io OR site:jobs.ashbyhq.com'
+  # -- Spanish Speaker / Bilingual Spanish roles --
+  - name: Spanish Speaker — Remote
+    query: '"Spanish" OR "Español" "remote" "writer" OR "editor" OR "evaluator" OR "moderator"'
     enabled: true
 
-  - name: n8n / Make / Zapier roles
-    query: '"n8n" OR "Make.com" OR "Zapier" "Automation" OR "Engineer" OR "Specialist" remote'
+  - name: Bilingual Spanish Assistant
+    query: '"bilingual Spanish" OR "Spanish speaker" "virtual assistant" OR "support" OR "translator" remote'
     enabled: true
 
-  # -- Voice AI / Conversational AI --
-  - name: Voice AI — Remote
-    query: '"Voice AI" OR "Conversational AI" OR "Vapi" OR "Bland AI" remote site:job-boards.greenhouse.io OR site:jobs.ashbyhq.com'
+  # -- Social Media & Email Marketing --
+  - name: Social Media Coordinator — Remote
+    query: '"social media coordinator" OR "social media specialist" OR "content coordinator" remote'
     enabled: true
 
-  # -- Growth / RevOps / GTM --
-  - name: Growth Engineer — Remote
-    query: '"Growth Engineer" OR "GTM Engineer" OR "RevOps" remote site:job-boards.greenhouse.io OR site:jobs.ashbyhq.com'
-    enabled: true
-
-  # -- Marketing roles --
-  - name: Digital Marketing — Remote
-    query: '"Digital Marketing" OR "Growth Marketing" OR "Demand Generation" remote site:job-boards.greenhouse.io OR site:jobs.ashbyhq.com'
-    enabled: true
-
-  - name: Email Marketing — Remote
-    query: '"Email Marketing" OR "Email Automation" OR "Lifecycle Marketing" remote'
-    enabled: true
-
-  # -- Operations / Assistant --
-  - name: Operations Manager — Remote
-    query: '"Operations Manager" OR "Business Operations" OR "Operations Specialist" remote site:job-boards.greenhouse.io OR site:jobs.ashbyhq.com'
-    enabled: true
-
-  - name: Executive Assistant — Remote
-    query: '"Executive Assistant" OR "Chief of Staff" remote site:job-boards.greenhouse.io OR site:jobs.ashbyhq.com'
+  - name: Email Marketing & SEO — Remote
+    query: '"email marketing" OR "newsletter" OR "SEO specialist" OR "SEO coordinator" remote'
     enabled: true
 
   # -- Remote-first job boards --
-  - name: WeWorkRemotely — AI & Marketing
-    query: 'site:weworkremotely.com "AI" OR "Marketing" OR "Automation" OR "Growth"'
+  - name: WeWorkRemotely — AI Training, Marketing & Design
+    query: 'site:weworkremotely.com "AI Trainer" OR "Video Editor" OR "Web Designer" OR "Social Media"'
     enabled: true
 
-  - name: RemoteOK — AI & Marketing
-    query: 'site:remoteok.com "AI Automation" OR "Marketing" OR "Growth" OR "Automation Engineer"'
+  - name: RemoteOK — AI Training, Marketing & Design
+    query: 'site:remoteok.com "AI Evaluation" OR "Video" OR "Webflow" OR "Email" OR "Social" remote'
     enabled: true
 
-  - name: Remotive — AI & Marketing
-    query: 'site:remotive.com "AI" OR "Marketing" OR "Automation" OR "Growth"'
+  - name: Remotive — AI Training, Marketing & Design
+    query: 'site:remotive.com "AI Trainer" OR "Video" OR "Web Designer" OR "Marketing" OR "Assistant"'
     enabled: true
 
   - name: Working Nomads — AI & Marketing
@@ -2016,6 +2031,23 @@ tracked_companies:
     notes: "Email delivery and automation"
 
 job_boards:
+
+  # ── Jora Australia (Primary & Support Worker target roles) ─────────
+  - name: Jora Australia — Primary Tech & AI
+    careers_url: https://au.jora.com
+    provider: jora
+    query: "AI Automation OR QA Engineer OR Data Annotation OR Video Editor OR Spanish"
+    location: "Australia"
+    enabled: true
+    notes: "Jora AU — Primary account target roles"
+
+  - name: Jora Australia — Support Coordinator & NDIS
+    careers_url: https://au.jora.com
+    provider: jora
+    query: "Support Coordinator OR NDIS OR Support Worker OR Disability Support"
+    location: "Australia"
+    enabled: true
+    notes: "Jora AU — Support Care account target roles"
 
   # ── SolidJobs (Polish market) ──────────────────────────────────────
   # Public API — no auth needed. Division in URL path, campaign=career-ops for tracking.

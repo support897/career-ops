@@ -321,3 +321,147 @@ html.dark .co-cost[data-tone=\"spend\"]{color:hsl(35 8% 70%);background:hsl(35 6
   .tab-btn { padding: 7px 10px; font-size: 0.8rem; }
 }
 
+/* Custom pipeline card styles */
+.manual-verification-banner {
+  background: hsl(45, 90%, 96%);
+  border: 1px solid hsl(45, 80%, 85%);
+  color: hsl(45, 90%, 25%);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  width: fit-content;
+  margin-bottom: 12px;
+}
+.dark .manual-verification-banner {
+  background: hsl(45, 90%, 12%, 0.4);
+  border: 1px solid hsl(45, 80%, 25%, 0.4);
+  color: hsl(45, 90%, 70%);
+}
+
+.job-card__status-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 10px;
+}
+.status-ready    { color: #22c55e; }
+.status-pending  { color: #f59e0b; }
+.status-generating { color: #3b82f6; }
+.status-failed   { color: #ef4444; }
+
+/* Generate button — glowing pulse to draw attention */
+.generate-btn {
+  background: linear-gradient(135deg, hsl(270,70%,50%), hsl(220,80%,55%)) !important;
+  box-shadow: 0 0 12px hsla(270,70%,50%,0.4);
+  animation: generate-pulse 2.5s ease-in-out infinite;
+}
+@keyframes generate-pulse {
+  0%, 100% { box-shadow: 0 0 10px hsla(270,70%,50%,0.35); }
+  50%       { box-shadow: 0 0 22px hsla(270,70%,50%,0.65); }
+}
+
+/* Inline spinner (inside tag) */
+.spinner-inline {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+/* Tab count badge */
+.tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px; height: 20px;
+  background: var(--color-brand);
+  color: white;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0 5px;
+  margin-left: 6px;
+}
+
+/* Generate modal */
+.modal-generate {
+  max-width: 500px;
+  padding: 28px;
+}
+.generate-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.generate-job {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  margin-bottom: 20px;
+}
+.generate-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.gen-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.85rem;
+}
+.gen-step-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  animation: gen-spin 1.2s linear infinite;
+}
+.gen-step--active .gen-step-icon { animation: none; }
+@keyframes gen-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.gen-step-label {
+  line-height: 1.5;
+  font-weight: 500;
+}
+.generate-spinner {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+/* Career-ops note box */
+.career-ops-note {
+  background: hsla(220,30%,12%,0.5);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  margin-top: 8px;
+}
+.career-ops-note p {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--color-text);
+}
+.career-ops-note ol {
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.career-ops-note code {
+  background: hsla(220,40%,18%,0.8);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.76rem;
+  color: hsl(187,74%,65%);
+}
+

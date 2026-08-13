@@ -95,9 +95,9 @@ export function JobsProvider({ children }: { children: React.ReactNode }) {
       let cliId: string | null = null;
       try {
         const raw = localStorage.getItem(CONFIG_KEY);
-        cliId = raw ? JSON.parse(raw).cliId || null : null;
+        cliId = raw ? JSON.parse(raw).cliId || "gemini-api" : "gemini-api";
       } catch {
-        cliId = null;
+        cliId = "gemini-api";
       }
       const id = `job-${Date.now()}-${seq.current++}`;
       const job: Job = {

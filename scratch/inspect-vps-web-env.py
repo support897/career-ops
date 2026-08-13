@@ -1,0 +1,23 @@
+import paramiko
+
+host = "107.175.88.18"
+user = "root"
+password = "20inPG05"
+
+ssh = paramiko.SSHClient()
+ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+ssh.connect(host, port=22, username=user, password=password, timeout=15)
+
+def run_cmd(cmd):
+    print(f"=== {cmd} ===")
+    stdin, stdout, stderr = ssh.exec_command(cmd)
+    out = stdout.read().decode().strip()
+    err = stderr.read().decode().strip()
+    if out: print("STDOUT:\n", out)
+    if err: print("STDERR:\n", err)
+    return out
+
+run_cmd("cat /root/career-ops-2/web/.env.local || true")
+run_cmd("pm2 env 0 | grep -i DATABASE || true")
+
+ssh.close()

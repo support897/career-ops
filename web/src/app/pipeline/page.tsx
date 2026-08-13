@@ -1,14 +1,18 @@
-import { Suspense } from "react";
-import { pipelineSummary } from "@/lib/career-ops";
-import { PipelineView } from "@/components/pipeline-view";
+"use client";
 
-export const dynamic = "force-dynamic"; // always read fresh local files
+import { Suspense } from "react";
+import { PipelineView } from "@/components/pipeline-view";
+import { usePipeline } from "@/components/pipeline/pipeline-provider";
+
+function PipelinePageClient() {
+  const { inbox, applications } = usePipeline();
+  return <PipelineView applications={applications} inbox={inbox} />;
+}
 
 export default function PipelinePage() {
-  const { inbox, applications } = pipelineSummary();
   return (
     <Suspense>
-      <PipelineView applications={applications} inbox={inbox} />
+      <PipelinePageClient />
     </Suspense>
   );
 }

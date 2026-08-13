@@ -1,0 +1,10 @@
+import pg from 'pg';
+import fs from 'fs';
+const env = fs.readFileSync('web/.env.local', 'utf8').split('\n').find(l => l.startsWith('DATABASE_URL='));
+let dbUrl = env.split('=')[1].replace(/['"]/g, '');
+if (!dbUrl.includes('sslmode')) dbUrl += '?sslmode=require';
+const client = new pg.Client({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } });
+await client.connect();
+const res = await client.query("SELECT user_id, job_status, count(*) FROM job_inbox GROUP BY user_id, job_status");
+console.log(res.rows);
+await client.end();

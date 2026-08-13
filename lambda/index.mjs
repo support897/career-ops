@@ -157,19 +157,24 @@ async function scheduledScan() {
         const totalFoundMatch = stdout.match(/Total found:\s+(\d+)/);
         const totalFound = totalFoundMatch ? parseInt(totalFoundMatch[1], 10) : 0;
 
-                ...process.env,
-                NODE_PATH: TASK_DIR + '/node_modules',
-                NODE_OPTIONS: '--max-old-space-size=1536',
-              },
-              timeout: 600000, // 10 minutes for auto-apply
-              maxBuffer: 10 * 1024 * 1024,
-            });
-            const appliedMatch = applyStdout.match(/Applied:\s+(\d+)/);
-            applied = appliedMatch ? parseInt(appliedMatch[1], 10) : 0;
-            console.log(`[Lambda] Auto-apply complete: ${applied} Gmail drafts created`);
-          } catch (applyErr) {
-            console.error(`[Lambda] Auto-apply failed for ${user.user_id}:`, applyErr.message);
-          }
+        let applied = 0;
+        try {
+          console.log(`[Lambda] Running evaluation pipeline (auto-apply) for user: ${user.user_id}...`);
+          const { stdout: applyStdout } = await execFileAsync('node', ['auto-apply.mjs', '--userId', user.user_id], {
+            cwd: WORK_DIR,
+            env: {
+              ...process.env,
+              NODE_PATH: TASK_DIR + '/node_modules',
+              NODE_OPTIONS: '--max-old-space-size=1536',
+            },
+            timeout: 600000, // 10 minutes for auto-apply
+            maxBuffer: 10 * 1024 * 1024,
+          });
+          const appliedMatch = applyStdout.match(/Applied:\s+(\d+)/);
+          applied = appliedMatch ? parseInt(appliedMatch[1], 10) : 0;
+          console.log(`[Lambda] Evaluation pipeline complete for user ${user.user_id}`);
+        } catch (applyErr) {
+          console.error(`[Lambda] Evaluation pipeline failed for ${user.user_id}:`, applyErr.message);
         }
 
         results.push({

@@ -117,9 +117,26 @@ for (const line of lines) {
   const reportFile = reportMatch ? reportMatch[2] : null;
 
   let jdText = '';
+  let jobUrl = '';
+  let targetEmail = '';
+  
   if (reportFile && existsSync(join('reports', reportFile))) {
     const reportText = readFileSync(join('reports', reportFile), 'utf8');
     jdText = `${role} at ${company}. ${reportText.slice(0, 1500)}`;
+    
+    // Extract real job URL
+    const urlMatch = reportText.match(/\*\*URL:\*\*\s*(https?:\/\/[^\s]+)/);
+    if (urlMatch) jobUrl = urlMatch[1];
+    
+    // Extract real email using Santifer logic
+    const emailRegex = /[\w.+-]+@[\w.-]+\.\w{2,}/g;
+    const foundEmails = reportText.match(emailRegex) || [];
+    const junk = ['example.com', 'email.com', 'test.com', 'sentry.io', 'wixpress.com', 
+                  'w3.org', 'schema.org', 'googleapis.com', 'google.com', 'facebook.com',
+                  'javascript:', 'noreply', 'no-reply', 'donotreply', 'abuse@',
+                  'hero_1@2x', 'hero_2@2x', 'culture_1@2x', 'light-bulb@2x', 'slight-tilt@2x'];
+    const validEmails = foundEmails.filter(e => !junk.some(j => e.toLowerCase().includes(j)));
+    if (validEmails.length > 0) targetEmail = validEmails[0];
   } else {
     jdText = `${role} at ${company}. AI automation, QA testing, digital marketing, website builder, video generation.`;
   }
@@ -146,7 +163,7 @@ for (const line of lines) {
     let gmailDraftId = null;
     if (hasGmailCredentials()) {
       const emailSubject = `Application: ${role} at ${company} — Ilse Placencia`;
-      const emailBody = generatePersonalizedEmail(company, role, jdText, profileForDoc, '');
+      const emailBody = generatePersonalizedEmail(company, role, jdText, profileForDoc, jobUrl);
       
       const attachments = [
         cvResult.pdfPath && { path: cvResult.pdfPath },
@@ -159,7 +176,7 @@ for (const line of lines) {
 
       const draftRes = await createGmailDraft({
         from: emailConfig.defaults?.from_email || 'placenciailse@gmail.com',
-        to: '',
+        to: targetEmail,
         subject: emailSubject,
         body: emailBody,
         attachments,

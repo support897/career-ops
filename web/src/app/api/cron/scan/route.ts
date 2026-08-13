@@ -1,61 +1,43 @@
 import { NextResponse } from "next/server";
-import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
+import { spawn } from "node:child_process";
+import path from "node:path";
+import fs from "node:fs";
+import { careerOpsRoot } from "@/lib/career-ops";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-const lambda = new LambdaClient({
-  region: process.env.AWS_REGION || "us-east-1",
-  credentials: process.env.AWS_ACCESS_KEY_ID
-    ? {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-      }
-    : undefined,
-});
-
-function validateAuth(request: Request): boolean {
-  const authHeader = request.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return false;
-  if (authHeader === `Bearer ${cronSecret}`) return true;
-  const vercelCron = request.headers.get("x-vercel-cron");
-  if (vercelCron) return true;
-  return false;
-}
-
 export async function GET(request: Request) {
-  if (!validateAuth(request)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const root = careerOpsRoot();
+  const scriptPath = path.join(root, "hourly-scan.mjs");
+
+  if (!fs.existsSync(scriptPath)) {
+    return NextResponse.json(
+      { error: "hourly-scan.mjs not found at " + scriptPath },
+      { status: 500 }
+    );
   }
 
-  console.log("[Cron Scan] Triggering Lambda scheduledScan");
+  console.log("[Cron Scan] Triggering local hourly-scan.mjs in background...");
 
   try {
-    const command = new InvokeCommand({
-      FunctionName: process.env.LAMBDA_FUNCTION_NAME || "careerflow-scanner",
-      Payload: Buffer.from(JSON.stringify({ action: "scheduled" })),
+    // Spawn script in background so the request returns immediately and doesn't time out
+    const child = spawn(process.execPath, [scriptPath], {
+      cwd: root,
+      detached: true,
+      stdio: "ignore",
+      env: { ...process.env },
     });
+    child.unref();
 
-    const response = await lambda.send(command);
-
-    if (response.FunctionError) {
-      console.error("[Cron Scan] Lambda error:", response.FunctionError);
-      return NextResponse.json({ error: response.FunctionError }, { status: 500 });
-    }
-
-    const result = response.Payload
-      ? JSON.parse(Buffer.from(response.Payload).toString())
-      : {};
-
-    const body = result.body ? JSON.parse(result.body) : result;
-
-    console.log(`[Cron Scan] Done. Scanned: ${body.scannedUsers || 0}, New: ${body.totalNewOffers || 0}, Drafts: ${body.totalApplied || 0}`);
-
-    return NextResponse.json(body);
-  } catch (error) {
-    console.error("[Cron Scan] Error:", error);
+    return NextResponse.json({
+      ok: true,
+      message: "Scan started in background",
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error("[Cron Scan] Local spawn failed:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "unknown" },
       { status: 500 }
@@ -66,3 +48,4 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   return GET(request);
 }
+

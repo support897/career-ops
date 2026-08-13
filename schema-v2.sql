@@ -27,8 +27,10 @@ CREATE INDEX IF NOT EXISTS idx_job_inbox_doc_status ON job_inbox(user_id, doc_st
 ALTER TABLE user_profiles
   ADD COLUMN IF NOT EXISTS score_threshold NUMERIC(3,2) DEFAULT 3.0,  -- min score to generate docs
   ADD COLUMN IF NOT EXISTS is_vip BOOLEAN DEFAULT false,
-  ADD COLUMN IF NOT EXISTS google_account TEXT;          -- gmail address for VIP draft sending
+  ADD COLUMN IF NOT EXISTS google_account TEXT,          -- gmail address for VIP draft sending
+  ADD COLUMN IF NOT EXISTS cv_markdown TEXT;             -- raw CV markdown content
 
 -- Mark VIP user
 UPDATE user_profiles SET is_vip = true, google_account = 'placenciailse@gmail.com'
   WHERE email = 'placenciailse@gmail.com';
+

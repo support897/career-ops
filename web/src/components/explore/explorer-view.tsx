@@ -56,26 +56,22 @@ export function ExplorerView({
     }
   }, []);
 
-  // Initialize once from the URL (shareable search) or the server seed — without
-  // clobbering anything the assistant set before this mount.
+  // Initialize from seed/profile switch or URL parameters
   useEffect(() => {
-    if (inited.current) return;
-    inited.current = true;
     const sp = new URLSearchParams(window.location.search);
     const ai = paramsToAi(sp);
     if (ai !== null) {
       setMode("ai");
       setAiIntent(ai);
     } else {
-      initFilters(sp.toString() ? paramsToFilters(sp) : seed.filters);
-      // Onboarding hand-off: ?run=1 auto-fires the free scan + flags the first-run
-      // banner (the "matches found from your CV, free" reveal).
-      if (sp.get("run") === "1") {
+      setFilters(sp.toString() ? paramsToFilters(sp) : seed.filters);
+      if (sp.get("run") === "1" && !inited.current) {
+        inited.current = true;
         setFirstRun(true);
         void discover();
       }
     }
-  }, [seed.filters, initFilters, setMode, setAiIntent, discover]);
+  }, [seed.filters, setFilters, setMode, setAiIntent, discover]);
 
   const inboxUrls = useMemo(() => new Set(inboxSnapshot.map((j) => j.url)), [inboxSnapshot]);
   const enriched: EnrichedOffer[] = useMemo(

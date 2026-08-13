@@ -1,0 +1,33 @@
+{
+  "manifests": [
+    {
+      "id": "career-ops-auto-apply",
+      "name": "career-ops-auto-apply",
+      "repo": null,
+      "ecosystem": "npm",
+      "category": "other",
+      "solves": "Playwright ATS form prefill, AI Error Auditor, and automated submission",
+      "stack_affinity": [],
+      "integration_effort": "moderate",
+      "best_for": [],
+      "skip_when": [],
+      "hosted_alternative": null,
+      "alternative_ids": [],
+      "health": {
+        "stars": 0,
+        "weekly_downloads": 0,
+        "last_commit": "2026-08-09",
+        "contributors": 0,
+        "license": "UNLICENSED",
+        "open_issues": 0
+      },
+      "quality": {
+        "has_tests": false,
+        "has_docs": false,
+        "has_types": false,
+        "maintenance_status": "active"
+      },
+      "auto_generated": false
+    }
+  ]
+}

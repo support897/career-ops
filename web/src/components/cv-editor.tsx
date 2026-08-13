@@ -15,7 +15,10 @@ export function CvEditor() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    fetch("/api/cv")
+    const activeAccount = typeof window !== "undefined" ? (localStorage.getItem("career-ops:active-account") || "default") : "default";
+    fetch("/api/cv", {
+      headers: { "x-user-id": activeAccount },
+    })
       .then((r) => r.json())
       .then((d) => {
         setContent(d.content ?? "");
@@ -26,10 +29,14 @@ export function CvEditor() {
 
   async function save() {
     setSaving(true);
+    const activeAccount = typeof window !== "undefined" ? (localStorage.getItem("career-ops:active-account") || "default") : "default";
     try {
       const res = await fetch("/api/cv", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": activeAccount,
+        },
         body: JSON.stringify({ content }),
       });
       if (res.ok) {

@@ -21,6 +21,8 @@ const ORDER: Record<string, number> = { broken: 0, empty: 1, live: 2, skipped: 3
 export function PortalsView() {
   const [res, setRes] = useState<Result | null>(null);
   const [loading, setLoading] = useState(false);
+  const [scanStatus, setScanStatus] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
   const { jobs, startJob } = useJobs();
 
   // map the agentic "fix-portal" workers to the company they're repairing
@@ -43,6 +45,23 @@ export function PortalsView() {
       .finally(() => setLoading(false));
   }
 
+  async function runScan() {
+    setScanning(true);
+    setScanStatus("Triggering scan...");
+    try {
+      const res = await fetch("/api/cron/scan", { method: "POST" });
+      if (res.ok) {
+        setScanStatus("🚀 Scan started in background! (~3-5 mins)");
+      } else {
+        setScanStatus("❌ Failed to trigger scan.");
+      }
+    } catch {
+      setScanStatus("❌ Connection error.");
+    }
+    setScanning(false);
+    setTimeout(() => setScanStatus(null), 5000);
+  }
+
   const companies = res?.companies ?? [];
   const broken = companies.filter((c) => c.status === "broken");
   const liveN = companies.filter((c) => c.status === "live" || c.status === "empty").length;
@@ -50,7 +69,7 @@ export function PortalsView() {
 
   return (
     <div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <button
           onClick={check}
           disabled={loading}
@@ -59,6 +78,21 @@ export function PortalsView() {
           {loading ? <Loader2 className="size-4 animate-spin" /> : <Radar className="size-4" />}
           Check portal health
         </button>
+
+        <button
+          onClick={runScan}
+          disabled={scanning}
+          className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50 max-sm:min-h-[44px]"
+        >
+          {scanning ? <Loader2 className="size-4 animate-spin" /> : "⚡"}
+          Run Job Scan Now
+        </button>
+
+        {scanStatus && (
+          <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-100/10 px-3 py-1 rounded-full animate-fade-in">
+            {scanStatus}
+          </span>
+        )}
         {loading && <span className="text-xs text-faint">Probing each company&apos;s ATS… (~30–60s)</span>}
       </div>
 

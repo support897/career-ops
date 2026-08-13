@@ -167,6 +167,55 @@ export async function updateScanScheduleRun(scheduleId) {
 }
 
 /**
+ * Sync an evaluated job to the job_inbox table for the web UI dashboard.
+ */
+export async function syncToInbox(userId, job, scoreResult, docs = {}) {
+  const pool = getPool();
+  const scoreBreakdown = scoreResult.dimensionScores || {};
+  const whyMatch = Array.isArray(scoreResult.matchReasons) ? scoreResult.matchReasons.join(' ') : (scoreResult.matchReasons || '');
+
+  await pool.query(
+    `INSERT INTO job_inbox (
+       user_id, url, company, role, location, compensation, salary, apply_url, posted_at,
+       score, score_breakdown, why_match, jd_text, cv_html, cover_letter, email_draft,
+       doc_status, job_status, gmail_draft_id, created_at, updated_at
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW())
+     ON CONFLICT (user_id, url) DO UPDATE SET
+       score = EXCLUDED.score,
+       score_breakdown = EXCLUDED.score_breakdown,
+       why_match = EXCLUDED.why_match,
+       cv_html = COALESCE(EXCLUDED.cv_html, job_inbox.cv_html),
+       cover_letter = COALESCE(EXCLUDED.cover_letter, job_inbox.cover_letter),
+       email_draft = COALESCE(EXCLUDED.email_draft, job_inbox.email_draft),
+       doc_status = EXCLUDED.doc_status,
+       gmail_draft_id = COALESCE(EXCLUDED.gmail_draft_id, job_inbox.gmail_draft_id),
+       updated_at = NOW()`,
+    [
+      userId,
+      job.url,
+      job.company,
+      job.role || job.title,
+      job.location || null,
+      job.salary || null,
+      job.salary || null,
+      job.url,
+      job.postedAt || job.posted_at || null,
+      scoreResult.score,
+      JSON.stringify(scoreBreakdown),
+      whyMatch,
+      job.description || null,
+      docs.cvHtml || null,
+      docs.coverLetter || null,
+      docs.emailDraft || null,
+      docs.cvHtml ? 'ready' : 'pending',
+      'new',
+      docs.gmailDraftId || null,
+    ]
+  );
+}
+
+/**
  * Close the database pool. Call when done writing.
  */
 export async function closePool() {

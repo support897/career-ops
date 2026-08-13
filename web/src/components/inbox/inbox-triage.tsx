@@ -246,8 +246,14 @@ export function InboxTriage({ inbox }: { inbox: InboxJob[] }) {
         <div className="mt-3 rounded-2xl border border-dashed border-border bg-surface/30 px-6 py-10 text-center">
           <p className="font-display text-lg">No matches</p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-muted">Loosen the filters to see more of your inbox.</p>
+          {hiddenCount > 0 && (
+            <button type="button" onClick={() => setHidden([])} className="mt-3 inline-flex items-center gap-2 rounded-full bg-brand px-4 py-1.5 text-xs font-medium text-brand-foreground hover:bg-brand-200 transition-colors">
+              Restore {hiddenCount} hidden item{hiddenCount === 1 ? "" : "s"}
+            </button>
+          )}
         </div>
       )}
+
 
       {/* "See all N" — only when the fresh batch is capping a larger list */}
       {capped && ordered.length > BATCH && (

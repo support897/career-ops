@@ -38,6 +38,76 @@ export async function POST(req: Request) {
   const cliId = body.cliId;
   if (!query || !cliId) return Response.json({ error: "query and cliId required" }, { status: 400 });
 
+  if (cliId === "gemini-api" || cliId === "opencode" || cliId === "antigravity") {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return Response.json({ error: "GEMINI_API_KEY not configured in env" }, { status: 500 });
+    }
+
+    let mode: string;
+    try {
+      mode = fs.readFileSync(path.join(careerOpsRoot(), "modes", "discover.md"), "utf8");
+    } catch {
+      mode = "You are a job search assistant. Propose matching roles based on the user intent.";
+    }
+
+    const { lines } = assembleDedupContext();
+    const memory = readMemory();
+    const memoryLine = memory.trim() ? `\n\nWHAT YOU KNOW ABOUT THE USER (persistent memory):\n${memory.trim()}` : "";
+    const knownBlock = lines.length ? `\n\n--- ALREADY KNOWN (dedup — do NOT propose these) ---\n${lines.join("\n")}` : "";
+    const prompt = `${mode}${OUTPUT_CONTRACT}${memoryLine}${knownBlock}\n\n--- USER INTENT ---\n${query}\n`;
+
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        try {
+          const cliName = cliId === "opencode" ? "OpenCode Search Engine" : cliId === "antigravity" ? "Antigravity AI Engine" : "Gemini Web Search";
+          controller.enqueue(encoder.encode(`🔍 Initiating ${cliName} with Google Grounding...\n`));
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                tools: [{ googleSearch: {} }],
+                generationConfig: { temperature: 0.3, maxOutputTokens: 8192 },
+              }),
+            }
+          );
+
+          if (!res.ok) {
+            const err = await res.text();
+            controller.enqueue(encoder.encode(`\n❌ [Gemini API Error] ${err}\n`));
+            controller.close();
+            return;
+          }
+
+          const data = await res.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          
+          if (!text) {
+            controller.enqueue(encoder.encode("\n⚠️ No results returned from Gemini.\n"));
+          } else {
+            controller.enqueue(encoder.encode(text));
+          }
+          controller.close();
+        } catch (e: any) {
+          controller.enqueue(encoder.encode(`\n❌ [Error] ${e.message}\n`));
+          controller.close();
+        }
+      }
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        "X-Accel-Buffering": "no",
+      },
+    });
+  }
+
   const resolved = resolveCli(cliId);
   if (!resolved) return Response.json({ error: `CLI '${cliId}' not found on this machine` }, { status: 404 });
   const { spec, binPath } = resolved;

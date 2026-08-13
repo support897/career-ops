@@ -1,0 +1,35 @@
+# Support Worker / Support Coordinator Target Profile
+
+target_roles:
+  - "Support Coordinator"
+  - "NDIS Support Coordinator"
+  - "Support Worker"
+  - "Disability Support Coordinator"
+  - "Aged Care Support Coordinator"
+  - "Mental Health Support Coordinator"
+  - "Case Coordinator"
+  - "Remote Support Coordinator"
+
+title_filter:
+  positive:
+    - "Support Coordinator"
+    - "Support Coordination"
+    - "NDIS Coordinator"
+    - "Support Worker"
+    - "Disability Support"
+    - "Aged Care Coordinator"
+    - "Mental Health Coordinator"
+    - "Case Coordinator"
+    - "Case Manager"
+    - "Care Coordinator"
+
+location_filter:
+  allow:
+    - "Remote"
+    - "Work from home"
+    - "WFH"
+    - "Telehealth"
+    - "Australia"
+  block:
+    - "On-site"
+    - "Onsite"

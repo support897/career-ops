@@ -1,0 +1,19 @@
+{
+  "l1": [],
+  "l2": [
+    {
+      "package": "career-ops-auto-apply",
+      "ecosystem": "npm",
+      "known_vulns": [],
+      "license": "MIT",
+      "license_risk": "none",
+      "maintenance": "active",
+      "transitive_risk": null,
+      "attestation": {
+        "source": "hand",
+        "refs": [],
+        "fetched_at": "2026-08-09"
+      }
+    }
+  ]
+}

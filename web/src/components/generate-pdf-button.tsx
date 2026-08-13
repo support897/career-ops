@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { FileDown, Loader2, FileText, RotateCcw } from "lucide-react";
 import { useJobs } from "@/components/jobs/job-store";
@@ -12,6 +12,12 @@ import { CostBadge } from "@/components/cost/cost-badge";
 // becomes a "View tailored CV" link (served by /api/cv-pdf) + a regenerate icon.
 export function GeneratePdfButton({ n, company, pdfReady }: { n: string; company: string; pdfReady: boolean }) {
   const { jobs, startJob } = useJobs();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const job = useMemo(
     () => jobs.filter((j) => j.kind === "pdf" && j.input === n).sort((a, b) => b.startedAt - a.startedAt)[0],
     [jobs, n],
@@ -31,7 +37,7 @@ export function GeneratePdfButton({ n, company, pdfReady }: { n: string; company
     return (
       <span className="inline-flex items-center gap-1">
         <a
-          href={`/api/cv-pdf?company=${encodeURIComponent(company)}`}
+          href={mounted ? `/api/cv-pdf?company=${encodeURIComponent(company)}&n=${n}&t=${Date.now()}` : `/api/cv-pdf?company=${encodeURIComponent(company)}&n=${n}`}
           target="_blank"
           rel="noreferrer"
           className="inline-flex items-center justify-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-500/15 dark:text-emerald-400 max-sm:min-h-[44px]"

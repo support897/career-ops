@@ -15,6 +15,7 @@ export type CliSpec = {
 };
 
 export const KNOWN: CliSpec[] = [
+  { id: "gemini-api", name: "Gemini Web Search (No CLI/Free)", bin: "gemini-api", run: "gemini-api", url: "https://google.ai", args: (p) => [] },
   { id: "claude", name: "Claude Code", bin: "claude", run: "claude -p", url: "https://claude.ai/code", args: (p) => ["-p", p] },
   { id: "codex", name: "Codex", bin: "codex", run: "codex exec", url: "https://github.com/openai/codex", args: (p) => ["exec", p] },
   { id: "gemini", name: "Gemini CLI", bin: "gemini", run: "gemini -p", url: "https://github.com/google-gemini/gemini-cli", args: (p) => ["-p", p] },
@@ -85,6 +86,9 @@ export function findBin(bin: string, dirs = searchDirs()): string | null {
 export function detectClis() {
   const dirs = searchDirs();
   return KNOWN.map((c) => {
+    if (c.id === "gemini-api" || c.id === "opencode" || c.id === "antigravity") {
+      return { id: c.id, name: c.name, run: c.run, url: c.url, installed: true, path: c.id };
+    }
     const found = findBin(c.bin, dirs);
     return { id: c.id, name: c.name, run: c.run, url: c.url, installed: !!found, path: found };
   });
@@ -93,6 +97,9 @@ export function detectClis() {
 export function resolveCli(id: string): { spec: CliSpec; binPath: string } | null {
   const spec = KNOWN.find((c) => c.id === id);
   if (!spec) return null;
+  if (id === "gemini-api" || id === "opencode" || id === "antigravity") {
+    return { spec, binPath: id };
+  }
   const binPath = findBin(spec.bin);
   if (!binPath) return null;
   return { spec, binPath };

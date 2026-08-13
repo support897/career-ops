@@ -29,7 +29,10 @@ export function PipelineProvider({ children }: { children: React.ReactNode }) {
 
   const refetch = useCallback(() => {
     setLoading(true);
-    fetch("/api/pipeline")
+    const activeAccount = typeof window !== "undefined" ? (localStorage.getItem("career-ops:active-account") || "default") : "default";
+    fetch("/api/pipeline", {
+      headers: { "x-user-id": activeAccount },
+    })
       .then((r) => r.json())
       .then((d) => {
         setInbox(Array.isArray(d.inbox) ? d.inbox : []);

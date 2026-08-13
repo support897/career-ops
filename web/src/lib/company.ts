@@ -92,12 +92,12 @@ const DOMAIN_OVERRIDES: Record<string, string> = {
   klarna: "klarna.com",
   adyen: "adyen.com",
   glovo: "glovoapp.com",
-  cabify: "cabify.com",
-  "typeform": "typeform.com",
-  factorial: "factorialhr.com",
-  "n26": "n26.com",
-  "red hat": "redhat.com",
-  redhat: "redhat.com",
+  seek: "seek.com.au",
+  "au.seek.com": "seek.com.au",
+  "seek.com": "seek.com.au",
+  indeed: "indeed.com",
+  "indeed.com": "indeed.com",
+  "linkedin.com": "linkedin.com",
 };
 
 const LEGAL_SUFFIX = /\b(inc|llc|ltd|limited|gmbh|co|corp|corporation|sa|s\.a|ag|plc|sl|s\.l|bv|oy|ab|company|group|holdings|technologies|technology|labs|systems)\b/gi;

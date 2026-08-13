@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs";
+import path from "node:path";
 import { careerOpsRoot, rootScript } from "@/lib/career-ops";
 
 export const runtime = "nodejs";
@@ -12,7 +13,12 @@ export async function GET() {
   const script = rootScript("followup-cadence");
   if (!fs.existsSync(script)) return Response.json({ available: false, metadata: null, entries: [] });
   const stdout = await new Promise<string>((resolve) => {
-    execFile("node", [script, "--json"], { cwd: careerOpsRoot(), timeout: 12_000 }, (_e, out) => resolve(out || ""));
+    execFile(
+      process.execPath || "node",
+      [script, "--json"],
+      { cwd: careerOpsRoot(), timeout: 12_000, env: { ...process.env, PATH: `${path.dirname(process.execPath)}:${process.env.PATH || ""}` } },
+      (_e, out) => resolve(out || "")
+    );
   });
   try {
     const start = stdout.indexOf("{");

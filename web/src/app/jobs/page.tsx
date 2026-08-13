@@ -533,6 +533,8 @@ export default function JobsPage() {
   const [tab, setTab] = useState<Tab>("new");
   const [sort, setSort] = useState<SortKey>("score-desc");
   const [search, setSearch] = useState("");
+  const [isPaused, setIsPaused] = useState(false);
+  const [pausing, setPausing] = useState(false);
 
   const loadJobs = useCallback(() => {
     setLoading(true);
@@ -543,13 +545,19 @@ export default function JobsPage() {
       .then((r) => r.json())
       .then((data) => { setJobs(data.jobs ?? []); setLoading(false); })
       .catch(() => setLoading(false));
+      
+    // Fetch pause state
+    fetch("/api/cron/pause")
+      .then((r) => r.json())
+      .then((data) => setIsPaused(!!data.paused))
+      .catch(console.error);
   }, [tab]);
 
   useEffect(() => {
     loadJobs();
   }, [loadJobs]);
 
-  // Poll every 30s to pick up new AI pipeline results
+  // Poll every 30s to pick up new AI pipeline results and pause state
   useEffect(() => {
     if (tab !== "new") return;
     const activeAccount = typeof window !== "undefined" ? (localStorage.getItem("career-ops:active-account") || "default") : "default";
@@ -559,9 +567,33 @@ export default function JobsPage() {
       })
         .then((r) => r.json())
         .then((data) => setJobs(data.jobs ?? []));
+        
+      fetch("/api/cron/pause")
+        .then((r) => r.json())
+        .then((data) => setIsPaused(!!data.paused))
+        .catch(console.error);
     }, 30000);
     return () => clearInterval(id);
   }, [tab]);
+
+  const handleTogglePause = async () => {
+    setPausing(true);
+    try {
+      const res = await fetch("/api/cron/pause", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pause: !isPaused }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsPaused(!!data.paused);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setPausing(false);
+    }
+  };
 
   const handleStatusChange = (id: string, _status: "new" | "applied" | "discarded") => {
     setJobs((prev) => prev.filter((j) => j.id !== id));
@@ -595,6 +627,15 @@ export default function JobsPage() {
           </p>
         </div>
         <div className="jobs-controls">
+          <button 
+            className={`btn-sm ${isPaused ? "btn-primary" : "btn-outline"}`}
+            style={{ marginRight: "12px" }}
+            onClick={handleTogglePause}
+            disabled={pausing}
+            title="Pause all background scans for both accounts"
+          >
+            {pausing ? "⏳..." : isPaused ? "▶️ Resume Scans" : "⏸️ Pause Scans"}
+          </button>
           <input
             className="search-input"
             placeholder="Search company, role, location…"

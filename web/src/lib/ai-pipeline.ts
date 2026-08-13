@@ -74,11 +74,11 @@ export type PipelineResult = {
  */
 export async function scoreJob(
   job: Pick<InboxJob, "company" | "role" | "url" | "location" | "jd_text" | "salary">,
-  profile: Pick<UserProfile, "cv_data" | "profile_config" | "keywords" | "location_filter">
+  profile: Pick<UserProfile, "cv_data" | "cv_markdown" | "profile_config" | "keywords" | "location_filter">
 ): Promise<ScoreResult> {
-  const cvSummary = profile.cv_data
+  const cvSummary = profile.cv_markdown || (profile.cv_data
     ? JSON.stringify(profile.cv_data).slice(0, 3000)
-    : "No CV data available";
+    : "No CV data available");
 
   const profileConfig = profile.profile_config
     ? JSON.stringify(profile.profile_config).slice(0, 1000)
@@ -175,9 +175,9 @@ Grade: A=4.5+, B=3.5–4.4, C=2.5–3.4, D=1.5–2.4, F<1.5`;
  */
 export async function generateTailoredCV(
   job: Pick<InboxJob, "company" | "role" | "jd_text" | "url">,
-  profile: Pick<UserProfile, "cv_data" | "full_name" | "email" | "location">
+  profile: Pick<UserProfile, "cv_data" | "cv_markdown" | "full_name" | "email" | "location">
 ): Promise<string> {
-  const cvData = profile.cv_data ? JSON.stringify(profile.cv_data).slice(0, 5000) : "";
+  const cvData = profile.cv_markdown || (profile.cv_data ? JSON.stringify(profile.cv_data).slice(0, 5000) : "");
   const jd = job.jd_text || `${job.role} at ${job.company}`;
 
   const prompt = `You are a professional CV writer. Create a tailored CV in HTML format for this job application.
@@ -238,9 +238,9 @@ ${html}
  */
 export async function generateCoverLetterText(
   job: Pick<InboxJob, "company" | "role" | "jd_text" | "why_match">,
-  profile: Pick<UserProfile, "cv_data" | "full_name" | "email" | "location" | "profile_config">
+  profile: Pick<UserProfile, "cv_data" | "cv_markdown" | "full_name" | "email" | "location" | "profile_config">
 ): Promise<string> {
-  const cvSummary = profile.cv_data ? JSON.stringify(profile.cv_data).slice(0, 3000) : "";
+  const cvSummary = profile.cv_markdown || (profile.cv_data ? JSON.stringify(profile.cv_data).slice(0, 3000) : "");
   const jd = job.jd_text || `${job.role} at ${job.company}`;
   const name = profile.full_name || "The Candidate";
   const email = profile.email || "";
@@ -289,9 +289,9 @@ ${email} | ${location}`;
  */
 export async function generateEmailDraft(
   job: Pick<InboxJob, "company" | "role" | "jd_text" | "url">,
-  profile: Pick<UserProfile, "cv_data" | "full_name" | "email" | "location">
+  profile: Pick<UserProfile, "cv_data" | "cv_markdown" | "full_name" | "email" | "location">
 ): Promise<string> {
-  const cvSummary = profile.cv_data ? JSON.stringify(profile.cv_data).slice(0, 2000) : "";
+  const cvSummary = profile.cv_markdown || (profile.cv_data ? JSON.stringify(profile.cv_data).slice(0, 2000) : "");
   const jd = job.jd_text || `${job.role} at ${job.company}`;
   const name = profile.full_name || "The Candidate";
   const email = profile.email || "";

@@ -40,95 +40,150 @@ const SKILL_KEYWORDS = [
   'virtual assistant', 'executive assistant', 'operations manager',
 ];
 
-// ─── Profile Data (Ilse's experience) ──────────────────────────────────────
+// ─── Dynamic cv.md parser ──────────────────────────────────────────────────
 
-const EXPERIENCE = [
-  {
-    company: 'APEX Website Solutions',
-    role: 'Founder and Automation Engineer',
-    dates: 'Apr 2026 – Present',
-    location: 'Remote',
-    bullets: [
-      'Architected a fully automated B2B lead generation engine using Google Antigravity and n8n that scrapes qualified prospects daily, analyzes websites for performance gaps, and auto-generates personalized audit reports with zero manual input per cycle.',
-      'Engineered a triggered cold email sequence that auto-fires post-audit, delivering personalized outreach to hundreds of prospects simultaneously and eliminating all manual top-of-funnel effort.',
-      'Integrated a Vapi and Node.js AI voice calling system that contacts warm leads, handles objections, and books discovery calls 24/7, reducing appointment booking from hours of manual outreach to zero.',
-      'Coded a JavaScript conversion pipeline that automatically builds and deploys a fully customized website upon prospect engagement, compressing delivery timelines from weeks to hours.',
-    ],
-    keywords: ['automation', 'b2b', 'lead generation', 'cold email', 'ai', 'voice agent', 'n8n', 'api', 'pipeline', 'workflow'],
-  },
-  {
-    company: 'Lumi and Milo',
-    role: 'Founder and Automation Architect',
-    dates: 'May 2026 – Present',
-    location: 'Remote',
-    bullets: [
-      'Designed and deployed a Python and Gemini API YouTube content pipeline that orchestrates script generation, visual creation, voiceover synthesis, and video assembly from a single triggered workflow.',
-      'Built a secondary AI quality control agent via Google Antigravity multi-agent orchestration that reviews all output for tone, pacing, and brand consistency prior to human approval.',
-      'Reduced human involvement across the entire production process to a single click, after which the system autonomously formats, titles, tags, and publishes content to YouTube.',
-    ],
-    keywords: ['ai', 'python', 'automation', 'content', 'pipeline', 'multi-agent', 'orchestration'],
-  },
-  {
-    company: 'Fiesta Fresh Cleaning',
-    role: 'Co-Owner and Marketing Automation Specialist',
-    dates: 'Oct 2025 – Present',
-    location: 'Remote',
-    bullets: [
-      'Coded a Node.js Facebook automation application that publishes daily organic-format posts to business pages, maintaining consistent brand engagement with no manual scheduling.',
-      'Built a Facebook Graph API webhook script that detects purchase-intent posts in real time and auto-responds with tailored outreach, capturing leads at the exact moment of intent.',
-      'Engineered a Python lead scraping and cold email system that surfaces qualified prospects and feeds them into an automated multi-touch nurture sequence.',
-      'Deployed a Bland AI voice agent that autonomously qualifies leads and books appointments, eliminating all manual follow-up from the sales process.',
-    ],
-    keywords: ['marketing', 'social media', 'facebook', 'lead generation', 'cold email', 'ai', 'voice agent', 'automation'],
-  },
-  {
-    company: 'Evolve Marketing',
-    role: 'AI Digital Marketing and Web Specialist',
-    dates: 'Jan 2024 – Oct 2025',
-    location: 'Remote',
-    bullets: [
-      'Planned and executed full-funnel digital campaigns across social, email, and web for multiple simultaneous product launches, managing all deliverables asynchronously across distributed, multi-timezone remote teams.',
-      'Integrated AI tools into the content production workflow to systematize brief creation, drafting, and visual production, freeing bandwidth for strategy and client relationship management.',
-      'Built audience segmentation frameworks from first-party research, sharpening paid campaign targeting and improving engagement performance across all managed accounts.',
-    ],
-    keywords: ['marketing', 'digital marketing', 'content', 'seo', 'email', 'growth', 'remote'],
-  },
-];
+function parseCvMd(text) {
+  const summaryMatch = text.match(/## Professional Summary\n+([\s\S]*?)(?=\n## )/);
+  const summary = summaryMatch ? summaryMatch[1].trim() : '';
 
-const COMPETENCIES = [
-  'AI Automation', 'Marketing Operations', 'GTM Systems', 'Workflow Orchestration',
-  'Lead Generation', 'TypeScript', 'Node.js', 'Python', 'APIs & Webhooks',
-  'n8n', 'Claude API', 'Gemini API', 'Multi-Agent Systems', 'B2B Outreach',
-  'Content Production', 'Voice AI', 'Facebook Automation', 'Cold Email Systems',
-];
+  const experience = [];
+  const expSection = text.match(/## Professional Experience\n([\s\S]*?)(?=\n## |$)/);
+  if (expSection) {
+    const jobs = expSection[1].split(/\n### /);
+    for (let entry of jobs) {
+      entry = entry.replace(/^### /, '').trim();
+      if (!entry) continue;
+      const lines = entry.split('\n').filter(line => line.trim().length > 0);
+      const expRole = lines[0]?.trim() || '';
+      const dates = lines[1]?.trim() || '';
+      const companyLine = (lines[2] || '').trim();
+      const [expCompanyRaw, location] = companyLine.split('|').map(s => s?.trim() || '');
+      const expCompany = (expCompanyRaw || '').replace(/\*\*/g, '').trim();
+      
+      const bullets = lines.slice(3)
+        .filter(l => l.trim().startsWith('-'))
+        .map(l => l.replace(/^[-•]\s*/, '').trim());
+        
+      if (expCompany) {
+        const textForKw = `${expRole} ${expCompany} ${bullets.join(' ')}`.toLowerCase();
+        const keywords = SKILL_KEYWORDS.filter(kw => textForKw.includes(kw));
+        experience.push({
+          company: expCompany,
+          role: expRole,
+          dates,
+          location: location || '',
+          bullets,
+          keywords
+        });
+      }
+    }
+  }
 
-const EDUCATION = [
-  {
-    title: 'Advanced Diploma of Leadership and Management',
-    org: 'Academique | Gold Coast, Australia',
-    year: 'Apr 2026 – May 2027',
-  },
-  {
-    title: 'Bachelor of Marketing',
-    org: 'University of London | Remote',
-    year: 'Apr 2025 – Apr 2028',
-  },
-];
+  const skills = [];
+  const skillsSection = text.match(/## (?:Technical )?Skills?\n([\s\S]*?)(?=\n## |$)/i);
+  if (skillsSection) {
+    for (const line of skillsSection[1].split('\n').filter(l => l.trim().startsWith('-'))) {
+      const ci = line.indexOf(':');
+      if (ci > 0) {
+        skills.push({
+          category: line.slice(1, ci).trim(),
+          items: line.slice(ci + 1).trim()
+        });
+      }
+    }
+  }
 
-const CERTIFICATIONS = [
-  { title: 'AI Fluency for Small Business', org: 'Anthropic', year: '2025' },
-  { title: 'AI Fluency: Frameworks and Foundations', org: 'Anthropic', year: '2025' },
-  { title: 'Claude with Google Vertex AI', org: 'Anthropic', year: '2025' },
-  { title: 'AI Fundamentals', org: 'Google', year: '2025' },
-  { title: 'Email Marketing Certification', org: 'HubSpot Academy', year: '2025' },
-];
+  const education = [];
+  const eduSection = text.match(/## Education\n([\s\S]*?)(?=\n## |$)/i);
+  if (eduSection) {
+    for (const line of eduSection[1].split('\n').filter(l => l.trim().startsWith('-'))) {
+      const parts = line.replace(/^-\s*/, '').split('|');
+      education.push({
+        title: parts[0]?.trim() || '',
+        org: parts[1]?.trim() || '',
+        year: parts[2]?.trim() || ''
+      });
+    }
+  }
 
-const SKILLS = [
-  { category: 'AI & Automation', items: 'n8n, Claude API, Gemini API, Vapi, Bland AI, Google Antigravity' },
-  { category: 'Languages', items: 'TypeScript, Node.js, Python, HTML, CSS, REST APIs, Webhooks' },
-  { category: 'Platforms', items: 'WordPress, Shopify, Firebase, Supabase' },
-  { category: 'Marketing', items: 'Facebook Ads, Google Analytics, GA4, SEO, Email Funnels, Cold Email' },
-];
+  const certifications = [];
+  const certsSection = text.match(/## Certifications\n([\s\S]*?)(?=\n## |$)/i);
+  if (certsSection) {
+    for (const line of certsSection[1].split('\n').filter(l => l.trim().startsWith('-'))) {
+      const parts = line.replace(/^-\s*/, '').split('|');
+      if (parts.length >= 3) {
+        certifications.push({
+          title: parts[0]?.trim() || '',
+          org: parts[1]?.trim() || '',
+          year: parts[2]?.trim() || ''
+        });
+      } else {
+        const textVal = parts[0]?.trim() || '';
+        const match = textVal.match(/^([^-]+),\s*([^(]+)\s*\((\d+)\)$/);
+        if (match) {
+          certifications.push({
+            title: match[1].trim(),
+            org: match[2].trim(),
+            year: match[3].trim()
+          });
+        } else {
+          certifications.push({
+            title: textVal,
+            org: '',
+            year: ''
+          });
+        }
+      }
+    }
+  }
+
+  return { summary, experience, skills, education, certifications };
+}
+
+function loadCVData() {
+  const paths = [
+    join(__dirname, '..', 'cv.md'),
+    join(__dirname, 'cv.md'),
+    join(process.cwd(), 'cv.md')
+  ];
+  let content = '';
+  for (const p of paths) {
+    if (existsSync(p)) {
+      content = readFileSync(p, 'utf-8');
+      break;
+    }
+  }
+  if (!content) {
+    return {
+      summary: '',
+      experience: [],
+      skills: [],
+      education: [],
+      certifications: []
+    };
+  }
+  return parseCvMd(content);
+}
+
+function extractCompetenciesFromSkills(skills) {
+  const list = [];
+  for (const s of skills) {
+    const items = typeof s.items === 'string' ? s.items.split(/[|]/) : [];
+    for (const item of items) {
+      const clean = item.trim();
+      if (clean && clean.length > 1) list.push(clean);
+    }
+  }
+  if (list.length === 0) {
+    return [
+      'AI Automation', 'Marketing Operations', 'GTM Systems', 'Workflow Orchestration',
+      'Lead Generation', 'TypeScript', 'Node.js', 'Python', 'APIs & Webhooks',
+      'n8n', 'Claude API', 'Gemini API', 'Multi-Agent Systems', 'B2B Outreach',
+      'Content Production', 'Voice AI', 'Facebook Automation', 'Cold Email Systems'
+    ];
+  }
+  return [...new Set(list)];
+}
 
 // ─── Core Functions ────────────────────────────────────────────────────────
 
@@ -162,10 +217,10 @@ function buildTailoredSummary(jdKeywords) {
  * Select the most relevant experience entries based on JD keywords.
  * Returns entries sorted by relevance, all included but reordered.
  */
-function selectExperience(jdKeywords) {
+function selectExperience(jdKeywords, experienceList) {
   // Score each experience entry by keyword overlap
-  const scored = EXPERIENCE.map(exp => {
-    const overlap = exp.keywords.filter(kw =>
+  const scored = experienceList.map(exp => {
+    const overlap = (exp.keywords || []).filter(kw =>
       jdKeywords.some(jk => jk.includes(kw) || kw.includes(jk))
     ).length;
     return { ...exp, relevance: overlap };
@@ -179,9 +234,9 @@ function selectExperience(jdKeywords) {
 /**
  * Select the most relevant competencies based on JD keywords.
  */
-function selectCompetencies(jdKeywords) {
+function selectCompetencies(jdKeywords, competencyList) {
   // Score each competency by keyword overlap
-  const scored = COMPETENCIES.map(comp => {
+  const scored = competencyList.map(comp => {
     const compLower = comp.toLowerCase();
     const overlap = jdKeywords.filter(kw =>
       compLower.includes(kw) || kw.includes(compLower.split(' ')[0])
@@ -198,10 +253,12 @@ function selectCompetencies(jdKeywords) {
  * Build the CV JSON payload for build-cv-html.mjs.
  */
 export function buildCVPayload(profile, jdText) {
+  const cvData = loadCVData();
   const jdKeywords = extractJDKeywords(jdText);
   const summary = buildTailoredSummary(jdKeywords);
-  const experience = selectExperience(jdKeywords);
-  const competencies = selectCompetencies(jdKeywords);
+  const experience = selectExperience(jdKeywords, cvData.experience);
+  const rawCompetencies = extractCompetenciesFromSkills(cvData.skills);
+  const competencies = selectCompetencies(jdKeywords, rawCompetencies);
 
   const fullName = profile?.fullName || profile?.full_name || 'Ilse Placencia';
   const phone = profile?.phone || '+61498570497';
@@ -230,9 +287,9 @@ export function buildCVPayload(profile, jdText) {
       bullets: e.bullets,
     })),
     projects: [],
-    education: EDUCATION,
-    certifications: CERTIFICATIONS,
-    skills: SKILLS,
+    education: cvData.education,
+    certifications: cvData.certifications,
+    skills: cvData.skills,
     sections: {
       summary: 'Professional Summary',
       competencies: 'Core Competencies',

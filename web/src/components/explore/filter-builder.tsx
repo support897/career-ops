@@ -107,7 +107,7 @@ export function FilterBuilder({
   onChange: (f: ExploreFilters) => void;
   seededFrom?: string[];
 }) {
-  const [advanced, setAdvanced] = useState(false);
+  const [advanced, setAdvanced] = useState(true);
   const set = (patch: Partial<ExploreFilters>) => onChange({ ...filters, ...patch });
   const toggleAts = (a: AtsSource) => {
     const has = filters.ats.includes(a);
@@ -182,10 +182,15 @@ export function FilterBuilder({
       <button
         type="button"
         onClick={() => setAdvanced((v) => !v)}
-        className="inline-flex items-center gap-1.5 text-[12px] text-muted hover:text-foreground transition-colors max-sm:min-h-[44px]"
+        className="inline-flex items-center gap-1.5 text-[12px] font-medium text-foreground hover:text-brand transition-colors max-sm:min-h-[44px]"
       >
-        <SlidersHorizontal className="size-3.5" />
+        <SlidersHorizontal className="size-3.5 text-brand" />
         Location &amp; scope
+        {filters.block.some((b) => b.toLowerCase().includes("us") || b.toLowerCase().includes("united states")) && (
+          <span className="ml-1 rounded-md bg-rose-500/10 px-2 py-0.5 text-[11px] font-medium text-rose-600 dark:text-rose-400">
+            🛡️ Blocking USA &amp; On-site ({filters.block.length} filters)
+          </span>
+        )}
         <ChevronDown className={cn("size-3.5 transition-transform", advanced && "rotate-180")} />
       </button>
 

@@ -1,0 +1,588 @@
+⚠️  Apply pipeline had errors: (node:77813) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.
+⚠️  Apply pipeline had errors: (node:82413) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.
+⚠️  Apply pipeline had errors: ⚠️  CV is 3 pages; the allowed maximum is 2 pages. Trim lower-priority bullets, older roles, secondary projects, or the competencies strip, then regenerate. Continuing because overflow is warning-only
+⚠️  Apply pipeline had errors: ⚠️  CV is 3 pages; the allowed maximum is 2 pages. Trim lower-priority bullets, older roles, secondary projects, or the competencies strip, then regenerate. Continuing because overflow is warning-only
+⚠️  Apply pipeline had errors: ⚠️  CV is 3 pages; the allowed maximum is 2 pages. Trim lower-priority bullets, older roles, secondary projects, or the competencies strip, then regenerate. Continuing because overflow is warning-only
+⚠️  Apply pipeline had errors: ⚠️  CV is 3 pages; the allowed maximum is 2 pages. Trim lower-priority bullets, older roles, secondary projects, or the competencies strip, then regenerate. Continuing because overflow is warning-only
+⚠️  Apply pipeline had errors: ⚠️  CV is 3 pages; the allowed maximum is 2 pages. Trim lower-priority bullets, older roles, secondary projects, or the competencies strip, then regenerate. Continuing because overflow is warning-only
+⚠️  Apply pipeline had errors: file:///Users/ilse/career-ops-2/auto-apply.mjs:1353
+      }
+      ^
+
+SyntaxError: Missing catch or finally after try
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at Modu
+⚠️  Apply pipeline had errors: file:///Users/ilse/career-ops-2/auto-apply.mjs:1353
+      }
+      ^
+
+SyntaxError: Missing catch or finally after try
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at Modu
+⚠️  Apply pipeline had errors: file:///Users/ilse/career-ops-2/auto-apply.mjs:1354
+      }
+      ^
+
+SyntaxError: Missing catch or finally after try
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at Modu
+⚠️  ATS scan had errors: [Jora Provider] Error fetching query "AI Automation OR QA Engineer OR Data Annotation OR Video Editor OR Spanish": fetch failed
+
+⚠️  Apply pipeline had errors: Command failed: /Users/ilse/.nvm/versions/node/v20.20.2/bin/node auto-apply.mjs --local-vip --min-score 3 --no-ats-submit
+
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:250
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:251
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:251
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+file:///Users/ilse/career-ops-2/hourly-scan.mjs:251
+import { existsSync } from 'fs';
+         ^^^^^^^^^^
+
+SyntaxError: Identifier 'existsSync' has already been declared
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:497:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:544:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19)
+
+Node.js v20.20.2
+⚠️  Apply pipeline had errors: ⚠️  CV is 3 pages; the allowed maximum is 2 pages. Trim lower-priority bullets, older roles, secondary projects, or the competencies strip, then regenerate. Continuing because overflow is warning-only
+⚠️  Apply pipeline had errors: ⚠️  CV is 3 pages; the allowed maximum is 2 pages. Trim lower-priority bullets, older roles, secondary projects, or the competencies strip, then regenerate. Continuing because overflow is warning-only

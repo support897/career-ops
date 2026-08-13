@@ -187,7 +187,8 @@ async function main() {
       '--local-vip',
       '--min-score', String(MIN_SCORE),
       '--no-ats-submit',
-      '--keep-pipeline'
+      '--keep-pipeline',
+      '--max-age', '7'
     ];
     if (DRY_RUN) applyArgsDefault.push('--dry-run');
     applyArgsDefault.push('--limit', String(Math.max(1, Math.round((LIMIT || 1000) * 0.65))));
@@ -247,12 +248,20 @@ async function main() {
   }
 }
 
+
+
 // ── Infinite Loop Runner (24/7 scanning every 10 mins) ────────────────────────
 const SLEEP_MS = 10 * 60 * 1000; // 10 minutes
 
 async function startDaemon() {
   console.log(`🚀 Daemon started. Loop interval set to ${SLEEP_MS / 60000} minutes.`);
   while (true) {
+    if (existsSync(join(__dirname, 'data', '.pause_scans'))) {
+      console.log(`⏸️  Scans are paused by user. Checking again in 1 minute...`);
+      await new Promise(resolve => setTimeout(resolve, 60000));
+      continue;
+    }
+
     try {
       await main();
     } catch (err) {
