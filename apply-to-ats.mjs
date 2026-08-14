@@ -381,7 +381,7 @@ async function fillGreenhouse(page, cvPath, clPath) {
   // Click Apply if not already on form
   const applyBtn = await page.$('a:has-text("Apply"), button:has-text("Apply")');
   if (applyBtn) {
-    await applyBtn.click();
+    await applyBtn.click({ force: true, timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(2000);
   }
 
@@ -413,7 +413,7 @@ async function fillGreenhouse(page, cvPath, clPath) {
     if (isHidden) break;
     
     console.log(`     📄 Clicking Continue (step ${step + 1})...`);
-    await continueBtn.click();
+    await continueBtn.click({ force: true, timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(2000);
     
     // Fill any new fields that appeared
@@ -557,7 +557,7 @@ async function processUniversalFormFields(page) {
 
         const inputId = await combobox.evaluate(el => el.id || el.querySelector('input')?.id || '');
         const pControl = await combobox.evaluateHandle(el => el.closest('.select__control') || el);
-        await pControl.click().catch(() => {});
+        await pControl.click({ force: true, timeout: 5000 }).catch(() => {}).catch(() => {});
         await page.waitForTimeout(300);
 
         const cbInput = await combobox.$('input');
@@ -795,7 +795,7 @@ async function fillCustomForm(page, cvPath, clPath) {
     console.log('   🔗 Clicking Apply link...');
     await Promise.all([
       page.waitForNavigation({ timeout: 15000 }).catch(() => null),
-      applyLink.click(),
+      applyLink.click({ force: true, timeout: 5000 }).catch(() => {}),
     ]);
     await page.waitForTimeout(2000);
   }
@@ -836,7 +836,7 @@ async function fillCustomForm(page, cvPath, clPath) {
     if (isHidden) break;
     
     console.log(`     📄 Clicking Continue (step ${step + 1})...`);
-    await continueBtn.click();
+    await continueBtn.click({ force: true, timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(2000);
     
     // Fill any new fields that appeared
@@ -988,7 +988,7 @@ async function main() {
 
 
   try {
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(e => console.log('   ⚠️ Page load timeout (continuing anyway)...'));
     console.log('   Page loaded');
 
     // Auto-find files
@@ -1025,7 +1025,7 @@ async function main() {
         for (const cb of comboboxes) {
           try {
             const parent = await cb.evaluateHandle(el => el.parentElement || el);
-            await parent.click().catch(() => {});
+            await parent.click({ force: true, timeout: 5000 }).catch(() => {}).catch(() => {});
             await page.keyboard.type('Australia').catch(() => {});
             await page.waitForTimeout(300);
             await page.keyboard.press('Enter').catch(() => {});
@@ -1044,10 +1044,26 @@ async function main() {
           console.log(`   📤 Submitting form: ${text.trim()}...`);
 
           
-          await submitBtn.click({ force: true }).catch(() => {});
+          try {
+            await submitBtn.scrollIntoViewIfNeeded();
+            // Primary Playwright click
+            await submitBtn.click({ force: true });
+          } catch (e) {}
+
           await page.evaluate(() => {
-            const btn = document.querySelector('#submit_app, #submit_button, input[type="submit"], button[type="submit"]');
-            if (btn) btn.click();
+            const btns = Array.from(document.querySelectorAll('#submit_app, #submit_button, input[type="submit"], button[type="submit"], button'));
+            const sBtn = btns.find(b => {
+              const t = (b.innerText || b.value || '').toLowerCase();
+              return t.includes('submit') || (t.includes('apply') && !t.includes('linkedin')) || b.id === 'submit_app';
+            });
+            
+            if (sBtn) {
+              // React-friendly event dispatch
+              sBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+              try {
+                sBtn.click();
+              } catch (e) {}
+            }
             const form = document.querySelector('form');
             if (form) {
               if (typeof form.requestSubmit === 'function') form.requestSubmit();
@@ -1066,7 +1082,7 @@ async function main() {
               await otpInput.fill(otp);
               const verifyBtn = await page.$('button:has-text("Verify"), button:has-text("Confirm"), button:has-text("Submit")');
               if (verifyBtn) {
-                await verifyBtn.click();
+                await verifyBtn.click({ force: true, timeout: 5000 }).catch(() => {});
                 await page.waitForTimeout(3000);
               }
             } else {

@@ -1105,7 +1105,10 @@ async function main() {
   } else {
     // Local mode: scan and read from pipeline.md
     pending = getPendingFromPipeline();
-    const newUrls = await scanForJobs();
+    let newUrls = [];
+    if (!READ_LOCAL_PIPELINE) {
+      newUrls = await scanForJobs();
+    }
     if (newUrls.length > 0) {
       console.log(`   Found ${newUrls.length} new URLs from scanner`);
       const pipelinePath = join(__dirname, 'data/pipeline.md');
@@ -1354,6 +1357,26 @@ ${whyMatch}
       continue;
     }
     
+    // Check if we should generate documents and auto-apply
+    const { shouldAutoApply: checkAutoApply } = await import('./lib/scorer.mjs');
+    const autoApplyCheck = checkAutoApply(jobScore, autoApplyEnabled, dbProfile || profile, minScoreForAutoApply);
+    
+    if (!autoApplyCheck.autoApply) {
+      if (dbWriter) {
+        try {
+          await dbWriter.syncToInbox(targetUserId, job, scoreResult || { score: jobScore, dimensionScores: {}, matchReasons }, {});
+          console.log(`   ✅ Synced to dashboard inbox (No documents generated)`);
+        } catch (e) {
+          console.log(`   ⚠️  Sync to dashboard inbox failed: ${e.message}`);
+        }
+      }
+      await syncToLocalFiles(job, scoreResult || { score: jobScore, dimensionScores: {}, matchReasons }, null, null, null, null);
+      console.log(`   ⏭️  ${autoApplyCheck.reason} — skipping document generation and ATS submission`);
+      stats.skipped++;
+      stats.skippedJobs.push({ company: job.company, role: job.role || job.title, reason: autoApplyCheck.reason });
+      continue;
+    }
+
     // Generate tailored CV
     console.log(`   📄 Generating tailored CV...`);
     let cv;
@@ -1512,16 +1535,6 @@ ${whyMatch}
 
     // Sync to local files (data/applications.md, reports/) for the local pipeline page
     await syncToLocalFiles(job, scoreResult || { score: jobScore, dimensionScores: {}, matchReasons }, finalCvPath, finalClPath, emailSubject, emailBody);
-
-    // Now check if we should auto-apply
-    const { shouldAutoApply: checkAutoApply } = await import('./lib/scorer.mjs');
-    const autoApplyCheck = checkAutoApply(jobScore, autoApplyEnabled, dbProfile || profile, minScoreForAutoApply);
-    if (!autoApplyCheck.autoApply) {
-      console.log(`   ⏭️  ${autoApplyCheck.reason}`);
-      stats.skipped++;
-      stats.skippedJobs.push({ company: job.company, role: job.role || job.title, reason: autoApplyCheck.reason });
-      continue;
-    }
 
     // Apply via ATS form
     let atsApplied = false;

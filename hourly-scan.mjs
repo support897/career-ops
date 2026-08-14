@@ -186,7 +186,6 @@ async function main() {
     const applyArgsDefault = [
       '--local-vip',
       '--min-score', String(MIN_SCORE),
-      '--no-ats-submit',
       '--keep-pipeline',
       '--max-age', '7'
     ];
@@ -199,7 +198,6 @@ async function main() {
     const applyArgsSupport = [
       '--userId', 'support_worker',
       '--min-score', String(MIN_SCORE),
-      '--no-ats-submit',
       '--read-local-pipeline'
     ];
     if (DRY_RUN) applyArgsSupport.push('--dry-run');

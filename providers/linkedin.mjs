@@ -290,31 +290,227 @@ async function applyToJob(url, userId, candidateInfo, cvPath) {
     ];
 
     for (let step = 0; step < 8; step++) {
-      if (candidateInfo.email) {
-        await page.evaluate((email) => {
-          const inputs = document.querySelectorAll('input[name*="email"], input[type="email"]');
-          inputs.forEach(i => { i.value = email; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });
-        }, candidateInfo.email);
-      }
-      if (candidateInfo.phone) {
-        await page.evaluate((phone) => {
-          const inputs = document.querySelectorAll('input[name*="phone"], input[type="tel"]');
-          inputs.forEach(i => { i.value = phone; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });
-        }, candidateInfo.phone);
-      }
-      if (candidateInfo.firstName) {
-        await page.evaluate((name) => {
-          const inputs = document.querySelectorAll('input[name*="first-name"], input[id*="first-name"]');
-          inputs.forEach(i => { i.value = name; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });
-        }, candidateInfo.firstName);
-      }
-      if (candidateInfo.lastName) {
-        await page.evaluate((name) => {
-          const inputs = document.querySelectorAll('input[name*="last-name"], input[id*="last-name"]');
-          inputs.forEach(i => { i.value = name; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });
-        }, candidateInfo.lastName);
-      }
+      // 1. Run browser evaluation to fill all types of questions and standard fields
+      await page.evaluate((candidate) => {
+        const Q_ANSWERS = {
+          'one sentence': 'I founded and built 4 automated SaaS businesses including Career Flow (job search pipeline), Unimark (small business AI marketing), APEX Website Solutions (B2B lead gen engine), and Lumi & Milo (autonomous YouTube content pipeline).',
+          'automation you built': 'I built Career Flow (job search pipeline automation), Unimark (AI marketing SaaS), APEX Website Solutions (B2B lead gen engine), and Lumi & Milo (autonomous video production pipeline).',
+          'internal tool': 'I built a multi-agent content production pipeline with a QC agent that reviews all output for tone, pacing, and brand consistency before human approval, reducing production effort to a single click.',
+          'tool you built': 'I built a multi-agent content production pipeline with a QC agent that reviews all output for tone, pacing, and brand consistency before human approval, reducing production effort to a single click.',
+          'why.*company': 'I have spent 6+ years building AI-powered automation systems for marketing and sales operations. Your company is at the intersection of AI and intelligent workflows, which is exactly where I want to apply my experience building production agents.',
+          'why.*role': 'This role combines my core strengths: building AI-powered automation systems, managing marketing operations, and translating business needs into technical solutions across the 4 businesses I founded.',
+          'why.*interest': 'I am passionate about building AI systems that replace manual operations with intelligent automation. Your mission aligns perfectly with my experience and career direction.',
+          'years of experience': '6+ years building AI-powered automation systems across lead generation, content production, and marketing operations.',
+          'salary expectation': '70000',
+          'desired salary': '70000',
+          'expected salary': '70000',
+          'salary': '70000',
+          'compensation': '70000',
+          'money': '70000',
+          'pay': '70000',
+          'start date': 'Available immediately',
+          'available': 'Available immediately',
+          'notice period': 'Available immediately',
+          'sponsorship': 'No',
+          'visa sponsorship': 'No',
+          'require sponsorship': 'No',
+          'require.*sponsorship': 'No',
+          'visa': 'No',
+          'authorized to work': 'Yes',
+          'work authorization': 'Yes',
+          'currently located': 'Gold Coast, QLD, Australia',
+          'where are you': 'Gold Coast, QLD, Australia',
+          'relocate': 'No',
+          'remote': 'Yes',
+          'managed a team': 'I have built and operated AI automation systems across 4 businesses I founded, acting as IC, architect, and operator.',
+          'management experience': 'I have built and operated AI automation systems across 4 businesses I founded, acting as IC, architect, and operator.',
+          'technical skills': 'TypeScript, Node.js, Python, REST APIs, Webhooks, n8n, Claude API, Gemini API, Vapi, Bland AI, Telnyx AI, Facebook Graph API, Google Analytics.',
+          'programming': 'TypeScript, Node.js, Python, HTML, CSS, REST APIs, Webhooks.',
+          'ai experience': 'I have 6+ years of hands-on AI experience: building multi-agent orchestration systems, deploying AI voice agents (Vapi, Bland AI, Telnyx), integrating Claude and Gemini APIs, and automating workflows with n8n.',
+          'cover letter': 'Please see my attached cover letter and CV. I am excited about this opportunity and would welcome the chance to discuss how my experience can contribute.',
+          'additional information': 'I bring a unique combination of technical depth (TypeScript, Node.js, Python) and business outcomes (founded 4 automated businesses). I do not just evaluate AI tools; I build production systems with them.',
+          'how did you hear': 'I found this position through job board scanning and was immediately drawn to the role\'s focus on AI-powered automation.',
+        };
 
+        function answerQuestion(questionText, options = []) {
+          const q = (questionText || '').toLowerCase();
+
+          if (q.includes('sponsorship') || q.includes('visa') || q.includes('sponsoring')) {
+            if (options.length > 0) {
+              const match = options.find(o => (o.text || '').toLowerCase().includes('no'));
+              if (match) return match.value || match.text;
+            }
+            return 'No';
+          }
+
+          if (q.includes('authorized') || q.includes('work in') || (q.includes('work') && q.includes('australia'))) {
+            if (options.length > 0) {
+              const match = options.find(o => (o.text || '').toLowerCase().includes('yes'));
+              if (match) return match.value || match.text;
+            }
+            return 'Yes';
+          }
+
+          if (q.includes('salary') || q.includes('compensation') || q.includes('money') || q.includes('pay') || q.includes('remuneration') || q.includes('rate')) {
+            if (options.length > 0) {
+              const match = options.find(o => (o.text || '').includes('70') || (o.text || '').toLowerCase().includes('market') || (o.text || '').includes('60') || (o.text || '').includes('80'));
+              if (match) return match.value || match.text;
+            }
+            return '70000';
+          }
+
+          if (q.includes('relocate') || q.includes('commute')) {
+            if (options.length > 0) {
+              const match = options.find(o => (o.text || '').toLowerCase().includes('no'));
+              if (match) return match.value || match.text;
+            }
+            return 'No';
+          }
+
+          for (const [pattern, answer] of Object.entries(Q_ANSWERS)) {
+            try {
+              const reg = new RegExp(pattern.toLowerCase(), 'i');
+              if (reg.test(q) || q.includes(pattern.toLowerCase())) {
+                if (options.length > 0) {
+                  const match = options.find(o => (o.text || '').toLowerCase().includes(answer.toLowerCase()) || answer.toLowerCase().includes((o.text || '').toLowerCase()));
+                  if (match) return match.value || match.text;
+                }
+                return answer;
+              }
+            } catch (e) {}
+          }
+
+          if (options.length > 0) {
+            const positive = options.find(o => {
+              const t = (o.text || '').toLowerCase();
+              return t.includes('yes') || t.includes('australia') || t.includes('full') || t.includes('immediately') || t.includes('remote');
+            });
+            if (positive) return positive.value || positive.text;
+
+            const validOpt = options.find(o => o.value && o.value !== '' && o.value !== '0' && (o.text || '').trim() !== '');
+            if (validOpt) return validOpt.value || validOpt.text;
+          }
+
+          return 'Yes';
+        }
+
+        // Fill inputs, textareas
+        const inputs = Array.from(document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], textarea'));
+        inputs.forEach(input => {
+          let labelText = '';
+          let parent = input.parentElement;
+          for (let i = 0; i < 4 && parent; i++) {
+            const label = parent.querySelector('label');
+            if (label) {
+              labelText = label.innerText || '';
+              break;
+            }
+            parent = parent.parentElement;
+          }
+
+          const q = labelText.toLowerCase();
+          if (q.includes('first name') || q.includes('given name')) {
+            input.value = candidate.firstName || '';
+          } else if (q.includes('last name') || q.includes('family name')) {
+            input.value = candidate.lastName || '';
+          } else if (q.includes('email')) {
+            input.value = candidate.email || '';
+          } else if (q.includes('phone') || q.includes('mobile')) {
+            input.value = candidate.phone || '';
+          } else if (q.includes('linkedin')) {
+            input.value = candidate.linkedin || 'https://www.linkedin.com';
+          } else if (q.includes('website') || q.includes('portfolio') || q.includes('github') || q.includes('twitter')) {
+            input.value = candidate.website || 'https://www.ilseplacencia.shop';
+          } else {
+            input.value = answerQuestion(labelText);
+          }
+          
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+
+        // Fill dropdowns
+        const selects = Array.from(document.querySelectorAll('select'));
+        selects.forEach(select => {
+          let labelText = '';
+          let parent = select.parentElement;
+          for (let i = 0; i < 4 && parent; i++) {
+            const label = parent.querySelector('label');
+            if (label) {
+              labelText = label.innerText || '';
+              break;
+            }
+            parent = parent.parentElement;
+          }
+
+          const options = Array.from(select.options).map(o => ({ text: o.text || '', value: o.value || '' }));
+          const bestVal = answerQuestion(labelText, options);
+          if (bestVal) {
+            select.value = bestVal;
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        });
+
+        // Fill radio groups
+        const radioGroups = Array.from(document.querySelectorAll('fieldset, div[role="radiogroup"]'));
+        radioGroups.forEach(group => {
+          const legend = group.querySelector('legend, [class*="legend"], [class*="label"]');
+          if (!legend) return;
+          const questionText = legend.innerText || '';
+          
+          const radios = Array.from(group.querySelectorAll('input[type="radio"]'));
+          if (radios.length === 0) return;
+          
+          const options = radios.map(r => {
+            let text = '';
+            const id = r.id;
+            if (id) {
+              const label = group.querySelector(`label[for="${id}"]`);
+              if (label) text = label.innerText || '';
+            }
+            if (!text) {
+              const parent = r.parentElement;
+              if (parent) text = parent.innerText || '';
+            }
+            return { element: r, text, value: r.value || '' };
+          });
+
+          const bestValText = answerQuestion(questionText, options.map(o => ({ text: o.text, value: o.value })));
+          if (bestValText) {
+            const match = options.find(o => o.text.toLowerCase().includes(bestValText.toLowerCase()) || bestValText.toLowerCase().includes(o.text.toLowerCase()));
+            if (match) {
+              match.element.click();
+              match.element.dispatchEvent(new Event('change', { bubbles: true }));
+            } else {
+              options[0].element.click();
+              options[0].element.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          }
+        });
+
+        // Checkboxes
+        const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]'));
+        checkboxes.forEach(cb => {
+          let text = '';
+          const id = cb.id;
+          if (id) {
+            const label = document.querySelector(`label[for="${id}"]`);
+            if (label) text = label.innerText || '';
+          }
+          if (!text && cb.parentElement) {
+            text = cb.parentElement.innerText || '';
+          }
+          const t = text.toLowerCase();
+          if (t.includes('agree') || t.includes('consent') || t.includes('terms') || t.includes('privacy') || cb.required) {
+            if (!cb.checked) {
+              cb.click();
+              cb.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          }
+        });
+      }, candidateInfo);
+
+      // 2. Resume upload handling (Playwright side)
       if (cvPath && existsSync(cvPath)) {
         const fileInputs = await page.$$('input[type="file"]');
         for (const fi of fileInputs) {
@@ -330,11 +526,13 @@ async function applyToJob(url, userId, candidateInfo, cvPath) {
         }
       }
 
+      // 3. Check for application success
       const pageText = await page.evaluate(() => document.body?.innerText || '').catch(() => '');
       if (confirmationPatterns.some(p => p.test(pageText))) {
         return { success: true, method: 'LinkedIn Easy Apply (step ' + step + ')' };
       }
 
+      // 4. Try submitting or advancing
       let clicked = false;
       for (const sel of submitSelectors) {
         try {
