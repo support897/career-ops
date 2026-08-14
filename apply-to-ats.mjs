@@ -12,11 +12,15 @@
  * Output: JSON with success, confirmation details, and verification info
  */
 
-import { chromium } from 'playwright';
+import { chromium } from 'playwright-extra';
+import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import yaml from 'yaml';
+import { getRecentOTP } from './lib/gmail-otp.mjs';
+
+chromium.use(stealthPlugin());
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -1052,6 +1056,23 @@ async function main() {
           }).catch(() => {});
 
           await page.waitForTimeout(5000);
+
+          // Check if OTP is requested
+          const otpInput = await page.$('input[name*="code"], input[name*="verification"], input[name*="otp"], input[placeholder*="code"]');
+          if (otpInput) {
+            console.log('   ⚠️  OTP verification requested, checking Gmail...');
+            const otp = await getRecentOTP();
+            if (otp) {
+              await otpInput.fill(otp);
+              const verifyBtn = await page.$('button:has-text("Verify"), button:has-text("Confirm"), button:has-text("Submit")');
+              if (verifyBtn) {
+                await verifyBtn.click();
+                await page.waitForTimeout(3000);
+              }
+            } else {
+              console.log('   ❌ No OTP found. Cannot proceed.');
+            }
+          }
 
           confirmationUrl = page.url();
           const thankYouScreenshotPath = join(__dirname, `output/ats-thankyou-${ats}-${Date.now()}.png`);

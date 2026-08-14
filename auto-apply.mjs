@@ -505,8 +505,7 @@ async function extractEmailsFromPage(url) {
   }
 }
 
-function getCompanyDomain(company, url) {
-  // Extract domain from URL
+async function getCompanyDomain(company, url) {
   let domain = '';
   try {
     const parsed = new URL(url);
@@ -515,10 +514,19 @@ function getCompanyDomain(company, url) {
     domain = company.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
   }
   
-  // If URL is on an ATS domain, use company name instead
   const atsDomains = ['greenhouse.io', 'ashbyhq.com', 'lever.co', 'workday.com', 'smartrecruiters.com'];
+  const jobBoards = ['seek.com', 'seek.com.au', 'indeed.com', 'jora.com', 'linkedin.com', 'glassdoor.com', 'apply.seek.com.au'];
   const isATS = atsDomains.some(ats => domain.includes(ats));
-  if (isATS) {
+  const isJobBoard = jobBoards.some(board => domain.includes(board));
+  
+  if (isATS || isJobBoard) {
+    try {
+      const res = await fetch(`https://autocomplete.clearbit.com/v1/companies/suggest?query=${encodeURIComponent(company)}`);
+      const data = await res.json();
+      if (data && data.length > 0 && data[0].domain) {
+        return data[0].domain;
+      }
+    } catch (e) {}
     return company.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
   }
   return domain;
@@ -526,12 +534,35 @@ function getCompanyDomain(company, url) {
 
 async function findCompanyEmail(job) {
   console.log(`   🔍 Searching for real verified ${job.company} recruiter email...`);
-  const domain = getCompanyDomain(job.company, job.url);
+  const domain = await getCompanyDomain(job.company, job.url);
+  console.log(`   🌐 Verified Company Domain: ${domain}`);
   
   // Generic placeholders to reject
   const genericPlaceholders = ['example.com', 'test.com', 'wixpress.com', 'sentry.io', 'schema.org'];
 
-  // Method 1: Extract real emails directly from the job posting page
+  // Method 1: Hunter.io API (if key exists)
+  if (emailConfig?.hunter?.api_key) {
+    try {
+      console.log(`   🏹 Using Hunter.io to find emails for ${domain}...`);
+      const EmailHunter = (await import('email-hunter')).default;
+      const hunter = new EmailHunter(emailConfig.hunter.api_key);
+      const res = await new Promise((resolve, reject) => {
+        hunter.domainSearch({ domain }, (err, result) => {
+          if (err) reject(err);
+          else resolve(result);
+        });
+      });
+      if (res.data?.emails?.length > 0) {
+        const bestEmail = res.data.emails[0].value;
+        console.log(`   ✅ Found verified recruiter email via Hunter API: ${bestEmail}`);
+        return bestEmail;
+      }
+    } catch (e) {
+      console.log(`   ⚠️  Hunter API failed: ${e.message}`);
+    }
+  }
+
+  // Method 2: Extract real emails directly from the job posting page
   const jobPageEmails = await extractEmailsFromPage(job.url);
   const realJobEmails = jobPageEmails.filter(e => !genericPlaceholders.some(g => e.toLowerCase().includes(g)));
   if (realJobEmails.length > 0) {
@@ -539,28 +570,12 @@ async function findCompanyEmail(job) {
     return realJobEmails[0];
   }
   
-  // Method 2: Check company website contact/careers/team pages
-  const pagesToCheck = [
-    `https://${domain}/careers`,
-    `https://${domain}/team`,
-    `https://${domain}/contact`,
-    `https://${domain}/about`,
-  ];
-  for (const pageUrl of pagesToCheck) {
-    const emails = await extractEmailsFromPage(pageUrl);
-    const realEmails = emails.filter(e => !genericPlaceholders.some(g => e.toLowerCase().includes(g)));
-    if (realEmails.length > 0) {
-      console.log(`   ✅ Found verified recruiter email on ${pageUrl}: ${realEmails[0]}`);
-      return realEmails[0];
-    }
-  }
-
-  // Method 3: Search web for real recruiter email
+  // Method 3: Search web for real recruiter email using strict domain
   try {
     const { chromium } = await import('playwright');
     const browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
-    const query = encodeURIComponent(`"${job.company}" recruiter email OR "hiring manager"`);
+    const query = encodeURIComponent(`"@${domain}" recruiter OR "hiring manager" OR "talent acquisition"`);
     await page.goto(`https://html.duckduckgo.com/html/?q=${query}`, { waitUntil: 'domcontentloaded', timeout: 15000 });
     const text = await page.content();
     await browser.close();
@@ -568,7 +583,7 @@ async function findCompanyEmail(job) {
     const emailRegex = /[\w.+-]+@[\w.-]+\.\w{2,}/g;
     const matches = text.match(emailRegex) || [];
     const filtered = matches.filter(e => 
-      e.includes(domain) && !genericPlaceholders.some(g => e.toLowerCase().includes(g))
+      e.toLowerCase().endsWith(`@${domain.toLowerCase()}`) && !genericPlaceholders.some(g => e.toLowerCase().includes(g))
     );
     if (filtered.length > 0) {
       console.log(`   ✅ Found verified recruiter email via web search: ${filtered[0]}`);
