@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.4.0](https://github.com/support897/career-ops/compare/web-v0.3.0...web-v0.4.0) (2026-08-14)
+
+
+### Features
+
+* 100% dynamic per-JD CV personalization, baby pink project headers, dashboard View Tailored CV modal, and custom house rules ([2788bfb](https://github.com/support897/career-ops/commit/2788bfb37a8f01029b339b8c502f6fb8fc1f159d))
+* cloud pipeline phase 1-5 ([6e7d7a3](https://github.com/support897/career-ops/commit/6e7d7a3a46c2973a6d7f96b92fde567396fd9153))
+* daily digest email + cloud deployment + per-user scan settings ([07b49f3](https://github.com/support897/career-ops/commit/07b49f3324b7a3a38947a750fbf1e67f4cacfbdc))
+* external cron via GitHub Actions, Vercel endpoints proxy Lambda ([cda59aa](https://github.com/support897/career-ops/commit/cda59aa230b6ea1797a655cde35aa21f1f5ba190))
+* move daily-digest to Lambda, remove all Vercel crons ([fc72be5](https://github.com/support897/career-ops/commit/fc72be56da157ef936cbf9e81c03d49613467761))
+
+
+### Bug Fixes
+
+* Deep dive bugs for Vercel hardcoding and support worker CV isolation ([061244d](https://github.com/support897/career-ops/commit/061244dd87e9c991475f957c4f7e547e30ce57a1))
+* link web/ to correct jobapply Vercel project ([ccd7efa](https://github.com/support897/career-ops/commit/ccd7efaa846dfa8041aae606dd3f83342b6b369d))
+* prefill form isolated to support_worker CV ([f73588b](https://github.com/support897/career-ops/commit/f73588b6e1f7b8086a1ee4809d435705be7cef5e))
+* remove duplicate Vercel project 'web', link web/ to career-ops project ([5067e7f](https://github.com/support897/career-ops/commit/5067e7f8a898260c5220fb696c7a6811a41254b7))
+* total profile and CV isolation for support worker across all AI prompts and diagnostics ([bfc3e53](https://github.com/support897/career-ops/commit/bfc3e533b61a8d1d79004e4ecb826e0ebdeb8a01))
+* Web frontend Support Worker CV loading and parsing ([8293705](https://github.com/support897/career-ops/commit/8293705e5b464dc6a9288c7adbdc2f3469f8b455))
+
 ## [0.3.0](https://github.com/santifer/career-ops/compare/web-v0.2.0...web-v0.3.0) (2026-07-07)
 
 
