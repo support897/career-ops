@@ -60,6 +60,42 @@ if (userIdFlag) {
     console.warn(`⚠️  Failed to load DB profile: ${e.message.slice(0, 80)}`);
   }
 }
+async function dismissCookieBanners(page) {
+  try {
+    const CONSENT_ROOTS = '#onetrust-banner-sdk, #CybotCookiebotDialog, #truste-consent-track, .qc-cmp2-container, #usercentrics-root, [id*="cookie" i][class*="banner" i], [class*="cookie-consent" i], [aria-label*="cookie" i]';
+    const CONSENT_BUTTONS = [
+      "#onetrust-accept-btn-handler",
+      "#onetrust-button-accept-all",
+      "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+      "#CybotCookiebotDialogBodyButtonAccept",
+      '.qc-cmp2-button[mode="primary"]',
+      "#truste-consent-button",
+    ];
+
+    // Wait 2s to allow modal to render
+    await page.waitForTimeout(2000);
+
+    const root = page.locator(CONSENT_ROOTS).first();
+    if (await root.count().catch(() => 0) && await root.isVisible().catch(() => false)) {
+      for (const sel of CONSENT_BUTTONS) {
+        const b = page.locator(sel).first();
+        if (await b.count().catch(() => 0) && await b.isVisible().catch(() => false)) {
+          await b.click({ timeout: 2000 }).catch(() => {});
+          console.log('   🍪 Dismissed cookie banner using selector:', sel);
+          return;
+        }
+      }
+      const g = page.getByRole("button", { name: /^(accept|allow|agree|got it|i agree|accept all)/i }).first();
+      if (await g.count().catch(() => 0)) {
+        await g.click({ timeout: 2000 }).catch(() => {});
+        console.log('   🍪 Dismissed cookie banner using generic accept button');
+        return;
+      }
+    }
+  } catch (e) {
+    // Ignore error
+  }
+}
 
 // Build unified credential object — DB mode takes precedence
 const C = dbProfile ? {
@@ -990,6 +1026,22 @@ async function main() {
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(e => console.log('   ⚠️ Page load timeout (continuing anyway)...'));
     console.log('   Page loaded');
+
+    // 1. Check for bot verification page (Cloudflare Turnstile/challenge)
+    const pageText = await page.innerText('body').catch(() => '');
+    const pageTitle = await page.title().catch(() => '');
+    if (
+      pageText.toLowerCase().includes('performing security verification') ||
+      pageText.toLowerCase().includes('verify you are human') ||
+      pageTitle.toLowerCase().includes('just a moment') ||
+      pageTitle.toLowerCase().includes('checking your browser')
+    ) {
+      console.error('❌ Error: Cloudflare or bot challenge detected. Cannot auto-apply headless.');
+      process.exit(1);
+    }
+
+    // 2. Dismiss cookie banner overlays
+    await dismissCookieBanners(page);
 
     // Auto-find files
     let cvPath = cvFlag;
