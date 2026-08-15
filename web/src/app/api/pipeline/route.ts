@@ -163,6 +163,7 @@ ${row.why_match || ""}
       `;
       if (appRows && appRows.length > 0 && (!applications || applications.length === 0)) {
         applications = appRows.map((r: any, idx: number) => ({
+          n: String(idx + 1),
           num: String(idx + 1),
           date: safeYmdDate(r.posted_at),
           company: r.company,

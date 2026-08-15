@@ -2,24 +2,38 @@ import { notFound } from "next/navigation";
 import { readReport, findApplication, trackerCanDelete } from "@/lib/career-ops";
 import { ReportView } from "@/components/report-view";
 import { getSql } from "@/lib/db";
+import { getUserId } from "@/lib/user-context";
 
 export const dynamic = "force-dynamic";
 
+function safeYmdDate(val: any): string {
+  if (!val) return new Date().toISOString().slice(0, 10);
+  try {
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return new Date().toISOString().slice(0, 10);
+    return d.toISOString().slice(0, 10);
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
+
 export default async function ReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const app = findApplication(id);
-  const report = readReport(id);
-  if (!app && !report) notFound();
+  let app = findApplication(id);
+  let report = readReport(id);
+  let reportContent = report?.content ?? null;
 
   // Load database job for documents (cover letter, email draft, gmail draft ID)
   let dbJob: any = null;
+  const userId = getUserId();
+  
   try {
     const sql = getSql();
     const formattedId = id.padStart(3, "0");
     const rows = await sql`
-      SELECT cv_html, cover_letter, email_draft, gmail_draft_id, reference_letter 
+      SELECT * 
       FROM job_inbox 
-      WHERE user_id = 'default' 
+      WHERE user_id = ${userId} 
         AND (company ILIKE ${app?.company || ""} OR id = ${`00000000-0000-0000-0000-000000000${formattedId}`})
       LIMIT 1
     `;
@@ -30,11 +44,59 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
     console.warn("[pipeline-detail] DB fetch failed:", e);
   }
 
+  if (!app) {
+    // Database fallback for production Vercel
+    try {
+      const sql = getSql();
+      const rows = await sql`
+        SELECT * FROM job_inbox 
+        WHERE user_id = ${userId}
+        ORDER BY created_at DESC
+      `;
+      // Find the one corresponding to the 1-based index 'id'
+      const idx = parseInt(id) - 1;
+      if (rows[idx]) {
+        const row = rows[idx];
+        app = {
+          n: id,
+          date: safeYmdDate(row.posted_at),
+          company: row.company,
+          role: row.role,
+          score: row.score ? `${row.score}/5` : null,
+          status: row.job_status === 'applied' ? 'Applied' : 'Evaluated',
+          pdf: row.doc_status === 'ready' ? '✅' : '❌',
+          report: '',
+          notes: row.why_match || '',
+          via: '—'
+        } as any;
+        dbJob = row;
+        
+        reportContent = `# Evaluation: ${row.company} — ${row.role}
+        
+**Date:** ${app.date}
+**URL:** ${row.url}
+**Via:** —
+**Score:** ${app.score}
+**Legitimacy:** Not assessed (auto-synced from pipeline)
+
+---
+
+## Machine Summary
+${row.why_match || ""}
+`;
+      }
+    } catch (e) {
+      console.error("[pipeline-detail] DB fallback failed:", e);
+    }
+  }
+
+  if (!app) notFound();
+
   return (
     <ReportView 
       id={id} 
       app={app} 
-      report={report?.content ?? null} 
+      report={reportContent} 
       file={report?.file ?? null} 
       canDelete={trackerCanDelete()}
       dbCoverLetter={dbJob?.cover_letter ?? null}
