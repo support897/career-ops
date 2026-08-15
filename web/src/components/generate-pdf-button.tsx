@@ -40,9 +40,9 @@ export function GeneratePdfButton({ n, company, pdfReady }: { n: string; company
           href={mounted ? `/api/cv-pdf?company=${encodeURIComponent(company)}&n=${n}&t=${Date.now()}` : `/api/cv-pdf?company=${encodeURIComponent(company)}&n=${n}`}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center justify-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-500/15 dark:text-emerald-400 max-sm:min-h-[44px]"
+          className="inline-flex items-center justify-center gap-1.5 rounded-full border border-pink-500/40 bg-pink-500/10 px-3 py-1 text-xs font-medium text-pink-600 transition-colors hover:bg-pink-500/15 dark:text-pink-500 max-sm:min-h-[44px]"
         >
-          <FileText className="size-3.5" /> View tailored CV
+          🌸 View Tailored CV
         </a>
         <button
           onClick={generate}

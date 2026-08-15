@@ -97,7 +97,7 @@ export function ReportView({
   dbReferenceLetter?: string | null;
 }) {
   const [showCL, setShowCL] = useState(false);
-  const [showTailoredCv, setShowTailoredCv] = useState(false);
+
   const [showEmail, setShowEmail] = useState(false);
   const [showReference, setShowReference] = useState(false);
   const [sendingDraft, setSendingDraft] = useState(false);
@@ -198,14 +198,7 @@ export function ReportView({
             </a>
           )}
 
-          {dbCvHtml && (
-            <button
-              onClick={() => setShowTailoredCv(true)}
-              className="inline-flex items-center justify-center rounded-lg bg-pink-500/10 text-pink-500 border border-pink-500/20 px-3 py-1.5 text-xs font-semibold hover:bg-pink-500/20 transition max-sm:min-h-[36px]"
-            >
-              🌸 View Tailored CV
-            </button>
-          )}
+
           {dbCoverLetter && (
             <button
               onClick={() => setShowCL(true)}
@@ -363,14 +356,7 @@ export function ReportView({
         </div>
       )}
 
-      {showTailoredCv && dbCvHtml && (
-        <DocModal
-          title={`Tailored CV — ${app?.company ?? meta?.title ?? "Position"}`}
-          content={dbCvHtml}
-          isHtml={true}
-          onClose={() => setShowTailoredCv(false)}
-        />
-      )}
+
       {showCL && dbCoverLetter && (
         <DocModal
           title={`Cover Letter — ${app?.company ?? meta?.title ?? "Job"}`}
