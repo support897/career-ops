@@ -158,7 +158,7 @@ ${row.why_match || ""}
 
       const appRows = await sql`
         SELECT * FROM job_inbox 
-        WHERE user_id = ${owner}
+        WHERE user_id = ${owner} AND job_status != 'new'
         ORDER BY created_at DESC
       `;
       if (appRows && appRows.length > 0 && (!applications || applications.length === 0)) {
