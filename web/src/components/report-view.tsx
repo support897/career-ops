@@ -369,14 +369,20 @@ export function ReportView({
           content={dbCvHtml}
           isHtml={true}
           onClose={() => setShowTailoredCv(false)}
+          company={app?.company ?? meta?.title ?? "Company"}
+          role={app?.role ?? meta?.role ?? "Role"}
+          docType="CV"
         />
       )}
       {showCL && dbCoverLetter && (
         <DocModal
           title={`Cover Letter — ${app?.company ?? meta?.title ?? "Job"}`}
           content={dbCoverLetter}
+          isHtml={true}
           onClose={() => setShowCL(false)}
           company={app?.company ?? meta?.title ?? id}
+          role={app?.role ?? meta?.role ?? "Role"}
+          docType="CoverLetter"
         />
       )}
       {showEmail && dbEmailDraft && (
@@ -392,6 +398,9 @@ export function ReportView({
           content={dbReferenceLetter || `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Reference Letter for Ilse Placencia</title><style>body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#1a1a2e;line-height:1.6;max-width:680px;margin:40px auto;padding:0 30px;background:#ffffff;}.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #107b89;padding-bottom:20px;margin-bottom:30px;}.brand{font-size:28px;font-weight:800;letter-spacing:-1px;color:#107b89;}.brand span{color:#8b5cf6;}.brand-sub{font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#64748b;font-weight:600;}.title{font-size:20px;font-weight:700;color:#0f172a;margin-bottom:15px;}.meta{font-size:13px;color:#475569;background:#f8fafc;padding:12px 16px;border-radius:8px;margin-bottom:25px;border-left:4px solid #107b89;}.meta p{margin:3px 0;}.content p{font-size:14px;color:#334155;margin-bottom:16px;}.signature-block{margin-top:35px;padding-top:20px;border-top:1px solid #e2e8f0;}.sign-name{font-family:'Brush Script MT','cursive',sans-serif;font-size:24px;color:#0f172a;margin-bottom:5px;}.sign-title{font-size:13px;font-weight:600;color:#0f172a;}.sign-contact{font-size:12px;color:#64748b;}</style></head><body><div class="header"><div><div class="brand">ev<span>o</span>lve</div><div class="brand-sub">MARKETING</div></div></div><div class="title">Reference Letter for Ilse Placencia</div><div class="meta"><p><strong>From:</strong> Taylor Chorley</p><p><strong>Position:</strong> Digital Marketing Supervisor, Evolve Marketing</p><p><strong>Date:</strong> October 26th, 2025</p></div><div class="content"><p>To Whom It May Concern,</p><p>I've worked with Ilse Placencia since January 2024, when she joined Evolve Marketing as a Digital Marketing Assistant, and I'm genuinely glad to write this on her behalf.</p><p>What stands out most, honestly, isn't just her skill set, it's how she works. Ilse brings this steady, positive energy to everything, even on the weeks that get hectic. She's the kind of person who checks in on how you're doing before diving into the task list, and that made a real difference on a fully remote team where it's easy to feel disconnected.</p><p>That said, she's also just really good at the job, and not just in one thing either. She's sharp across marketing and AI alike, and she's always finding new tools to make the work faster or better. If a tool she needs doesn't exist yet, she'll just build her own. That kind of resourcefulness isn't something you can teach. She has a genuine feel for what makes people click, and her social content consistently landed on brand, well timed, and built for whatever platform it was going on.</p><p>She's also reliable, something really hard to find nowadays. She meets deadlines, communicates clearly, and shows up prepared to strategy conversations with actual value, not just notes. Her analytics work and customer research made our campaigns improve across the board.</p><p>I'd hire Ilse again without hesitation. She's hardworking, kind, easy to work with, and any team would be lucky to have her.</p><p>Happy to talk more if it's helpful.</p><p>Warmest regards,</p></div><div class="signature-block"><div class="sign-name">Taylor Chorley</div><div class="sign-title">Taylor Chorley</div><div class="sign-contact">Digital Marketing Supervisor, Evolve Marketing</div><div class="sign-contact">taylorchorley@gmail.com | +1 (604) 551-8229</div></div></body></html>`}
           isHtml={true}
           onClose={() => setShowReference(false)}
+          company={app?.company ?? meta?.title ?? "Company"}
+          role={app?.role ?? meta?.role ?? "Role"}
+          docType="ReferenceLetter"
         />
       )}
     </div>
@@ -399,11 +408,38 @@ export function ReportView({
 }
 
 function DocModal({
-  title, content, onClose, isHtml = false, company,
+  title, content, onClose, isHtml = false, company, role, docType
 }: {
-  title: string; content: string; onClose: () => void; isHtml?: boolean; company?: string;
+  title: string; content: string; onClose: () => void; isHtml?: boolean; company?: string; role?: string; docType?: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    setDownloading(true);
+    try {
+      const html2pdf = (await import("html2pdf.js")).default;
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const safeCompany = (company || "Company").replace(/[^a-zA-Z0-9]/g, "");
+      const safeRole = (role || "Role").replace(/[^a-zA-Z0-9]/g, "");
+      const safeType = (docType || "Document").replace(/[^a-zA-Z0-9]/g, "");
+      const filename = `Ilse_Placencia_${safeRole}_${safeCompany}_${safeType}_${dateStr}.pdf`;
+
+      const opt = {
+        margin: 0,
+        filename: filename,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: "in", format: "letter", orientation: "portrait" }
+      };
+
+      await html2pdf().set(opt).from(content).save();
+    } catch (e) {
+      console.error("PDF generation failed:", e);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
@@ -411,15 +447,14 @@ function DocModal({
         <div className="flex items-center justify-between pb-4 border-b border-border">
           <h3 className="text-lg font-bold text-foreground">{title}</h3>
           <div className="flex items-center gap-2">
-            {company && (
-              <a
-                href={`/api/cl-pdf?company=${encodeURIComponent(company)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center rounded-lg bg-brand px-3.5 py-1.5 text-xs font-semibold text-brand-foreground shadow-sm hover:bg-brand-200 transition max-sm:min-h-[36px]"
+            {isHtml && (
+              <button
+                onClick={handleDownloadPdf}
+                disabled={downloading}
+                className="inline-flex items-center justify-center rounded-lg bg-brand px-3.5 py-1.5 text-xs font-semibold text-brand-foreground shadow-sm hover:bg-brand-200 transition disabled:opacity-50 max-sm:min-h-[36px]"
               >
-                📥 Download PDF
-              </a>
+                {downloading ? "⏳ Generating..." : "📥 Download PDF"}
+              </button>
             )}
             <button
               className="inline-flex items-center justify-center rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-surface-hover transition"
