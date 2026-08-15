@@ -165,6 +165,27 @@ export function ReportView({
           {app && <StatusSelect n={id} current={app.status} />}
           <GeneratePdfButton n={id} company={app?.company ?? meta?.title ?? id} pdfReady={(app?.pdf ?? "").includes("✅")} />
           <ApplyButton n={id} url={url && url.startsWith("http") ? url : undefined} company={app?.company ?? meta?.title ?? id} pdfReady={(app?.pdf ?? "").includes("✅")} />
+          {app && app.status !== "Applied" && (
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch("/api/status", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ n: id, status: "Applied" }),
+                  });
+                  if (res.ok) {
+                    window.dispatchEvent(new CustomEvent("co-job-done"));
+                  }
+                } catch (e) {
+                  console.error(e);
+                }
+              }}
+              className="inline-flex items-center justify-center gap-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 text-xs font-semibold transition max-sm:min-h-[36px]"
+            >
+              ✅ Applied
+            </button>
+          )}
           
           {url && url.startsWith("http") && (
             <a

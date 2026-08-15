@@ -4,6 +4,8 @@ import path from "node:path";
 import { careerOpsRoot } from "@/lib/career-ops";
 import { canonicalizeStatus } from "@/lib/core/states";
 import { atomicWrite } from "@/lib/core/safe-write";
+import { getSql } from "@/lib/db";
+import { getUserId, resolveDataOwner } from "@/lib/user-context";
 
 // Writeback: UPDATE the status cell of an EXISTING tracker row only. Never adds
 // rows — per the core data contract, new rows go through the TSV + merge flow.
@@ -27,6 +29,35 @@ export async function POST(req: Request) {
   const canon = canonicalizeStatus(status);
   if (!canon) {
     return NextResponse.json({ error: `not a canonical status: ${status}` }, { status: 400 });
+  }
+
+  // Database mode fallback for Vercel
+  const hasDb = !!process.env.DATABASE_URL;
+  if (hasDb) {
+    try {
+      const sql = getSql();
+      const userId = getUserId(req);
+      const owner = resolveDataOwner(userId);
+      
+      const rows = await sql`
+        SELECT id, job_status FROM job_inbox 
+        WHERE user_id = ${owner}
+        ORDER BY created_at DESC
+      `;
+      const idx = parseInt(n) - 1;
+      if (rows[idx]) {
+        const row = rows[idx];
+        const dbStatus = canon.toLowerCase() === "applied" ? "applied" : canon.toLowerCase() === "discarded" ? "discarded" : "new";
+        await sql`
+          UPDATE job_inbox 
+          SET job_status = ${dbStatus}, done = ${dbStatus !== "new"}, updated_at = NOW()
+          WHERE id = ${row.id} AND user_id = ${owner}
+        `;
+        return NextResponse.json({ ok: true, status: canon });
+      }
+    } catch (e: any) {
+      console.error("[status-api] DB update failed:", e);
+    }
   }
 
   const file = path.join(careerOpsRoot(), "data", "applications.md");
