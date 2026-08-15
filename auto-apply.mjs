@@ -1357,11 +1357,10 @@ ${whyMatch}
       continue;
     }
     
-    // Check if we should generate documents and auto-apply
-    const { shouldAutoApply: checkAutoApply } = await import('./lib/scorer.mjs');
-    const autoApplyCheck = checkAutoApply(jobScore, autoApplyEnabled, dbProfile || profile, minScoreForAutoApply);
+    // Check if we should generate documents
+    const shouldGenerateDocs = jobScore >= minScoreForAutoApply;
     
-    if (!autoApplyCheck.autoApply) {
+    if (!shouldGenerateDocs) {
       if (dbWriter) {
         try {
           await dbWriter.syncToInbox(targetUserId, job, scoreResult || { score: jobScore, dimensionScores: {}, matchReasons }, {});
@@ -1371,9 +1370,9 @@ ${whyMatch}
         }
       }
       await syncToLocalFiles(job, scoreResult || { score: jobScore, dimensionScores: {}, matchReasons }, null, null, null, null);
-      console.log(`   ⏭️  ${autoApplyCheck.reason} — skipping document generation and ATS submission`);
+      console.log(`   ⏭️  Score ${jobScore} < ${minScoreForAutoApply} threshold — skipping document generation`);
       stats.skipped++;
-      stats.skippedJobs.push({ company: job.company, role: job.role || job.title, reason: autoApplyCheck.reason });
+      stats.skippedJobs.push({ company: job.company, role: job.role || job.title, reason: `Score ${jobScore} < ${minScoreForAutoApply} threshold` });
       continue;
     }
 
@@ -1472,37 +1471,82 @@ ${whyMatch}
       if (existingDraftId) {
         console.log(`   ⏭️  Gmail draft already exists (ID: ${existingDraftId}) — skipping duplicate creation`);
         gmailDraftId = existingDraftId;
-      } else if (companyEmail) {
-        console.log(`   📧 Sending live application email directly to recruiter: ${companyEmail}...`);
+      } else {
         try {
-          const { sendGmailEmail, hasGmailCredentials } = await import('./lib/gmail-draft.mjs');
+          const { createGmailDraft, hasGmailCredentials } = await import('./lib/gmail-draft.mjs');
 
           if (hasGmailCredentials()) {
             const emailConfig = jsyaml.load(readFileSync(join(__dirname, 'config/email.yml'), 'utf-8'));
-            const sendResult = await sendGmailEmail({
-              from: emailConfig.defaults?.from_email || 'placenciailse@gmail.com',
-              to: companyEmail,
+            const fromEmail = emailConfig.defaults?.from_email || 'placenciailse@gmail.com';
+            
+            const refLetterText = `Taylor Chorley
+Digital Marketing Supervisor, Evolve Marketing
+taylorchorley@gmail.com | +1 (604) 551-8229
+
+To Whom It May Concern,
+
+I've worked with Ilse Placencia since January 2024, when she joined Evolve Marketing as a Digital Marketing Assistant, and I'm genuinely glad to write this on her behalf.
+
+What stands out most, honestly, isn't just her skill set, it's how she works. Ilse brings this steady, positive energy to everything, even on the weeks that get hectic. She's the kind of person who checks in on how you're doing before diving into the task list, and that made a real difference on a fully remote team where it's easy to feel disconnected.
+
+That said, she's also just really good at the job, and not just in one thing either. She's sharp across marketing and AI alike, and she's always finding new tools to make the work faster or better. If a tool she needs doesn't exist yet, she'll just build her own. That kind of resourcefulness isn't something you can teach. She has a genuine feel for what makes people click, and her social content consistently landed on brand, well timed, and built for whatever platform it was going on.
+
+She's also reliable, something really hard to find nowadays. She meets deadlines, communicates clearly, and shows up prepared to strategy conversations with actual value, not just notes. Her analytics work and customer research made our campaigns improve across the board.
+
+I'd hire Ilse again without hesitation. She's hardworking, kind, easy to work with, and any team would be lucky to have her.
+
+Happy to talk more if it's helpful.
+
+Warmest regards,
+Taylor Chorley`;
+
+            // Read cover letter text
+            let coverLetterText = '';
+            if (enhancedCl?.textPath && existsSync(enhancedCl.textPath)) {
+              coverLetterText = readFileSync(enhancedCl.textPath, 'utf8');
+            } else if (existsSync(clPath)) {
+              coverLetterText = readFileSync(clPath, 'utf8');
+            }
+
+            const fullEmailBody = (
+              `🔗 APPLY HERE: ${job.url}\n\n` +
+              `--- OUTREACH EMAIL ---\n` +
+              `${emailBody || ""}\n\n` +
+              `--- COVER LETTER ---\n` +
+              `${coverLetterText || ""}\n\n` +
+              `--- REFERENCE LETTER ---\n` +
+              `${refLetterText}`
+            )
+              .replace(/ — /g, ", ")
+              .replace(/ —/g, ", ")
+              .replace(/—/g, ", ")
+              .replace(/ – /g, ", ")
+              .replace(/ –/g, ", ")
+              .replace(/–/g, ", ")
+              .replace(/ - /g, ", ");
+
+            const draftResult = await createGmailDraft({
+              from: fromEmail,
+              to: companyEmail || "",
               subject: emailSubject,
-              body: emailBody,
+              body: fullEmailBody,
               attachments: [
                 finalCvPath && { path: finalCvPath },
                 finalClPath && { path: finalClPath },
-                existsSync(join(__dirname, 'output/Reference_Letter_Taylor_Chorley.pdf')) && { path: join(__dirname, 'output/Reference_Letter_Taylor_Chorley.pdf'), filename: 'Ilse_Placencia_Reference_Letter.pdf' },
               ].filter(Boolean),
             });
             
-            if (sendResult.success) {
-              gmailDraftId = sendResult.messageId || 'sent';
-              console.log(`   ✅ Live application email sent! (Message-ID: ${sendResult.messageId})`);
+            if (draftResult.success) {
+              gmailDraftId = draftResult.uid || 'created';
+              console.log(`   ✅ Gmail draft created! (ID: ${gmailDraftId})`);
             } else {
-              console.log(`   ⚠️  Live email send failed: ${sendResult.error}`);
+              console.log(`   ⚠️  Gmail draft creation failed: ${draftResult.error}`);
             }
           }
         } catch (err) {
-          console.log(`   ⚠️  Live email send error: ${err.message}`);
+          console.log(`   ⚠️  Gmail draft creation error: ${err.message}`);
         }
       }
-
     }
 
     // Sync to dashboard inbox if database mode is enabled
@@ -1540,63 +1584,49 @@ ${whyMatch}
     let atsApplied = false;
     let atsUrl = job.url;
     let method = 'ATS';
-    
-    // Check if this is a job board listing (LinkedIn, Indeed, SEEK) — use cookies to auto-apply
-    const platform = job.url.includes('linkedin.com') ? 'linkedin'
-      : job.url.includes('indeed.com') ? 'indeed'
-      : job.url.includes('seek.com') ? 'seek'
-      : null;
-    const isJobBoardOnly = !!platform;
-    
-    if (isJobBoardOnly) {
-      // Attempt cookie-based auto-apply using saved browser sessions
-      console.log(`   🌐 Cookie platform — ${platform}...`);
-      method = `${platform.charAt(0).toUpperCase() + platform.slice(1)} Auto-Apply`;
+
+    if (autoApplyEnabled) {
+      // Check if this is a job board listing (LinkedIn, Indeed, SEEK) — use cookies to auto-apply
+      const platform = job.url.includes('linkedin.com') ? 'linkedin'
+        : job.url.includes('indeed.com') ? 'indeed'
+        : job.url.includes('seek.com') ? 'seek'
+        : null;
+      const isJobBoardOnly = !!platform;
       
-      if (isVip && !DRY_RUN) {
-        try {
-          const providerMod = await import(`./providers/${platform}.mjs`).catch(() => null);
-          if (providerMod?.default?.apply) {
-            const applyResult = await providerMod.default.apply(job.url, {
-              userId,
-              candidateInfo: {
-                firstName: userCreds.firstName || userCreds.fullName?.split(' ')[0],
-                lastName: userCreds.lastName || userCreds.fullName?.split(' ').slice(1).join(' '),
-                email: userCreds.email,
-                phone: userCreds.phone,
-              },
-              cvPath: finalCvPath || cv.pdfPath,
-            });
-            if (applyResult?.success) {
-              console.log(`   ✅ ${applyResult.method || platform} — application submitted`);
-              atsApplied = true;
+      if (isJobBoardOnly) {
+        // Attempt cookie-based auto-apply using saved browser sessions
+        console.log(`   🌐 Cookie platform — ${platform}...`);
+        method = `${platform.charAt(0).toUpperCase() + platform.slice(1)} Auto-Apply`;
+        
+        if (isVip && !DRY_RUN) {
+          try {
+            const providerMod = await import(`./providers/${platform}.mjs`).catch(() => null);
+            if (providerMod?.default?.apply) {
+              const applyResult = await providerMod.default.apply(job.url, {
+                userId,
+                candidateInfo: {
+                  firstName: userCreds.firstName || userCreds.fullName?.split(' ')[0],
+                  lastName: userCreds.lastName || userCreds.fullName?.split(' ').slice(1).join(' '),
+                  email: userCreds.email,
+                  phone: userCreds.phone,
+                },
+                cvPath: finalCvPath || cv.pdfPath,
+              });
+              if (applyResult?.success) {
+                console.log(`   ✅ ${applyResult.method || platform} — application submitted`);
+                atsApplied = true;
+              } else {
+                console.log(`   ⚠️  ${platform} apply failed: ${applyResult?.error} — falling back to manual`);
+                method = 'Semi-Auto (Manual)';
+              }
             } else {
-              console.log(`   ⚠️  ${platform} apply failed: ${applyResult?.error} — falling back to manual`);
+              console.log(`   ⚠️  ${platform} provider has no apply() — generating manual package`);
               method = 'Semi-Auto (Manual)';
             }
-          } else {
-            console.log(`   ⚠️  ${platform} provider has no apply() — generating manual package`);
+          } catch (e) {
+            console.log(`   ⚠️  ${platform} cookie apply error: ${e.message.slice(0, 100)} — falling back to manual`);
             method = 'Semi-Auto (Manual)';
           }
-        } catch (e) {
-          console.log(`   ⚠️  ${platform} cookie apply error: ${e.message.slice(0, 100)} — falling back to manual`);
-          method = 'Semi-Auto (Manual)';
-        }
-      }
-      
-      // If VIP cookie apply failed or non-VIP, generate manual package
-      if (!atsApplied) {
-        const source = platform ? platform.charAt(0).toUpperCase() + platform.slice(1) : 'Job Board';
-        const manualPackage = {
-          company: job.company, role: job.role || job.title, url: job.url,
-          source, score: jobScore, matchReasons,
-          cv: finalCvPath, coverLetter: finalClPath,
-          emailSubject, emailBody: emailBody.replace(/^🔗 APPLY HERE:[^\n]+\n+/, ''),
-          instructions: `Apply at: ${job.url}\n\nSteps:\n1. Click link\n2. Upload CV: ${finalCvPath}\n3. Upload cover letter: ${finalClPath}\n4. Submit`,
-        };
-        const packagePath = join(__dirname, `output/manual-apply-${slug}-${TODAY}.json`);
-        try {
-          writeFileSync(packagePath, JSON.stringify(manualPackage, null, 2));
           console.log(`   💾 Manual apply package saved: ${packagePath}`);
         } catch (e) {
           console.log(`   ⚠️  Failed to save manual package: ${e.message}`);

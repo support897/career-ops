@@ -16,6 +16,7 @@ const TABS = [
   "INBOX",
   "ALL",
   "EVALUATED",
+  "READY_TO_APPLY",
   "APPLIED",
   "RESPONDED",
   "INTERVIEW",
@@ -43,7 +44,7 @@ export function PipelineView({
   // The URL is the SINGLE source of truth for tab/min/sort/dir, so the home stat
   // tiles' deep links AND the assistant's filterPipeline/navigate actions drive
   // the table identically (no useState mirror → no desync).
-  const pTab = (params.get("tab") ?? "").toUpperCase();
+  const pTab = (params.get("tab") ?? "").toUpperCase().replace(/ /g, "_");
   const tab: Tab = (TABS as readonly string[]).includes(pTab) ? (pTab as Tab) : "INBOX";
   const pMin = parseFloat(params.get("min") ?? "");
   const minFilter: number | null = Number.isFinite(pMin) ? pMin : null;
@@ -93,7 +94,14 @@ export function PipelineView({
   const filtered = useMemo(() => {
     if (tab === "INBOX") return [];
     let rows = applications;
-    if (tab !== "ALL") rows = rows.filter((r) => canonStatus(r.status).includes(tab));
+    if (tab === "READY_TO_APPLY") {
+      rows = rows.filter((r) => {
+        const score = scoreNum(r.score);
+        return !Number.isNaN(score) && score >= 4.0 && r.status === "Evaluated" && (r.pdf === "✅" || r.pdf === "true");
+      });
+    } else if (tab !== "ALL") {
+      rows = rows.filter((r) => canonStatus(r.status).includes(tab));
+    }
     if (minFilter != null) {
       rows = rows.filter((r) => {
         const n = scoreNum(r.score);
@@ -148,7 +156,12 @@ export function PipelineView({
               ? pendingInbox.length
               : t === "ALL"
                 ? applications.length
-                : applications.filter((r) => canonStatus(r.status).includes(t)).length;
+                : t === "READY_TO_APPLY"
+                  ? applications.filter((r) => {
+                      const score = scoreNum(r.score);
+                      return !Number.isNaN(score) && score >= 4.0 && r.status === "Evaluated" && (r.pdf === "✅" || r.pdf === "true");
+                    }).length
+                  : applications.filter((r) => canonStatus(r.status).includes(t)).length;
           return (
             <button
               key={t}
@@ -160,7 +173,7 @@ export function PipelineView({
                   : "border-transparent text-muted hover:text-foreground",
               )}
             >
-              {t} <span className="text-faint tabular-nums">{count}</span>
+              {t === "READY_TO_APPLY" ? "READY TO APPLY" : t} <span className="text-faint tabular-nums">{count}</span>
             </button>
           );
         })}

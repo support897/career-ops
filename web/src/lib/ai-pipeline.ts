@@ -301,6 +301,7 @@ export async function generateEmailDraft(
 ## Rules
 - Subject line: "Application: ${job.role} — ${name}"
 - Keep the email UNDER 150 words
+- Start the email body directly with "I believe I'm the perfect candidate" (no formal greeting)
 - Open with their strongest relevant achievement
 - One specific reason why this company/role is exciting
 - Clear call to action

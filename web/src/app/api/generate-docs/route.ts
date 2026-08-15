@@ -9,6 +9,7 @@ import { getUserId } from "@/lib/user-context";
 import { updateInboxJobPipeline } from "@/lib/db";
 import { careerOpsRoot } from "@/lib/career-ops";
 import yaml from "js-yaml";
+import { generateEmailDraft } from "@/lib/ai-pipeline";
 
 
 export const runtime = "nodejs";
@@ -466,10 +467,13 @@ export async function POST(req: NextRequest) {
       // Read the generated HTML
       if (fs.existsSync(outputHtmlPath)) {
         cvHtml = fs.readFileSync(outputHtmlPath, "utf8");
+        if (profileYml.style?.accent_color) {
+          cvHtml = cvHtml.replace("</head>", `<style>:root { --accent-color: ${profileYml.style.accent_color}; }</style></head>`);
+        }
         if (payload.volunteerWork) {
           cvHtml = cvHtml.replace(/<div class="section-title">Projects<\/div>/g, '<div class="section-title">Volunteer Work</div>');
-          fs.writeFileSync(outputHtmlPath, cvHtml);
         }
+        fs.writeFileSync(outputHtmlPath, cvHtml);
       } else {
         // Fallback: find newest cv-*.html for this company
         const outputDir = path.join(root, "output");
@@ -484,6 +488,10 @@ export async function POST(req: NextRequest) {
             );
           if (files[0]) {
             cvHtml = fs.readFileSync(path.join(outputDir, files[0]), "utf8");
+            if (profileYml.style?.accent_color) {
+              cvHtml = cvHtml.replace("</head>", `<style>:root { --accent-color: ${profileYml.style.accent_color}; }</style></head>`);
+              fs.writeFileSync(path.join(outputDir, files[0]), cvHtml);
+            }
           }
         } catch {
           // ignore
@@ -543,6 +551,24 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ── Generate Outreach Email ──────────────────────────────────────────────
+    let emailDraftText = "";
+    if ((type === "cv" || type === "both") && !dryRun) {
+      try {
+        emailDraftText = await generateEmailDraft(
+          { company, role, jd_text: jdText, url: url || "" },
+          {
+            cv_markdown: cvMd,
+            full_name: profileYml.candidate?.full_name || "Ilse Placencia",
+            email: profileYml.candidate?.email || "",
+            location: profileYml.candidate?.location || ""
+          }
+        );
+      } catch (e: any) {
+        console.warn("[generate-docs] Outreach email generation failed:", e);
+      }
+    }
+
     // ── Send to Gmail Drafts (via lib/gmail-draft.mjs) ──────────────────────
     let gmailDraftId: string | null = null;
     if ((type === "cv" || type === "both") && !dryRun) {
@@ -555,9 +581,47 @@ export async function POST(req: NextRequest) {
         const fromEmail = cand.email || "placenciailse@gmail.com";
         const applyLink = body.url || "(see attached job description)";
 
+        // Resolve company email if present in job description
+        let companyEmail = "";
+        const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+        const foundEmails = jdText.match(emailRegex);
+        if (foundEmails && foundEmails.length > 0) {
+          const candidateEmail = cand.email || "placenciailse@gmail.com";
+          const filtered = foundEmails.filter(e => e !== candidateEmail && !e.includes("wixpress") && !e.includes("domain"));
+          if (filtered.length > 0) {
+            companyEmail = filtered[0];
+          }
+        }
+
+        const refLetterText = `Taylor Chorley
+Digital Marketing Supervisor, Evolve Marketing
+taylorchorley@gmail.com | +1 (604) 551-8229
+
+To Whom It May Concern,
+
+I've worked with Ilse Placencia since January 2024, when she joined Evolve Marketing as a Digital Marketing Assistant, and I'm genuinely glad to write this on her behalf.
+
+What stands out most, honestly, isn't just her skill set, it's how she works. Ilse brings this steady, positive energy to everything, even on the weeks that get hectic. She's the kind of person who checks in on how you're doing before diving into the task list, and that made a real difference on a fully remote team where it's easy to feel disconnected.
+
+That said, she's also just really good at the job, and not just in one thing either. She's sharp across marketing and AI alike, and she's always finding new tools to make the work faster or better. If a tool she needs doesn't exist yet, she'll just build her own. That kind of resourcefulness isn't something you can teach. She has a genuine feel for what makes people click, and her social content consistently landed on brand, well timed, and built for whatever platform it was going on.
+
+She's also reliable, something really hard to find nowadays. She meets deadlines, communicates clearly, and shows up prepared to strategy conversations with actual value, not just notes. Her analytics work and customer research made our campaigns improve across the board.
+
+I'd hire Ilse again without hesitation. She's hardworking, kind, easy to work with, and any team would be lucky to have her.
+
+Happy to talk more if it's helpful.
+
+Warmest regards,
+Taylor Chorley`;
+
         const emailBody = (
           `🔗 APPLY HERE: ${applyLink}\n\n` +
-          `${coverLetter || ""}`
+          `--- OUTREACH EMAIL ---\n` +
+          `${emailDraftText || ""}\n\n` +
+          `--- COVER LETTER ---\n` +
+          `${coverLetter || ""}\n\n` +
+          `--- REFERENCE LETTER ---\n` +
+          `${refLetterText}`
         )
           .replace(/ — /g, ", ")
           .replace(/ —/g, ", ")
@@ -581,7 +645,7 @@ export async function POST(req: NextRequest) {
 
         const draftResult = await createGmailDraft({
           from: fromEmail,
-          to: "", // Empty = unsent draft (stays in Drafts, never sends)
+          to: companyEmail,
           subject: `[career-ops] ${role} at ${company} — ${today}`,
           body: emailBody,
           attachments,
@@ -602,7 +666,8 @@ export async function POST(req: NextRequest) {
     try {
       await updateInboxJobPipeline(userId, jobId, {
         ...(cvHtml ? { cv_html: cvHtml } : {}),
-        ...(coverLetter ? { cover_letter: coverLetter, email_draft: coverLetter } : {}),
+        ...(coverLetter ? { cover_letter: coverLetter } : {}),
+        ...(emailDraftText ? { email_draft: emailDraftText } : {}),
         ...(gmailDraftId ? { gmail_draft_id: gmailDraftId } : {}),
         doc_status: "ready",
       });
