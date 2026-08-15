@@ -1666,77 +1666,8 @@ Taylor Chorley`;
     let atsUrl = job.url;
     let method = 'ATS';
 
-    if (autoApplyEnabled) {
-      // Check if this is a job board listing (LinkedIn, Indeed, SEEK) — use cookies to auto-apply
-      const platform = job.url.includes('linkedin.com') ? 'linkedin'
-        : job.url.includes('indeed.com') ? 'indeed'
-        : job.url.includes('seek.com') ? 'seek'
-        : null;
-      const isJobBoardOnly = !!platform;
-      
-      if (isJobBoardOnly) {
-        // Attempt cookie-based auto-apply using saved browser sessions
-        console.log(`   🌐 Cookie platform — ${platform}...`);
-        method = `${platform.charAt(0).toUpperCase() + platform.slice(1)} Auto-Apply`;
-        
-        if (isVip && !DRY_RUN) {
-          try {
-            const providerMod = await import(`./providers/${platform}.mjs`).catch(() => null);
-            if (providerMod?.default?.apply) {
-              const applyResult = await providerMod.default.apply(job.url, {
-                userId,
-                candidateInfo: {
-                  firstName: userCreds.firstName || userCreds.fullName?.split(' ')[0],
-                  lastName: userCreds.lastName || userCreds.fullName?.split(' ').slice(1).join(' '),
-                  email: userCreds.email,
-                  phone: userCreds.phone,
-                },
-                cvPath: finalCvPath || cv.pdfPath,
-              });
-              if (applyResult?.success) {
-                console.log(`   ✅ ${applyResult.method || platform} — application submitted`);
-                atsApplied = true;
-              } else {
-                console.log(`   ⚠️  ${platform} apply failed: ${applyResult?.error} — falling back to manual`);
-                method = 'Semi-Auto (Manual)';
-              }
-            } else {
-              console.log(`   ⚠️  ${platform} provider has no apply() — generating manual package`);
-              method = 'Semi-Auto (Manual)';
-            }
-          } catch (e) {
-            console.log(`   ⚠️  ${platform} cookie apply error: ${e.message.slice(0, 100)} — falling back to manual`);
-            method = 'Semi-Auto (Manual)';
-          }
-          console.log(`   💾 Manual apply package saved: ${packagePath}`);
-        } catch (e) {
-          console.log(`   ⚠️  Failed to save manual package: ${e.message}`);
-        }
-      }
-    } else if (!DRY_RUN && !NO_ATS_SUBMIT) {
-      // Direct Playwright ATS Form Filling & Submission (Greenhouse, Lever, Ashby, Workday, Custom)
-      console.log(`   🚀 Executing ATS Auto-Apply via Playwright...`);
-      try {
-        const cvArg = finalCvPath ? `--cv "${finalCvPath}"` : '';
-        const clArg = finalClPath ? `--cover-letter "${finalClPath}"` : '';
-        const userArg = userId ? `--userId "${userId}"` : '';
-        const cmd = `node apply-to-ats.mjs "${job.url}" ${cvArg} ${clArg} ${userArg}`;
-        const resStr = execSync(cmd, { encoding: 'utf8', cwd: __dirname, timeout: 90000 });
-        const jsonStart = resStr.lastIndexOf('{');
-        if (jsonStart !== -1) {
-          const res = JSON.parse(resStr.slice(jsonStart));
-          if (res.success && res.submitted) {
-            atsApplied = true;
-            method = `ATS (${res.ats ? res.ats.toUpperCase() : 'PLAYWRIGHT'})`;
-            console.log(`   ✅ ATS application submitted successfully (${res.ats})`);
-          } else {
-            console.log(`   ⚠️ ATS Auto-Apply filled form (submitted: ${res.submitted || false})`);
-          }
-        }
-      } catch (e) {
-        console.log(`   ⚠️ ATS Auto-Apply error: ${e.message.slice(0, 100)}`);
-      }
-    }
+    // Auto-apply execution disabled per user request: jobs must remain in "Evaluated" (Ready to Submit)
+    // so the user can manually review the drafted email, CV, and CL before submission.
 
 
     // Save backup file draft if Gmail draft was not created successfully
