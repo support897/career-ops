@@ -13,7 +13,7 @@ async function runLoop() {
     console.log(`\n⏰ [${startTime}] Launching automated job scan & application cycle...`);
 
     try {
-      execSync('node auto-apply.mjs --userId default --local-vip --min-score 4.0', {
+      execSync('node auto-apply.mjs --userId default --local-vip --min-score 4.0 --max-age 14', {
         cwd: __dirname,
         stdio: 'inherit',
         env: { ...process.env },

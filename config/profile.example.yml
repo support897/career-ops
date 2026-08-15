@@ -28,6 +28,56 @@ target_roles:
   primary:
     - "Senior AI Engineer"
     - "Staff ML Engineer"
+    - Customer Service Representative
+    - Live Chat Support Agent
+    - Email Support Specialist
+    - Call Center Representative
+    - Technical Support Tier 1
+    - Order and Returns Support Agent
+    - Help Desk Associate
+    - Bilingual Customer Support Spanish English
+    - Crisis and Text Line Support
+    - Interpreting Services
+    - Sales Development Rep
+    - Business Development Rep
+    - Inside Sales Rep
+    - Appointment Setter
+    - Account Executive junior level
+    - Telesales Rep
+    - Warm Lead Closer
+    - Virtual Assistant
+    - Data Entry Clerk
+    - Administrative Assistant
+    - Scheduling Coordinator
+    - Executive Assistant
+    - Bookkeeping Assistant
+    - Transcriptionist
+    - Order Processing Clerk
+    - Social Media Coordinator
+    - Content Writer
+    - Copywriter entry level
+    - Proofreader and Editor
+    - Community Manager
+    - Onboarding Coordinator
+    - Onboarding Specialist SaaS
+    - Customer Success Associate
+    - Implementation Specialist
+    - Client Success Coordinator
+    - Data Annotation Specialist
+    - AI Training Data Rater
+    - AI Prompt Evaluator
+    - QA Tester
+    - Search Engine Evaluator
+    - Junior Recruiter
+    - Talent Sourcer
+    - HR Coordinator
+    - Medical Billing Specialist
+    - Insurance Claims Processor
+    - Patient Scheduling Coordinator
+    - Marketing Assistant
+    - Email Marketing Coordinator
+    - Lead Generation Specialist
+    - Marketing Automation Assistant
   # Archetypes help the evaluation system score fit
   archetypes:
     - name: "AI/ML Engineer"
