@@ -203,13 +203,13 @@ export function extractJDKeywords(jdText) {
  * Build a tailored summary mentioning JD-relevant keywords.
  */
 function buildTailoredSummary(jdKeywords) {
-  const base = 'AI Automation Specialist and Marketing Engineer with 4+ years of experience designing, coding, and deploying end-to-end automation systems across lead generation, content production, and sales operations. Founded and scaled two fully automated businesses without additional headcount.';
+  const base = 'AI Automation Specialist and Marketing Engineer with over 6 years of experience designing, coding, and deploying end-to-end automation systems across lead generation, content production, and sales operations. Founded and scaled two fully automated businesses without additional headcount.';
 
   // Pick the most relevant 3-4 keywords to mention in the summary
   const summaryKeywords = jdKeywords.slice(0, 4);
   if (summaryKeywords.length === 0) return base;
 
-  const tailored = `AI Automation Specialist and Marketing Engineer with 4+ years of experience designing, coding, and deploying end-to-end automation systems across ${summaryKeywords.join(', ')}. Founded and scaled two fully automated businesses without additional headcount. Proven ability to identify bottlenecks, architect intelligent workflows, and deliver measurable operational gains in remote environments.`;
+  const tailored = `AI Automation Specialist and Marketing Engineer with over 6 years of experience designing, coding, and deploying end-to-end automation systems across ${summaryKeywords.join(', ')}. Founded and scaled two fully automated businesses without additional headcount. Proven ability to identify bottlenecks, architect intelligent workflows, and deliver measurable operational gains in remote environments.`;
   return tailored;
 }
 

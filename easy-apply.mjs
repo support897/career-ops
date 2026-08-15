@@ -166,7 +166,7 @@ async function indeedEasyApply(page, cvPath) {
     const val = await ta.inputValue();
     if (val) continue;
     const name = await ta.getAttribute('name') || '';
-    await ta.fill('I have 4+ years of experience building AI-powered automation systems across marketing, sales, and operations. I am passionate about building intelligent systems that replace manual workflows.');
+    await ta.fill('I have over 6 years of experience building AI-powered automation systems across marketing, sales, and operations. I am passionate about building intelligent systems that replace manual workflows.');
     console.log(`     ✅ Answered: ${name.slice(0, 60)}`);
   }
 
@@ -287,7 +287,7 @@ async function seekEasyApply(page, cvPath) {
     const val = await ta.inputValue();
     if (val) continue;
     const name = await ta.getAttribute('name') || '';
-    await ta.fill('I have 4+ years of experience building AI-powered automation systems across marketing, sales, and operations. I am passionate about building intelligent systems that replace manual workflows.');
+    await ta.fill('I have over 6 years of experience building AI-powered automation systems across marketing, sales, and operations. I am passionate about building intelligent systems that replace manual workflows.');
     console.log(`     ✅ Answered: ${name.slice(0, 60)}`);
   }
 

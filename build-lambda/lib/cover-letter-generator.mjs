@@ -187,7 +187,7 @@ export function buildCoverLetterPayload(profile, job, jdText) {
   const role = job?.title || job?.role || 'the open position';
 
   // Build opening paragraph
-  const opening = `I'm writing to express my strong interest in the ${role} position at ${company}. With 4+ years of experience building AI-powered automation systems across three businesses I founded, I bring a unique combination of technical depth and real-world business outcomes.`;
+  const opening = `I'm writing to express my strong interest in the ${role} position at ${company}. With over 6 years of experience building AI-powered automation systems across three businesses I founded, I bring a unique combination of technical depth and real-world business outcomes.`;
 
   // Build profile intro
   const topMatches = matches.slice(0, 3);

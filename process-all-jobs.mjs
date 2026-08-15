@@ -43,7 +43,7 @@ function generateEmailBody(company, role, url) {
 
 I'm writing to express my interest in the ${role} position at ${company}.
 
-I build ${matchingExperience}. With 4+ years of experience across three businesses I founded, I bring a unique combination of technical depth and business outcomes.
+I build ${matchingExperience}. With over 6 years of experience across three businesses I founded, I bring a unique combination of technical depth and business outcomes.
 
 I'd be thrilled to bring this experience to ${company}. Wishing you a great week regardless.
 
@@ -59,7 +59,7 @@ function generateCoverLetter(company, role) {
 
 I am writing to express my strong interest in the ${role} position at ${company}.
 
-With 4+ years of experience building AI-powered automation systems across lead generation, content production, and marketing operations, I bring a unique combination of technical depth and business outcomes. I have personally built, deployed, and run production AI agents across three businesses I founded, covering the full stack from prospecting to campaign management to sales operations.
+With over 6 years of experience building AI-powered automation systems across lead generation, content production, and marketing operations, I bring a unique combination of technical depth and business outcomes. I have personally built, deployed, and run production AI agents across three businesses I founded, covering the full stack from prospecting to campaign management to sales operations.
 
 At APEX Website Solutions, I built a fully automated B2B lead generation system that scrapes prospects, generates personalized audits, sends cold email, and books discovery calls through an AI voice agent, all with zero manual input. At Lumi and Milo, I designed a multi-agent orchestration system with a dedicated QC agent that reviews every piece of content before human approval. At Fiesta Fresh, I built the complete marketing automation stack from social media to sales.
 
