@@ -1403,7 +1403,6 @@ ${whyMatch}
     const useLlm = pConfig.llm_enabled !== false; // Default true
     const llmDocs = pConfig.llm_docs || { cv: true, cover_letter: false, reference_letter: true };
     const jdText = job.description || job.raw || '';
-    const slug = (job.company || 'company').toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
     const profileForDoc = userId ? dbProfile : {
       fullName: profile?.candidate?.full_name || 'Ilse Placencia',
