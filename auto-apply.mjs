@@ -75,7 +75,7 @@ const JOB_BOARDS = ['linkedin', 'indeed', 'seek'];
 
 // Determine if we should sync results to the database
 const hasDb = !!process.env.DATABASE_URL;
-const targetUserId = userId || (hasDb ? 'default' : null);
+const targetUserId = userId || process.env.VIP_USER_ID || (hasDb ? 'default' : null);
 
 if (userId && userId !== 'default') {
   console.log(`[DB mode] Multi-user mode for userId: ${userId}`);
