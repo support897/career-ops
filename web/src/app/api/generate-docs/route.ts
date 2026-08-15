@@ -562,6 +562,7 @@ export async function POST(req: NextRequest) {
           { company, role, jd_text: jdText, url: url || "" },
           {
             cv_markdown: cvMd,
+            cv_data: null as any,
             full_name: profileYml.candidate?.full_name || "Ilse Placencia",
             email: profileYml.candidate?.email || "",
             location: profileYml.candidate?.location || ""
