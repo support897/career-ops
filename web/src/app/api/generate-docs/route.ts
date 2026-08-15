@@ -45,6 +45,9 @@ interface ProfileYml {
     github?: string;
     photo?: string;
   };
+  style?: {
+    accent_color?: string;
+  };
 }
 
 // ── Parse cv.md into sections ────────────────────────────────────────────────
