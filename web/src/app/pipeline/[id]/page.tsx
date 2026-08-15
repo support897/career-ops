@@ -57,12 +57,14 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
       const idx = parseInt(id) - 1;
       if (rows[idx]) {
         const row = rows[idx];
+        const rowDate = safeYmdDate(row.posted_at);
+        const rowScore = row.score ? `${row.score}/5` : "—";
         app = {
           n: id,
-          date: safeYmdDate(row.posted_at),
+          date: rowDate,
           company: row.company,
           role: row.role,
-          score: row.score ? `${row.score}/5` : null,
+          score: rowScore,
           status: row.job_status === 'applied' ? 'Applied' : 'Evaluated',
           pdf: row.doc_status === 'ready' ? '✅' : '❌',
           report: '',
@@ -73,10 +75,10 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
         
         reportContent = `# Evaluation: ${row.company} — ${row.role}
         
-**Date:** ${app.date}
+**Date:** ${rowDate}
 **URL:** ${row.url}
 **Via:** —
-**Score:** ${app.score}
+**Score:** ${rowScore}
 **Legitimacy:** Not assessed (auto-synced from pipeline)
 
 ---
