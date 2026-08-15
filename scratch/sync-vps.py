@@ -17,7 +17,15 @@ files_to_sync = [
     "web/src/app/pipeline/[id]/page.tsx",
     "web/src/app/api/pipeline/route.ts",
     "auto-apply.mjs",
-    "lib/cv-generator.mjs"
+    "lib/cv-generator.mjs",
+    "lib/gmail-draft.mjs",
+    "lib/db-writer.mjs",
+    "scripts/regenerate-ab-test.mjs",
+    "lib/llm-cv-builder.mjs",
+    "lib/reference-letter-generator.mjs",
+    "package.json",
+    "lib/cover-letter-generator.mjs",
+    "config/profile.yml"
 ]
 
 for f in files_to_sync:
@@ -38,7 +46,11 @@ def run_cmd(cmd):
     print(stdout.read().decode().strip())
     print(stderr.read().decode().strip())
 
+print("\n--- Running npm install on VPS ---")
+run_cmd("cd /root/career-ops-2 && npm install")
 print("\n--- PM2 restart ---")
 run_cmd("cd /root/career-ops-2 && pm2 restart all")
+print("\n--- Running regeneration script on VPS ---")
+run_cmd("cd /root/career-ops-2 && node scripts/regenerate-ab-test.mjs")
 ssh.close()
 print("Done.")
