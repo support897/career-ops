@@ -1534,9 +1534,9 @@ ${whyMatch}
     
     // Scrape JD and generate personalized email
     console.log(`   📧 Scraping job description for personalization...`);
-    const jdText = await scrapeJobDescription(job.url);
+    const scrapedJd = await scrapeJobDescription(job.url);
     const emailSubject = `Application: ${job.role || job.title} at ${job.company} — ${userCreds.fullName}`;
-    const emailBody = generatePersonalizedEmail(job.company, job.role || job.title, jdText, dbProfile || profile, job.url);
+    const emailBody = generatePersonalizedEmail(job.company, job.role || job.title, scrapedJd || jdText, dbProfile || profile, job.url);
     
     // Send email to company — VIP only (non-VIP gets file drafts)
     let companyEmail = await findCompanyEmail(job);
