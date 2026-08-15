@@ -84,6 +84,7 @@ export function ReportView({
   dbEmailDraft = null,
   dbGmailDraftId = null,
   dbReferenceLetter = null,
+  dbGenerationMethod = 'keyword',
 }: {
   id: string;
   app: Application | null;
@@ -95,6 +96,7 @@ export function ReportView({
   dbEmailDraft?: string | null;
   dbGmailDraftId?: string | null;
   dbReferenceLetter?: string | null;
+  dbGenerationMethod?: string | null;
 }) {
   const [showCL, setShowCL] = useState(false);
   const [showTailoredCv, setShowTailoredCv] = useState(false);
@@ -197,6 +199,12 @@ export function ReportView({
               🔗 View Job
             </a>
           )}
+
+          <div className="w-full mt-2 mb-1">
+            <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${dbGenerationMethod === 'llm' ? 'bg-purple-50 text-purple-700 ring-purple-600/20' : 'bg-blue-50 text-blue-700 ring-blue-600/20'}`}>
+              {dbGenerationMethod === 'llm' ? '⚡ LLM Generated Documents' : '🔍 Keyword Generated Documents'}
+            </span>
+          </div>
 
           {dbCvHtml && (
             <button

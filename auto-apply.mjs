@@ -1639,13 +1639,13 @@ Taylor Chorley`;
         if (cvHtmlPath && existsSync(cvHtmlPath)) {
           cvHtml = readFileSync(cvHtmlPath, 'utf8');
         }
-        
         await dbWriter.syncToInbox(targetUserId, job, scoreResult || { score: jobScore, dimensionScores: {}, matchReasons }, {
           cvHtml,
-          coverLetter: coverLetterText || null,
-          referenceLetter: generatedRefLetterHtml,
-          emailDraft: `Subject: ${emailSubject}\n\n${emailBody}`,
+          coverLetter: coverLetterText,
+          referenceLetter: activeRefLetter,
+          emailDraft: emailBody,
           gmailDraftId,
+          generationMethod: useLlm && llmDocs.cv !== false ? 'llm' : 'keyword'
         });
         console.log(`   ✅ Synced to dashboard inbox`);
       } catch (e) {

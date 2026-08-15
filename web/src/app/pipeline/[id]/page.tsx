@@ -106,6 +106,7 @@ ${row.why_match || ""}
       dbEmailDraft={dbJob?.email_draft ?? null}
       dbGmailDraftId={dbJob?.gmail_draft_id ?? null}
       dbReferenceLetter={dbJob?.reference_letter ?? null}
+      dbGenerationMethod={dbJob?.generation_method ?? 'keyword'}
     />
   );
 }
