@@ -1594,12 +1594,7 @@ Taylor Chorley`;
 
             const fullEmailBody = (
               `🔗 APPLY HERE: ${job.url}\n\n` +
-              `--- OUTREACH EMAIL ---\n` +
-              `${emailBody || ""}\n\n` +
-              `--- COVER LETTER ---\n` +
-              `${coverLetterText || ""}\n\n` +
-              `--- REFERENCE LETTER ---\n` +
-              `${activeRefLetter}`
+              `${emailBody || ""}\n`
             )
               .replace(/ — /g, ", ")
               .replace(/ —/g, ", ")
@@ -1608,6 +1603,7 @@ Taylor Chorley`;
               .replace(/ –/g, ", ")
               .replace(/–/g, ", ")
               .replace(/ - /g, ", ");
+
 
             const draftResult = await createGmailDraft({
               from: fromEmail,
