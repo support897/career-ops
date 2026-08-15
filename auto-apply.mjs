@@ -19,6 +19,8 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
 import { createRequire } from 'module';
+import { generateLLMReferenceLetter } from './lib/llm-cv-builder.mjs';
+
 const require = createRequire(import.meta.url);
 const jsyaml = require('js-yaml');
 
@@ -1439,6 +1441,19 @@ ${whyMatch}
       }
     }
     
+    // Try generating Reference Letter via LLM if cv_generation_mode is llm
+    let generatedRefLetterHtml = null;
+    const isLlmMode = (dbProfile?.cv_generation_mode === 'llm') || (profile?.cv_generation_mode === 'llm');
+    if (isLlmMode) {
+      console.log(`   📄 Generating Reference Letter via LLM...`);
+      try {
+        generatedRefLetterHtml = await generateLLMReferenceLetter(dbProfile || profile, job.description || job.raw || '');
+        console.log(`   ✅ Enhanced Reference Letter generated.`);
+      } catch (e) {
+        console.log(`   ⚠️  Reference Letter generation failed: ${e.message.slice(0, 80)}`);
+      }
+    }
+    
     // Use enhanced PDFs if available, fall back to basic
     const finalCvPath = enhancedCv?.pdfPath || cv.pdfPath;
     const finalClPath = enhancedCl?.pdfPath || clPath;
@@ -1508,6 +1523,8 @@ Taylor Chorley`;
               coverLetterText = readFileSync(clPath, 'utf8');
             }
 
+            const activeRefLetter = generatedRefLetterHtml || refLetterText;
+
             const fullEmailBody = (
               `🔗 APPLY HERE: ${job.url}\n\n` +
               `--- OUTREACH EMAIL ---\n` +
@@ -1515,7 +1532,7 @@ Taylor Chorley`;
               `--- COVER LETTER ---\n` +
               `${coverLetterText || ""}\n\n` +
               `--- REFERENCE LETTER ---\n` +
-              `${refLetterText}`
+              `${activeRefLetter}`
             )
               .replace(/ — /g, ", ")
               .replace(/ —/g, ", ")
@@ -1568,6 +1585,7 @@ Taylor Chorley`;
         await dbWriter.syncToInbox(targetUserId, job, scoreResult || { score: jobScore, dimensionScores: {}, matchReasons }, {
           cvHtml,
           coverLetter: coverLetterContent,
+          referenceLetter: generatedRefLetterHtml,
           emailDraft: `Subject: ${emailSubject}\n\n${emailBody}`,
           gmailDraftId,
         });
