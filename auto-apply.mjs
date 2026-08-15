@@ -19,7 +19,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
 import { createRequire } from 'module';
-import { generateLLMReferenceLetter } from './lib/llm-cv-builder.mjs';
+import { generateLLMReferenceLetter, generateLLMCoverLetter, generateLLMTailoredCV } from './lib/llm-cv-builder.mjs';
 
 const require = createRequire(import.meta.url);
 const jsyaml = require('js-yaml');
@@ -404,7 +404,7 @@ function generatePersonalizedEmail(company, role, jdText, profileData, jobUrl) {
     email += `Hi!\n\n`;
     email += `I believe I’m the perfect candidate for your team. If you’re looking for someone kind and organized, whose number one priority is making sure every client has the right supports in place to live the life they choose. Then I’m the right fit for you.\n\n`;
     email += `Being a support coordinator is not a job for me, it’s my passion. I believe everyone deserves a plan that actually works for their life, not just on paper, and that’s exactly what I aim to build for every client I work with.\n\n`;
-    email += `I’ve been lucky to work in this space for around 5 years, connecting people with the right services, building strong relationships with providers, and making sure every support plan reflects what the person actually wants, not just what’s easiest to arrange. I’ve also worked across remote teams, which taught me how to stay organized, communicate clearly, and keep everyone on the same page even when we’re not in the same room.\n\n`;
+    email += `I’ve been lucky to work in this space for over 6 years, connecting people with the right services, building strong relationships with providers, and making sure every support plan reflects what the person actually wants, not just what’s easiest to arrange. I’ve also worked across remote teams, which taught me how to stay organized, communicate clearly, and keep everyone on the same page even when we’re not in the same room.\n\n`;
     email += `Having experience as both a support worker and a support coordinator has made me really empathetic, because I understand exactly what a client needs from both sides, and I know how to actually deliver it, not just plan it. My main goal is always the same: making sure the person I’m helping feels heard, supported, and in control of their own choices.\n\n`;
     email += `I understand that being a support coordinator also involves the practical side, case management, liaising with providers, monitoring plans, and stepping in when something isn’t working, which is why I’m willing to go above and beyond for every client I work with, as you can tell from my references.\n\n`;
     email += `Furthermore, I speak fluently English, Spanish, Italian, and basic French, which has helped me connect with clients and families from different backgrounds and made them feel truly understood.\n\n`;
@@ -444,7 +444,7 @@ function generatePersonalizedEmail(company, role, jdText, profileData, jobUrl) {
   email += `Dear ${company} Hiring Team,\n\n`;
   email += `I believe I'm the perfect candidate for the ${role} position.\n\n`;
 
-  email += `A little about me, I'm ${userCreds.fullName}, an AI Automation Specialist based in ${userCreds.location || 'Australia'}. Over the past four years, I've designed, coded, and deployed end-to-end automation systems across three businesses I founded. Not the kind of automation you set and forget, I'm talking about pipelines that run 24/7: scraping prospects, generating personalized reports, sending cold outreach, deploying websites, and booking meetings through AI voice agents, all with zero manual input. I've written every line of code, debugged workflows at 2am, and iterated until each system worked flawlessly. That's the level of care I'd bring to ${company}.\n\n`;
+  email += `A little about me, I'm ${userCreds.fullName}, a ${role} based in ${userCreds.location || 'Australia'}. Over the past 6 years, I've designed, coded, and deployed end-to-end automation systems across three businesses I founded. Not the kind of automation you set and forget, I'm talking about pipelines that run 24/7: scraping prospects, generating personalized reports, sending cold outreach, deploying websites, and booking meetings through AI voice agents, all with zero manual input. I've written every line of code, debugged workflows at 2am, and iterated until each system worked flawlessly. That's the level of care I'd bring to ${company}.\n\n`;
 
   if (matches.length > 0) {
     const topMatches = matches.slice(0, 3);
@@ -804,6 +804,7 @@ async function loadScorer() {
 
 let cvGeneratorFn = null;
 let clGeneratorFn = null;
+let rlGeneratorFn = null;
 
 async function loadGenerators() {
   if (!cvGeneratorFn) {
@@ -820,6 +821,14 @@ async function loadGenerators() {
       clGeneratorFn = clGen.generateCoverLetter;
     } catch (e) {
       console.log(`   ⚠️  Cover letter generator not available: ${e.message.slice(0, 80)}`);
+    }
+  }
+  if (!rlGeneratorFn) {
+    try {
+      const rlGen = await import('./lib/reference-letter-generator.mjs');
+      rlGeneratorFn = rlGen.generateReferenceLetter;
+    } catch (e) {
+      console.log(`   ⚠️  Reference letter generator not available: ${e.message.slice(0, 80)}`);
     }
   }
 }
@@ -1388,75 +1397,141 @@ ${whyMatch}
       cv = { pdfPath: null, htmlPath: null, success: false };
     }
     
-    // Generate cover letter
-    console.log(`   📝 Generating cover letter...`);
-    let clPath;
-    try {
-      clPath = generateCoverLetter(job.company, job.role || job.title);
-    } catch (e) {
-      console.log(`   ⚠️  Cover letter generation failed: ${e.message.slice(0, 80)}`);
-      clPath = null;
-    }
-    
-    // Try enhanced document generation if available
+    // --- Document Generation Matrix ---
+    const activeProfile = dbProfile || profile;
+    const pConfig = activeProfile?.profile_config || {};
+    const useLlm = pConfig.llm_enabled !== false; // Default true
+    const llmDocs = pConfig.llm_docs || { cv: true, cover_letter: false, reference_letter: true };
+    const jdText = job.description || job.raw || '';
+    const slug = (job.company || 'company').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+    const profileForDoc = userId ? dbProfile : {
+      fullName: profile?.candidate?.full_name || 'Ilse Placencia',
+      phone: profile?.candidate?.phone || '+61498570497',
+      email: emailConfig?.gmail?.user || 'placenciailse@gmail.com',
+      location: profile?.candidate?.location || 'Gold Coast, QLD, Australia',
+      portfolioUrl: profile?.candidate?.portfolio_url || 'https://www.ilseplacencia.shop',
+      llm_providers: profile?.llm_providers || []
+    };
+
     let enhancedCv = null;
+    let finalCvPath = cv?.pdfPath || null;
+    let cvHtmlPath = cv?.htmlPath || null;
+    
+    // 1. CV Generation
+    if (useLlm && llmDocs.cv !== false) {
+      console.log(`   📄 Generating CV via LLM...`);
+      try {
+        const cvMdText = readFileSync(join(__dirname, 'cv.md'), 'utf-8');
+        const llmCvHtml = await generateLLMTailoredCV(profileForDoc, cvMdText, jdText);
+        cvHtmlPath = join(__dirname, `output/llm-cv-${slug}-${TODAY}.html`);
+        const pdfPath = join(__dirname, `output/llm-cv-${slug}-${TODAY}.pdf`);
+        writeFileSync(cvHtmlPath, llmCvHtml, 'utf8');
+        
+        const cvMdFlag = `--cv-md="${join(__dirname, 'cv.md')}"`;
+        execSync(`node generate-pdf.mjs "${cvHtmlPath}" "${pdfPath}" --format=letter --report=000 ${cvMdFlag}`, { encoding: 'utf8', cwd: __dirname, timeout: 30000 });
+        
+        finalCvPath = pdfPath;
+        console.log(`   ✅ LLM CV generated: ${pdfPath}`);
+      } catch (e) {
+        console.log(`   ⚠️  LLM CV failed: ${e.message.slice(0, 80)}`);
+      }
+    }
+
+    if (!finalCvPath || finalCvPath === cv?.pdfPath) {
+      if (cvGeneratorFn) {
+        console.log(`   📄 Generating CV via Native Keywords...`);
+        try {
+          enhancedCv = await cvGeneratorFn(profileForDoc, jdText, join(__dirname, 'output'));
+          if (enhancedCv.success) {
+            finalCvPath = enhancedCv.pdfPath;
+            cvHtmlPath = enhancedCv.htmlPath;
+            console.log(`   ✅ Native CV generated: ${finalCvPath}`);
+          }
+        } catch (e) {
+          console.log(`   ⚠️  Native CV failed: ${e.message.slice(0, 80)}`);
+        }
+      }
+    }
+
+    // 2. Cover Letter Generation
     let enhancedCl = null;
-    
-    if (cvGeneratorFn) {
+    let finalClPath = null;
+    let coverLetterText = '';
+
+    if (useLlm && llmDocs.cover_letter !== false) {
+      console.log(`   📄 Generating Cover Letter via LLM...`);
       try {
-        const profileForDoc = userId ? dbProfile : {
-          fullName: profile?.candidate?.full_name || 'Ilse Placencia',
-          phone: profile?.candidate?.phone || '+61498570497',
-          email: emailConfig?.gmail?.user || 'placenciailse@gmail.com',
-          location: profile?.candidate?.location || 'Gold Coast, QLD, Australia',
-          portfolioUrl: profile?.candidate?.portfolio_url || 'https://www.ilseplacencia.shop',
-        };
-        enhancedCv = await cvGeneratorFn(profileForDoc, job.description || job.raw || '', join(__dirname, 'output'));
-        if (enhancedCv.success) {
-          console.log(`   ✅ Enhanced CV generated: ${enhancedCv.pdfPath}`);
-        }
+        coverLetterText = await generateLLMCoverLetter(profileForDoc, jdText);
+        console.log(`   ✅ LLM Cover Letter generated.`);
+        
+        // Wrap LLM text in HTML and convert to PDF for attachment
+        const clHtmlContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1a1a2e; padding: 40px; line-height: 1.6; max-width: 680px; margin: 0 auto;}</style></head><body>${coverLetterText.split('\\n').map(l => l.trim() ? `<p>${l}</p>` : '').join('')}</body></html>`;
+        const clHtmlPath = join(__dirname, `output/llm-cl-${slug}-${TODAY}.html`);
+        finalClPath = join(__dirname, `output/llm-cl-${slug}-${TODAY}.pdf`);
+        writeFileSync(clHtmlPath, clHtmlContent, 'utf8');
+        execSync(`node generate-pdf.mjs "${clHtmlPath}" "${finalClPath}" --format=letter --report=000`, { encoding: 'utf8', cwd: __dirname, timeout: 30000 });
+        console.log(`   ✅ LLM Cover Letter PDF generated: ${finalClPath}`);
       } catch (e) {
-        console.log(`   ⚠️  Enhanced CV failed: ${e.message.slice(0, 80)}`);
+        console.log(`   ⚠️  LLM Cover Letter failed: ${e.message.slice(0, 80)}`);
       }
     }
-    
-    if (clGeneratorFn) {
-      try {
-        const profileForDoc = userId ? dbProfile : {
-          fullName: profile?.candidate?.full_name || 'Ilse Placencia',
-          phone: profile?.candidate?.phone || '+61498570497',
-          email: emailConfig?.gmail?.user || 'placenciailse@gmail.com',
-          location: profile?.candidate?.location || 'Gold Coast, QLD, Australia',
-          portfolioUrl: profile?.candidate?.portfolio_url || 'https://www.ilseplacencia.shop',
-        };
-        enhancedCl = await clGeneratorFn(profileForDoc, {
-          company: job.company,
-          title: job.role || job.title,
-        }, job.description || job.raw || '', join(__dirname, 'output'));
-        if (enhancedCl.success) {
-          console.log(`   ✅ Enhanced cover letter generated: ${enhancedCl.pdfPath}`);
+
+    if (!coverLetterText) {
+      if (clGeneratorFn) {
+        console.log(`   📄 Generating Cover Letter via Native Keywords...`);
+        try {
+          enhancedCl = await clGeneratorFn(profileForDoc, { company: job.company, title: job.role || job.title }, jdText, join(__dirname, 'output'));
+          if (enhancedCl.success) {
+            finalClPath = enhancedCl.pdfPath;
+            coverLetterText = readFileSync(enhancedCl.textPath, 'utf8');
+            console.log(`   ✅ Native Cover Letter generated: ${finalClPath}`);
+          }
+        } catch (e) {
+          console.log(`   ⚠️  Native Cover Letter failed: ${e.message.slice(0, 80)}`);
         }
-      } catch (e) {
-        console.log(`   ⚠️  Enhanced cover letter failed: ${e.message.slice(0, 80)}`);
       }
     }
-    
-    // Try generating Reference Letter via LLM if cv_generation_mode is llm
+
+    // 3. Reference Letter Generation
     let generatedRefLetterHtml = null;
-    const isLlmMode = (dbProfile?.cv_generation_mode === 'llm') || (profile?.cv_generation_mode === 'llm');
-    if (isLlmMode) {
+
+    if (useLlm && llmDocs.reference_letter !== false) {
       console.log(`   📄 Generating Reference Letter via LLM...`);
       try {
-        generatedRefLetterHtml = await generateLLMReferenceLetter(dbProfile || profile, job.description || job.raw || '');
-        console.log(`   ✅ Enhanced Reference Letter generated.`);
+        generatedRefLetterHtml = await generateLLMReferenceLetter(profileForDoc, jdText);
+        console.log(`   ✅ LLM Reference Letter generated.`);
       } catch (e) {
-        console.log(`   ⚠️  Reference Letter generation failed: ${e.message.slice(0, 80)}`);
+        console.log(`   ⚠️  LLM Reference Letter failed: ${e.message.slice(0, 80)}`);
+      }
+    }
+
+    if (!generatedRefLetterHtml) {
+      if (rlGeneratorFn) {
+        console.log(`   📄 Generating Reference Letter via Native Keywords...`);
+        try {
+          generatedRefLetterHtml = rlGeneratorFn(profileForDoc, job, jdText);
+          console.log(`   ✅ Native Reference Letter generated.`);
+        } catch (e) {
+          console.log(`   ⚠️  Native Reference Letter failed: ${e.message.slice(0, 80)}`);
+        }
       }
     }
     
-    // Use enhanced PDFs if available, fall back to basic
-    const finalCvPath = enhancedCv?.pdfPath || cv.pdfPath;
-    const finalClPath = enhancedCl?.pdfPath || clPath;
+    // Generate PDF for Reference Letter
+    let finalRlPath = null;
+    if (generatedRefLetterHtml) {
+      const rlHtmlPath = join(__dirname, `output/ref-letter-${slug}-${TODAY}.html`);
+      finalRlPath = join(__dirname, `output/ref-letter-${slug}-${TODAY}.pdf`);
+      writeFileSync(rlHtmlPath, generatedRefLetterHtml, 'utf8');
+      try {
+        execSync(`node generate-pdf.mjs "${rlHtmlPath}" "${finalRlPath}" --format=letter --report=000`, { encoding: 'utf8', cwd: __dirname, timeout: 30000 });
+        console.log(`   ✅ Reference Letter PDF generated: ${finalRlPath}`);
+      } catch (e) {
+        console.log(`   ⚠️  Failed to generate Reference Letter PDF: ${e.message.slice(0, 80)}`);
+        finalRlPath = null;
+      }
+    }
     
     // Scrape JD and generate personalized email
     console.log(`   📧 Scraping job description for personalization...`);
@@ -1515,14 +1590,7 @@ Happy to talk more if it's helpful.
 Warmest regards,
 Taylor Chorley`;
 
-            // Read cover letter text
-            let coverLetterText = '';
-            if (enhancedCl?.textPath && existsSync(enhancedCl.textPath)) {
-              coverLetterText = readFileSync(enhancedCl.textPath, 'utf8');
-            } else if (existsSync(clPath)) {
-              coverLetterText = readFileSync(clPath, 'utf8');
-            }
-
+            // Use the coverLetterText we generated earlier in the matrix
             const activeRefLetter = generatedRefLetterHtml || refLetterText;
 
             const fullEmailBody = (
@@ -1550,6 +1618,7 @@ Taylor Chorley`;
               attachments: [
                 finalCvPath && { path: finalCvPath },
                 finalClPath && { path: finalClPath },
+                finalRlPath && { path: finalRlPath },
               ].filter(Boolean),
             });
             
@@ -1570,21 +1639,15 @@ Taylor Chorley`;
     if (dbWriter) {
       try {
         console.log(`   🔄 Syncing job documents to dashboard inbox...`);
+        // Use the cvHtmlPath and coverLetterText generated earlier in the matrix
         let cvHtml = null;
-        const cvHtmlPath = enhancedCv?.htmlPath || cv.htmlPath;
         if (cvHtmlPath && existsSync(cvHtmlPath)) {
           cvHtml = readFileSync(cvHtmlPath, 'utf8');
-        }
-        let coverLetterContent = null;
-        if (enhancedCl?.textPath && existsSync(enhancedCl.textPath)) {
-          coverLetterContent = readFileSync(enhancedCl.textPath, 'utf8');
-        } else if (existsSync(clPath)) {
-          coverLetterContent = readFileSync(clPath, 'utf8');
         }
         
         await dbWriter.syncToInbox(targetUserId, job, scoreResult || { score: jobScore, dimensionScores: {}, matchReasons }, {
           cvHtml,
-          coverLetter: coverLetterContent,
+          coverLetter: coverLetterText || null,
           referenceLetter: generatedRefLetterHtml,
           emailDraft: `Subject: ${emailSubject}\n\n${emailBody}`,
           gmailDraftId,
@@ -1693,8 +1756,9 @@ ${emailBody}
 ---
 
 **Attachments:**
-- ${finalCvPath || cv.pdfPath || 'CV not generated'}
-- ${finalClPath || clPath || 'Cover letter not generated'}
+- ${finalCvPath || cv?.pdfPath || 'CV not generated'}
+- ${finalClPath || 'Cover letter not generated'}
+- ${finalRlPath || 'Reference letter not generated'}
 `;
       try {
         writeFileSync(draftPath, draftContent);
@@ -1719,20 +1783,10 @@ ${emailBody}
     // DB mode: persist application record and update job status
     if (userId && dbWriter && job.dbId && !DRY_RUN) {
       try {
-        // Use enhanced cover letter content if available
-        let coverLetterContent = null;
-        if (enhancedCl?.textPath && existsSync(enhancedCl.textPath)) {
-          coverLetterContent = readFileSync(enhancedCl.textPath, 'utf8');
-        } else if (existsSync(clPath)) {
-          coverLetterContent = readFileSync(clPath, 'utf8');
-        }
-        
         // Read enhanced CV HTML for caching in DB
         let resumeHtml = null;
-        if (enhancedCv?.htmlPath && existsSync(enhancedCv.htmlPath)) {
-          resumeHtml = readFileSync(enhancedCv.htmlPath, 'utf8');
-        } else if (cv?.htmlPath && existsSync(cv.htmlPath)) {
-          resumeHtml = readFileSync(cv.htmlPath, 'utf8');
+        if (cvHtmlPath && existsSync(cvHtmlPath)) {
+          resumeHtml = readFileSync(cvHtmlPath, 'utf8');
         }
         
         const isSupportEvaluated = atsApplied;
@@ -1741,8 +1795,8 @@ ${emailBody}
 
 
         await dbWriter.writeApplication(userId, job.dbId, {
-          resumeUrl: userCreds.resumeUrl || finalCvPath || cv.pdfPath,
-          coverLetter: coverLetterContent,
+          resumeUrl: userCreds.resumeUrl || finalCvPath || cv?.pdfPath,
+          coverLetter: coverLetterText || null,
           emailBody,
           emailSubject,
           status: appStatus,

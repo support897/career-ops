@@ -66,6 +66,14 @@ type ScanSettings = {
   preferred_hours: number[];
   timezone: string;
   last_scan_at: string | null;
+  profile_config?: {
+    llm_enabled?: boolean;
+    llm_docs?: {
+      cv?: boolean;
+      cover_letter?: boolean;
+      reference_letter?: boolean;
+    };
+  };
 };
 
 export function ScanSettingsCard() {
@@ -77,6 +85,14 @@ export function ScanSettingsCard() {
     preferred_hours: [9, 13, 18],
     timezone: "UTC",
     last_scan_at: null,
+    profile_config: {
+      llm_enabled: true,
+      llm_docs: {
+        cv: true,
+        cover_letter: false,
+        reference_letter: true,
+      }
+    }
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -101,6 +117,14 @@ export function ScanSettingsCard() {
           preferred_hours: d.preferred_hours ?? [9, 13, 18],
           timezone: d.timezone ?? "UTC",
           last_scan_at: d.last_scan_at,
+          profile_config: {
+            llm_enabled: d.profile_config?.llm_enabled ?? true,
+            llm_docs: {
+              cv: d.profile_config?.llm_docs?.cv ?? true,
+              cover_letter: d.profile_config?.llm_docs?.cover_letter ?? false,
+              reference_letter: d.profile_config?.llm_docs?.reference_letter ?? true,
+            }
+          }
         });
         setLoading(false);
       })
@@ -285,6 +309,85 @@ export function ScanSettingsCard() {
           </div>
         </div>
       )}
+
+      {/* Document Generation */}
+      <div className="mt-8 border-t border-border pt-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-muted">Document Generation</h3>
+            <p className="mt-1 text-xs text-faint">Control which documents use LLM vs aggressive keyword matching.</p>
+          </div>
+          <button
+            onClick={() => setSettings((s) => ({
+              ...s,
+              profile_config: { ...s.profile_config, llm_enabled: !s.profile_config?.llm_enabled }
+            }))}
+            className="flex items-center gap-1.5 text-sm text-muted transition hover:text-foreground"
+          >
+            {settings.profile_config?.llm_enabled ? (
+              <ToggleRight className="size-6 text-brand" />
+            ) : (
+              <ToggleLeft className="size-6 text-faint" />
+            )}
+            {settings.profile_config?.llm_enabled ? "LLM Pipeline" : "Native Keyword"}
+          </button>
+        </div>
+
+        {settings.profile_config?.llm_enabled && (
+          <div className="mt-4 space-y-3 rounded-xl border border-border bg-surface/30 p-4">
+            <label className="flex cursor-pointer items-center gap-3">
+              <input
+                type="checkbox"
+                className="size-4 rounded border-border accent-brand"
+                checked={settings.profile_config?.llm_docs?.cv ?? true}
+                onChange={(e) => setSettings((s) => ({
+                  ...s,
+                  profile_config: {
+                    ...s.profile_config,
+                    llm_docs: { ...s.profile_config?.llm_docs, cv: e.target.checked }
+                  }
+                }))}
+              />
+              <span className="text-sm font-medium text-muted">Use LLM for Tailored CV</span>
+            </label>
+            
+            <label className="flex cursor-pointer items-center gap-3">
+              <input
+                type="checkbox"
+                className="size-4 rounded border-border accent-brand"
+                checked={settings.profile_config?.llm_docs?.cover_letter ?? false}
+                onChange={(e) => setSettings((s) => ({
+                  ...s,
+                  profile_config: {
+                    ...s.profile_config,
+                    llm_docs: { ...s.profile_config?.llm_docs, cover_letter: e.target.checked }
+                  }
+                }))}
+              />
+              <span className="text-sm font-medium text-muted">Use LLM for Cover Letter</span>
+            </label>
+
+            <label className="flex cursor-pointer items-center gap-3">
+              <input
+                type="checkbox"
+                className="size-4 rounded border-border accent-brand"
+                checked={settings.profile_config?.llm_docs?.reference_letter ?? true}
+                onChange={(e) => setSettings((s) => ({
+                  ...s,
+                  profile_config: {
+                    ...s.profile_config,
+                    llm_docs: { ...s.profile_config?.llm_docs, reference_letter: e.target.checked }
+                  }
+                }))}
+              />
+              <span className="text-sm font-medium text-muted">Use LLM for Reference Letter</span>
+            </label>
+            <p className="mt-2 text-xs text-faint border-t border-border/50 pt-2">
+              Unchecked documents will fall back to local aggressive keyword matching (no API).
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Save button */}
       <div className="mt-4 flex items-center gap-3">

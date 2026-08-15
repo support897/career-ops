@@ -35,6 +35,7 @@ export async function GET(request: Request) {
       keywords: profile.keywords,
       location_filter: profile.location_filter,
       last_scan_at: profile.last_scan_at,
+      profile_config: profile.profile_config || {},
     });
   } catch (error) {
     console.error("[Scan Settings] GET error:", error);
@@ -90,7 +91,11 @@ export async function POST(request: Request) {
       }
     }
 
-    const profile = await upsertUserProfile(userId, {
+    const profile = await getUserProfile(userId);
+    const existingConfig = profile?.profile_config || {};
+    const newConfig = { ...existingConfig, ...(settings.profile_config || {}) };
+
+    const updatedProfile = await upsertUserProfile(userId, {
       scanning_enabled: settings.scanning_enabled,
       scan_mode: settings.scan_mode,
       scan_frequency_hours: settings.scan_frequency_hours,
@@ -100,9 +105,10 @@ export async function POST(request: Request) {
       platforms: settings.platforms,
       keywords: settings.keywords,
       location_filter: settings.location_filter,
+      profile_config: newConfig,
     });
 
-    return NextResponse.json({ success: true, profile });
+    return NextResponse.json({ success: true, profile: updatedProfile });
   } catch (error) {
     console.error("[Scan Settings] POST error:", error);
     return NextResponse.json(
