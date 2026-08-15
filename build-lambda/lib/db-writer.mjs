@@ -209,7 +209,7 @@ export async function syncToInbox(userId, job, scoreResult, docs = {}) {
       docs.coverLetter || null,
       docs.emailDraft || null,
       docs.cvHtml ? 'ready' : 'pending',
-      'new',
+      'evaluated',
       docs.gmailDraftId || null,
     ]
   );
