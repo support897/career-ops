@@ -850,7 +850,7 @@ async function generateTailoredCV(company, role, jdText = '') {
 
     try {
       const cvGen = await import('./lib/cv-generator.mjs');
-      const html = cvGen.generateCVHtml(profileForDoc, jdText, cvMdPath);
+      const html = await cvGen.generateCVHtmlAsync(profileForDoc, jdText, cvMdPath);
       writeFileSync(htmlPath, html, 'utf8');
       
       // Generate PDF

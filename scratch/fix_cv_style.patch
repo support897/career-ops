@@ -1,0 +1,27 @@
+--- lib/cv-generator.mjs
++++ lib/cv-generator.mjs
+@@ -461,8 +461,22 @@
+   const templatePath = resolve(__dirname, '..', 'templates', 'cv-template.html');
+   const template = readFileSync(templatePath, 'utf-8');
+ 
++  let accentColor = null;
++  try {
++    const profilePath = resolve(__dirname, '..', 'config', 'profile.yml');
++    if (existsSync(profilePath)) {
++      const yaml = readFileSync(profilePath, 'utf-8');
++      const match = yaml.match(/accent_color:\s*["']?([^"'\r\n]+)["']?/);
++      if (match && match[1]) {
++        accentColor = match[1];
++      }
++    }
++  } catch (e) {}
++
+   // Import build-cv-html's renderHtml function
+   // We inline the rendering to avoid ESM import issues in Lambda
+-  return renderCVHtml(template, payload);
++  let html = renderCVHtml(template, payload);
++  if (accentColor) {
++    html = html.replace("</head>", `<style>:root { --accent-color: ${accentColor}; }</style></head>`);
++  }
++  return html;
+ }
