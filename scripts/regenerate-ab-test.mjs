@@ -3,7 +3,7 @@ import pg from 'pg';
 import { readFileSync, existsSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { generateLLMTailoredCV, generateLLMCoverLetter, generateLLMReferenceLetter } from '../lib/llm-cv-builder.mjs';
+
 import * as cvGen from '../lib/cv-generator.mjs';
 import { generateCoverLetter } from '../lib/cover-letter-generator.mjs';
 import { generateReferenceLetter } from '../lib/reference-letter-generator.mjs';
@@ -46,9 +46,7 @@ async function run() {
     const jdText = job.jd_text || `${job.role} at ${job.company}`;
     const scoreResult = { score: job.score, matchReasons: job.why_match };
     
-    // Strict 50/50 split
-    const useLlm = i % 2 === 0;
-    let generationMethod = useLlm ? 'llm' : 'keyword';
+    let generationMethod = 'keyword';
     
     console.log(`[${i+1}/${jobs.length}] Generating docs for ${job.company} (${generationMethod})...`);
     
@@ -58,32 +56,16 @@ async function run() {
     let emailBody = null;
 
     try {
-      let llmFailed = false;
-      if (useLlm) {
-        try {
-          // LLM generation
-          cvHtml = await generateLLMTailoredCV(profileForDoc, cvMdText, jdText);
-          coverLetterText = await generateLLMCoverLetter(profileForDoc, cvMdText, jdText, job.company);
-          activeRefLetter = await generateLLMReferenceLetter(profileForDoc, cvMdText, jdText);
-        } catch (e) {
-          console.log(`   ⚠️ LLM failed for ${job.company}, falling back to keywords: ${e.message}`);
-          llmFailed = true;
-          generationMethod = 'keyword';
-        }
+      // Keyword generation
+      cvHtml = await cvGen.generateCVHtmlAsync(profileForDoc, jdText, join(process.cwd(), 'cv.md'));
+      const enhancedCl = await generateCoverLetter(profileForDoc, { company: job.company, title: job.role || job.title }, jdText, join(process.cwd(), 'output'));
+      if (enhancedCl.success) {
+        coverLetterText = readFileSync(enhancedCl.textPath, 'utf8');
       }
-      
-      if (!useLlm || llmFailed) {
-        // Keyword generation
-        cvHtml = await cvGen.generateCVHtmlAsync(profileForDoc, jdText, join(process.cwd(), 'cv.md'));
-        const enhancedCl = await generateCoverLetter(profileForDoc, { company: job.company, title: job.role || job.title }, jdText, join(process.cwd(), 'output'));
-        if (enhancedCl.success) {
-          coverLetterText = readFileSync(enhancedCl.textPath, 'utf8');
-        }
-        try {
-          activeRefLetter = generateReferenceLetter(profileForDoc, job, jdText);
-        } catch (e) {
-          activeRefLetter = job.reference_letter; // Fallback to DB reference letter if keyword generator fails
-        }
+      try {
+        activeRefLetter = generateReferenceLetter(profileForDoc, job, jdText);
+      } catch (e) {
+        activeRefLetter = job.reference_letter; // Fallback to DB reference letter if keyword generator fails
       }
 
       emailBody = `Dear ${job.company} Hiring Team,\n\nI believe I'm the perfect candidate for the ${job.role || 'position'}.\n\nA little about me...`;

@@ -13,6 +13,7 @@ sftp = ssh.open_sftp()
 
 files_to_sync = [
     "web/src/app/api/status/route.ts",
+    "web/src/components/pipeline-view.tsx",
     "web/src/components/report-view.tsx",
     "web/src/app/pipeline/[id]/page.tsx",
     "web/src/app/api/pipeline/route.ts",
