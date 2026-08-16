@@ -130,54 +130,64 @@ ${row.why_match || ""}
     console.error('[api/pipeline] Error loading local summary:', e);
   }
 
-  // DB fallback / enrichment if local empty
-  if (!inbox || inbox.length === 0 || !applications || applications.length === 0) {
-    try {
-      const sql = getSql();
-      const inboxRows = await sql`
-        SELECT * FROM job_inbox 
-        WHERE user_id = ${owner}
-        ORDER BY created_at DESC
-      `;
-      if (inboxRows && inboxRows.length > 0) {
-        inbox = inboxRows.map((r: any) => ({
-          id: r.id,
-          url: r.url,
-          company: r.company,
-          role: r.role,
-          location: r.location,
-          salary: r.salary,
-          score: r.score ? `${r.score}/5` : null,
-          why_match: r.why_match,
-          doc_status: r.doc_status,
-          job_status: r.job_status,
-          postedAt: safeIsoDate(r.posted_at),
-          done: r.job_status === 'discarded',
-        }));
-      }
-
-      const appRows = await sql`
-        SELECT * FROM job_inbox 
-        WHERE user_id = ${owner} AND job_status != 'new'
-        ORDER BY created_at DESC
-      `;
-      if (appRows && appRows.length > 0 && (!applications || applications.length === 0)) {
-        applications = appRows.map((r: any, idx: number) => ({
-          n: String(idx + 1),
-          num: String(idx + 1),
-          date: safeYmdDate(r.posted_at),
-          company: r.company,
-          role: r.role,
-          score: r.score ? `${r.score}/5` : null,
-          status: r.job_status === 'applied' ? 'Applied' : 'Evaluated',
-          pdf: r.doc_status === 'ready' ? '✅' : '❌',
-          report: '',
-          notes: r.why_match || '',
-        }));
-      }
-    } catch (e) {
-      console.error('[api/pipeline] DB query error:', e);
+  // DB query for inbox & applications
+  try {
+    const sql = getSql();
+    const inboxRows = await sql`
+      SELECT * FROM job_inbox 
+      WHERE user_id = ${owner}
+      ORDER BY created_at DESC
+    `;
+    if (inboxRows && inboxRows.length > 0) {
+      inbox = inboxRows.map((r: any) => ({
+        id: r.id,
+        url: r.url,
+        company: r.company,
+        role: r.role,
+        location: r.location,
+        salary: r.salary,
+        score: r.score ? `${r.score}/5` : null,
+        why_match: r.why_match,
+        doc_status: r.doc_status,
+        job_status: r.job_status,
+        postedAt: safeIsoDate(r.posted_at),
+        done: r.job_status === 'discarded',
+      }));
     }
+
+    const appRows = await sql`
+      SELECT * FROM job_inbox 
+      WHERE user_id = ${owner} AND (score IS NOT NULL OR job_status != 'new' OR doc_status = 'ready')
+      ORDER BY updated_at DESC
+    `;
+    if (appRows && appRows.length > 0) {
+      const dbApps = appRows.map((r: any, idx: number) => ({
+        n: String(idx + 1),
+        num: String(idx + 1),
+        date: safeYmdDate(r.posted_at),
+        company: r.company,
+        role: r.role,
+        score: r.score ? `${r.score}/5` : null,
+        status: r.job_status === 'applied' ? 'Applied' : (r.job_status === 'discarded' ? 'Discarded' : 'Evaluated'),
+        pdf: r.doc_status === 'ready' ? '✅' : '❌',
+        report: '',
+        notes: r.why_match || '',
+      }));
+
+      // Combine with local applications if any, deduplicating by company + role
+      const seenKey = new Set<string>();
+      const combined: any[] = [];
+      for (const a of [...dbApps, ...applications]) {
+        const key = `${a.company.toLowerCase()}||${a.role.toLowerCase()}`;
+        if (!seenKey.has(key)) {
+          seenKey.add(key);
+          combined.push(a);
+        }
+      }
+      applications = combined;
+    }
+  } catch (e) {
+    console.error('[api/pipeline] DB query error:', e);
   }
 
   return Response.json({
