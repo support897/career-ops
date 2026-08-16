@@ -1589,10 +1589,11 @@ Taylor Chorley`;
             const emailConfig = jsyaml.load(readFileSync(join(__dirname, 'config/email.yml'), 'utf-8'));
             const fromEmail = emailConfig?.gmail?.user || 'placenciailse@gmail.com';
 
-            const fullEmailBody = (
-              `🔗 APPLY HERE: ${job.url}\n\n` +
-              `${emailBody || ""}\n`
-            )
+            let fullEmailBody = emailBody || "";
+            if (!fullEmailBody.includes("APPLY HERE")) {
+              fullEmailBody = `🔗 APPLY HERE: ${job.url}\n\n` + fullEmailBody;
+            }
+            fullEmailBody = fullEmailBody
               .replace(/ — /g, ", ")
               .replace(/ —/g, ", ")
               .replace(/—/g, ", ")

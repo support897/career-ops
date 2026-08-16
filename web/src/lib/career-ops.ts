@@ -99,6 +99,7 @@ export function readScanDates(): Map<string, string> {
 }
 
 export type Application = {
+  id?: string;
   n: string;
   date: string;
   company: string;

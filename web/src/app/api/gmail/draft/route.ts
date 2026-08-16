@@ -59,22 +59,42 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 2. Locate the tailored CV PDF
-    // In local mode, auto-apply generates pdfs under output/cv-ilse-placencia-*.pdf
+    // 2. Locate the tailored CV, Cover Letter, and Reference Letter PDFs
     const root = path.join(process.cwd(), "..");
     const outputDir = path.join(root, "output");
     let attachments = [];
     try {
       if (fs.existsSync(outputDir)) {
         const files = fs.readdirSync(outputDir);
-        // Find newest CV PDF generated for this company
         const cleanCompany = job.company.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
-        const match = files.filter(f => f.startsWith("cv-") && f.includes(cleanCompany) && f.endsWith(".pdf"))
-                           .sort((a, b) => fs.statSync(path.join(outputDir, b)).mtimeMs - fs.statSync(path.join(outputDir, a)).mtimeMs)[0];
-        if (match) {
+
+        // Find CV PDF (starts with cv- or llm-cv-)
+        const cvMatch = files.filter(f => (f.startsWith("cv-") || f.startsWith("llm-cv-")) && f.toLowerCase().includes(cleanCompany) && f.endsWith(".pdf"))
+                             .sort((a, b) => fs.statSync(path.join(outputDir, b)).mtimeMs - fs.statSync(path.join(outputDir, a)).mtimeMs)[0];
+        if (cvMatch) {
           attachments.push({
-            path: path.join(outputDir, match),
+            path: path.join(outputDir, cvMatch),
             filename: `${job.company.replace(/[^a-zA-Z0-9]/g, "")}_Resume.pdf`
+          });
+        }
+
+        // Find Cover Letter PDF (starts with cl-)
+        const clMatch = files.filter(f => f.startsWith("cl-") && f.toLowerCase().includes(cleanCompany) && f.endsWith(".pdf"))
+                             .sort((a, b) => fs.statSync(path.join(outputDir, b)).mtimeMs - fs.statSync(path.join(outputDir, a)).mtimeMs)[0];
+        if (clMatch) {
+          attachments.push({
+            path: path.join(outputDir, clMatch),
+            filename: `${job.company.replace(/[^a-zA-Z0-9]/g, "")}_Cover_Letter.pdf`
+          });
+        }
+
+        // Find Reference Letter PDF (starts with rl-)
+        const rlMatch = files.filter(f => f.startsWith("rl-") && f.toLowerCase().includes(cleanCompany) && f.endsWith(".pdf"))
+                             .sort((a, b) => fs.statSync(path.join(outputDir, b)).mtimeMs - fs.statSync(path.join(outputDir, a)).mtimeMs)[0];
+        if (rlMatch) {
+          attachments.push({
+            path: path.join(outputDir, rlMatch),
+            filename: `${job.company.replace(/[^a-zA-Z0-9]/g, "")}_Reference_Letter.pdf`
           });
         }
       }

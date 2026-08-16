@@ -19,64 +19,44 @@ function safeYmdDate(val: any): string {
 
 export default async function ReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  let app = findApplication(id);
-  let report = readReport(id);
-  let reportContent = report?.content ?? null;
-
-  // Load database job for documents (cover letter, email draft, gmail draft ID)
+  let app: any = null;
+  let reportContent: string | null = null;
+  let reportFile: string | null = null;
   let dbJob: any = null;
   const userId = getUserId();
-  
-  try {
-    const sql = getSql();
-    const formattedId = id.padStart(3, "0");
-    const rows = await sql`
-      SELECT * 
-      FROM job_inbox 
-      WHERE user_id = ${userId} 
-        AND (company ILIKE ${app?.company || ""} OR id = ${`00000000-0000-0000-0000-000000000${formattedId}`})
-      LIMIT 1
-    `;
-    if (rows.length > 0) {
-      dbJob = rows[0];
-    }
-  } catch (e) {
-    console.warn("[pipeline-detail] DB fetch failed:", e);
-  }
+  const sql = getSql();
 
-  if (!app) {
-    // Database fallback for production Vercel
+  // 1. Try querying by direct UUID from database first
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  if (isUuid) {
     try {
-      const sql = getSql();
       const rows = await sql`
         SELECT * FROM job_inbox 
-        WHERE user_id = ${userId}
-        ORDER BY created_at DESC
+        WHERE user_id = ${userId} AND id::text = ${id}
+        LIMIT 1
       `;
-      // Find the one corresponding to the 1-based index 'id'
-      const idx = parseInt(id) - 1;
-      if (rows[idx]) {
-        const row = rows[idx];
-        const rowDate = safeYmdDate(row.posted_at);
-        const rowScore = row.score ? `${row.score}/5` : "—";
+      if (rows.length > 0) {
+        dbJob = rows[0];
+        const rowDate = safeYmdDate(dbJob.posted_at);
+        const rowScore = dbJob.score ? `${dbJob.score}/5` : "—";
         app = {
+          id: dbJob.id,
           n: id,
           date: rowDate,
-          company: row.company,
-          role: row.role,
+          company: dbJob.company,
+          role: dbJob.role,
           score: rowScore,
-          status: row.job_status === 'applied' ? 'Applied' : 'Evaluated',
-          pdf: row.doc_status === 'ready' ? '✅' : '❌',
+          status: dbJob.job_status === 'applied' ? 'Applied' : (dbJob.job_status === 'discarded' ? 'Discarded' : 'Evaluated'),
+          pdf: dbJob.doc_status === 'ready' ? '✅' : '❌',
           report: '',
-          notes: row.why_match || '',
+          notes: dbJob.why_match || '',
           via: '—'
-        } as any;
-        dbJob = row;
-        
-        reportContent = `# Evaluation: ${row.company} — ${row.role}
-        
+        };
+
+        reportContent = `# Evaluation: ${dbJob.company} — ${dbJob.role}
+
 **Date:** ${rowDate}
-**URL:** ${row.url}
+**URL:** ${dbJob.url}
 **Via:** —
 **Score:** ${rowScore}
 **Legitimacy:** Not assessed (auto-synced from pipeline)
@@ -84,7 +64,72 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
 ---
 
 ## Machine Summary
-${row.why_match || ""}
+${dbJob.why_match || ""}
+`;
+      }
+    } catch (e) {
+      console.warn("[pipeline-detail] UUID lookup failed:", e);
+    }
+  }
+
+  // 2. If not found by UUID, try local applications list (filesystem check)
+  if (!app) {
+    app = findApplication(id);
+    const report = readReport(id);
+    reportContent = report?.content ?? null;
+    reportFile = report?.file ?? null;
+
+    if (app) {
+      try {
+        const rows = await sql`
+          SELECT * FROM job_inbox 
+          WHERE user_id = ${userId} AND company ILIKE ${app.company}
+          LIMIT 1
+        `;
+        if (rows.length > 0) dbJob = rows[0];
+      } catch (e) {}
+    }
+  }
+
+  // 3. Fallback: indexed lookup on database rows
+  if (!app) {
+    try {
+      const rows = await sql`
+        SELECT * FROM job_inbox 
+        WHERE user_id = ${userId} AND (score IS NOT NULL OR job_status != 'new' OR doc_status = 'ready')
+        ORDER BY updated_at DESC
+      `;
+      const idx = parseInt(id) - 1;
+      if (rows[idx]) {
+        dbJob = rows[idx];
+        const rowDate = safeYmdDate(dbJob.posted_at);
+        const rowScore = dbJob.score ? `${dbJob.score}/5` : "—";
+        app = {
+          id: dbJob.id,
+          n: id,
+          date: rowDate,
+          company: dbJob.company,
+          role: dbJob.role,
+          score: rowScore,
+          status: dbJob.job_status === 'applied' ? 'Applied' : (dbJob.job_status === 'discarded' ? 'Discarded' : 'Evaluated'),
+          pdf: dbJob.doc_status === 'ready' ? '✅' : '❌',
+          report: '',
+          notes: dbJob.why_match || '',
+          via: '—'
+        };
+
+        reportContent = `# Evaluation: ${dbJob.company} — ${dbJob.role}
+
+**Date:** ${rowDate}
+**URL:** ${dbJob.url}
+**Via:** —
+**Score:** ${rowScore}
+**Legitimacy:** Not assessed (auto-synced from pipeline)
+
+---
+
+## Machine Summary
+${dbJob.why_match || ""}
 `;
       }
     } catch (e) {
@@ -99,7 +144,7 @@ ${row.why_match || ""}
       id={id} 
       app={app} 
       report={reportContent} 
-      file={report?.file ?? null} 
+      file={reportFile} 
       canDelete={trackerCanDelete()}
       dbCoverLetter={dbJob?.cover_letter ?? null}
       dbCvHtml={dbJob?.cv_html ?? null}

@@ -162,6 +162,7 @@ ${row.why_match || ""}
     `;
     if (appRows && appRows.length > 0) {
       const dbApps = appRows.map((r: any, idx: number) => ({
+        id: r.id,
         n: String(idx + 1),
         num: String(idx + 1),
         date: safeYmdDate(r.posted_at),
