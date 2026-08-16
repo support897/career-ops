@@ -1358,17 +1358,16 @@ ${whyMatch}
       }
     }
     
-    // Check dashboard score threshold to see if we should sync to inbox & generate docs
-    const shouldSync = jobScore >= dashboardScoreThreshold;
-    if (!shouldSync) {
-      console.log(`   ⏭️  Score ${jobScore} < ${dashboardScoreThreshold} dashboard threshold — skipping sync`);
-      stats.skipped++;
-      stats.skippedJobs.push({ company: job.company, role: job.role || job.title, reason: `Score below dashboard threshold (${dashboardScoreThreshold})` });
-      markJobCompletedInPipeline(job.url);
-      continue;
+    // Always sync score and evaluation match reason to dashboard DB inbox
+    if (dbWriter) {
+      try {
+        await dbWriter.syncToInbox(targetUserId, job, scoreResult || { score: jobScore, dimensionScores: {}, matchReasons }, {});
+      } catch (e) {
+        console.log(`   ⚠️  Sync to dashboard inbox failed: ${e.message}`);
+      }
     }
-    
-    // Check if we should generate documents
+
+    // Check if we should generate documents (score >= 4.0)
     const shouldGenerateDocs = jobScore >= minScoreForAutoApply;
     
     if (!shouldGenerateDocs) {

@@ -1654,6 +1654,17 @@ export async function appendToPipeline(offers) {
 
     writeFileSync(PIPELINE_PATH, text, 'utf-8');
   });
+
+  // Sync scanned offers directly to Neon DB for Vercel inbox display
+  if (process.env.DATABASE_URL) {
+    try {
+      const dbWriter = await import('./lib/db-writer.mjs');
+      const userId = process.env.VIP_USER_ID || 'default';
+      await dbWriter.writeScannedJobsToInbox(userId, offers);
+    } catch (e) {
+      // ignore DB write errors
+    }
+  }
 }
 
 export function appendToScanHistory(offers, date, status = 'added') {
