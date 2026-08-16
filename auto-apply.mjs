@@ -1541,6 +1541,28 @@ ${whyMatch}
     let companyEmail = await findCompanyEmail(job);
     let gmailDraftId = null;
 
+    // Reference letter text/HTML for attachments and DB sync
+    const activeRefLetter = generatedRefLetterHtml || `Taylor Chorley
+Digital Marketing Supervisor, Evolve Marketing
+taylorchorley@gmail.com | +1 (604) 551-8229
+
+To Whom It May Concern,
+
+I've worked with Ilse Placencia since January 2024, when she joined Evolve Marketing as a Digital Marketing Assistant, and I'm genuinely glad to write this on her behalf.
+
+What stands out most, honestly, isn't just her skill set, it's how she works. Ilse brings this steady, positive energy to everything, even on the weeks that get hectic. She's the kind of person who checks in on how you're doing before diving into the task list, and that made a real difference on a fully remote team where it's easy to feel disconnected.
+
+That said, she's also just really good at the job, and not just in one thing either. She's sharp across marketing and AI alike, and she's always finding new tools to make the work faster or better. If a tool she needs doesn't exist yet, she'll just build her own. That kind of resourcefulness isn't something you can teach. She has a genuine feel for what makes people click, and her social content consistently landed on brand, well timed, and built for whatever platform it was going on.
+
+She's also reliable, something really hard to find nowadays. She meets deadlines, communicates clearly, and shows up prepared to strategy conversations with actual value, not just notes. Her analytics work and customer research made our campaigns improve across the board.
+
+I'd hire Ilse again without hesitation. She's hardworking, kind, easy to work with, and any team would be lucky to have her.
+
+Happy to talk more if it's helpful.
+
+Warmest regards,
+Taylor Chorley`;
+
     if (isVip && !DRY_RUN) {
       // Check if draft already exists in DB to prevent duplicates
       let existingDraftId = null;
@@ -1565,31 +1587,7 @@ ${whyMatch}
 
           if (hasGmailCredentials()) {
             const emailConfig = jsyaml.load(readFileSync(join(__dirname, 'config/email.yml'), 'utf-8'));
-            const fromEmail = emailConfig.defaults?.from_email || 'placenciailse@gmail.com';
-            
-            const refLetterText = `Taylor Chorley
-Digital Marketing Supervisor, Evolve Marketing
-taylorchorley@gmail.com | +1 (604) 551-8229
-
-To Whom It May Concern,
-
-I've worked with Ilse Placencia since January 2024, when she joined Evolve Marketing as a Digital Marketing Assistant, and I'm genuinely glad to write this on her behalf.
-
-What stands out most, honestly, isn't just her skill set, it's how she works. Ilse brings this steady, positive energy to everything, even on the weeks that get hectic. She's the kind of person who checks in on how you're doing before diving into the task list, and that made a real difference on a fully remote team where it's easy to feel disconnected.
-
-That said, she's also just really good at the job, and not just in one thing either. She's sharp across marketing and AI alike, and she's always finding new tools to make the work faster or better. If a tool she needs doesn't exist yet, she'll just build her own. That kind of resourcefulness isn't something you can teach. She has a genuine feel for what makes people click, and her social content consistently landed on brand, well timed, and built for whatever platform it was going on.
-
-She's also reliable, something really hard to find nowadays. She meets deadlines, communicates clearly, and shows up prepared to strategy conversations with actual value, not just notes. Her analytics work and customer research made our campaigns improve across the board.
-
-I'd hire Ilse again without hesitation. She's hardworking, kind, easy to work with, and any team would be lucky to have her.
-
-Happy to talk more if it's helpful.
-
-Warmest regards,
-Taylor Chorley`;
-
-            // Use the coverLetterText we generated earlier in the matrix
-            const activeRefLetter = generatedRefLetterHtml || refLetterText;
+            const fromEmail = emailConfig?.gmail?.user || 'placenciailse@gmail.com';
 
             const fullEmailBody = (
               `🔗 APPLY HERE: ${job.url}\n\n` +
