@@ -9,14 +9,14 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   const userId = getUserId(request);
-  let body: { jobId?: string };
+  let body: { jobId?: string; cvBase64?: string; clBase64?: string; rlBase64?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { jobId } = body;
+  const { jobId, cvBase64, clBase64, rlBase64 } = body;
   if (!jobId) {
     return NextResponse.json({ error: "jobId required" }, { status: 400 });
   }
@@ -59,11 +59,27 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Prepend APPLY HERE URL if missing
+    if (!emailBody.includes("APPLY HERE")) {
+      emailBody = `🔗 APPLY HERE: ${job.url}\n\n` + emailBody;
+    }
+
     // 2. Locate the tailored CV, Cover Letter, and Reference Letter PDFs
     const root = path.join(process.cwd(), "..");
-    const outputDir = path.join(root, "output");
     let attachments = [];
-    try {
+    if (cvBase64) {
+      attachments.push({ content: cvBase64, filename: `${job.company.replace(/[^a-zA-Z0-9]/g, "")}_Resume.pdf` });
+    }
+    if (clBase64) {
+      attachments.push({ content: clBase64, filename: `${job.company.replace(/[^a-zA-Z0-9]/g, "")}_Cover_Letter.pdf` });
+    }
+    if (rlBase64) {
+      attachments.push({ content: rlBase64, filename: `${job.company.replace(/[^a-zA-Z0-9]/g, "")}_Reference_Letter.pdf` });
+    }
+
+    if (attachments.length === 0) {
+      const outputDir = path.join(root, "output");
+      try {
       if (fs.existsSync(outputDir)) {
         const files = fs.readdirSync(outputDir);
         const cleanCompany = job.company.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
@@ -100,6 +116,7 @@ export async function POST(request: NextRequest) {
       }
     } catch (e) {
       console.warn("[gmail-draft-api] Attachment resolution failed:", e);
+    }
     }
 
     // 3. Create Gmail Draft

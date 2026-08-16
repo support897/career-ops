@@ -108,14 +108,43 @@ export function ReportView({
   const handleSendGmailDraft = async () => {
     setSendingDraft(true);
     try {
+      let cvBase64 = null;
+      let clBase64 = null;
+      let rlBase64 = null;
+
+      const html2pdf = (await import("html2pdf.js")).default;
+      const opt = {
+        margin: 0.1,
+        image: { type: "jpeg" as const, quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: "in", format: "letter", orientation: "portrait" as const }
+      };
+
+      if (dbCvHtml) {
+        cvBase64 = await html2pdf().set(opt).from(dbCvHtml).output("base64");
+      }
+      if (dbCoverLetter) {
+        const clContent = dbCoverLetter.includes("<") ? dbCoverLetter : `<div style="font-family: sans-serif; padding: 40px; line-height: 1.6; font-size: 14px;">${dbCoverLetter.replace(/\n/g, "<br/>")}</div>`;
+        clBase64 = await html2pdf().set(opt).from(clContent).output("base64");
+      }
+      if (dbReferenceLetter) {
+        const rlContent = dbReferenceLetter.includes("<") ? dbReferenceLetter : `<div style="font-family: sans-serif; padding: 40px; line-height: 1.6; font-size: 14px;">${dbReferenceLetter.replace(/\n/g, "<br/>")}</div>`;
+        rlBase64 = await html2pdf().set(opt).from(rlContent).output("base64");
+      }
+
       const res = await fetch("/api/gmail/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobId: `00000000-0000-0000-0000-000000000${id.padStart(3, "0")}` }),
+        body: JSON.stringify({
+          jobId: app?.id || id,
+          cvBase64,
+          clBase64,
+          rlBase64
+        }),
       });
       if (res.ok) {
         const data = await res.json();
-        setGmailDraftId(data.uid || 'created');
+        setGmailDraftId(data.gmailDraftId || data.uid || 'created');
         alert("Draft successfully uploaded to Gmail drafts folder!");
       } else {
         const data = await res.json();
