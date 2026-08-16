@@ -3,15 +3,15 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "@neondatabase/serverless": "^0.10.0",
     "@sparticuz/chromium": "^131.0.0",
-    "playwright-core": "^1.52.0",
     "dotenv": "^17.0.0",
+    "imap-simple": "^5.1.0",
     "js-yaml": "^4.1.1",
-    "yaml": "^2.9.0",
+    "nodemailer": "^9.0.3",
+    "pg": "^8.23.0",
+    "playwright-core": "^1.52.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
-    "nodemailer": "^9.0.3",
-    "imap-simple": "^5.1.0"
+    "yaml": "^2.9.0"
   }
 }

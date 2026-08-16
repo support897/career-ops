@@ -90,7 +90,6 @@
   "license": "MIT",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
-    "@neondatabase/serverless": "^1.1.0",
     "dotenv": "^17.0.0",
     "email-hunter": "^1.0.5",
     "imap-simple": "^5.1.0",
@@ -98,7 +97,7 @@
     "mailparser": "^3.9.15",
     "nodemailer": "^9.0.5",
     "openai": "^7.4.0",
-    "pg": "^8.22.0",
+    "pg": "^8.23.0",
     "playwright": "1.62.1",
     "playwright-extra": "^4.3.6",
     "puppeteer": "^24.43.1",
