@@ -96,6 +96,7 @@ export function legitimacyTone(l: string): "good" | "warn" | "bad" | "muted" {
 
 export type ReportMeta = {
   title: string | null;
+  role?: string | null;
   fields: { label: string; value: string }[];
   legitimacy: string | null;
   body: string;
