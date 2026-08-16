@@ -111,6 +111,10 @@ export type Application = {
   pdf: string;
   report: string;
   notes: string;
+  has_cv?: boolean;
+  has_cl?: boolean;
+  has_rl?: boolean;
+  has_gmail_draft?: boolean;
 };
 
 /**

@@ -1,17 +1,17 @@
-import { neon, NeonQueryFunction } from "@neondatabase/serverless";
+import { Pool, PoolConfig } from "pg";
 import { resolveDataOwner } from "@/lib/user-context";
 
 /**
  * Database layer for Careerflow cloud deployment.
- * Replaces filesystem reads (careerOpsRoot, readApplications, etc.)
- * with Neon PostgreSQL queries.
- *
- * This allows the web app to run on Vercel without local file access.
+ * Connects natively via pg pool to support unlimited self-hosted Postgres.
  */
 
-let sql: NeonQueryFunction<false, false>;
+export type SqlFunction = (strings: TemplateStringsArray, ...values: any[]) => Promise<any[]>;
 
-export function getSql(): NeonQueryFunction<false, false> {
+let pool: Pool;
+let sql: SqlFunction;
+
+export function getSql(): SqlFunction {
   if (!sql) {
     const dbUrl = process.env.DATABASE_URL;
     if (!dbUrl) {
@@ -19,7 +19,15 @@ export function getSql(): NeonQueryFunction<false, false> {
         "DATABASE_URL is not set. Set it in web/.env.local (see .env.example) or in the platform env for production."
       );
     }
-    sql = neon(dbUrl);
+    
+    const config: PoolConfig = { connectionString: dbUrl };
+    pool = new Pool(config);
+
+    sql = async function (strings: TemplateStringsArray, ...values: any[]) {
+      const query = strings.reduce((prev, curr, i) => prev + "$" + i + curr);
+      const res = await pool.query(query, values);
+      return res.rows;
+    };
   }
   return sql;
 }

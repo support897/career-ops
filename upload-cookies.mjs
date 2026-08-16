@@ -32,9 +32,14 @@ if (existsSync(envPath)) {
 const USER_ID = 'user_3GfaXsz2WyxzFl0LcD4ktVnNsCS';
 
 async function saveToDb(platform, encryptedCookies) {
-  const pkg = await import('./web/node_modules/@neondatabase/serverless/index.js');
-  const neon = pkg.default.neon;
-  const sql = neon(process.env.DATABASE_URL);
+  const pg = await import('pg');
+  const { Pool } = pg.default || pg;
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const sql = async (strings, ...values) => {
+    const query = strings.reduce((prev, curr, i) => prev + '$' + i + curr);
+    const res = await pool.query(query, values);
+    return res.rows;
+  };
   
   const rowId = `${USER_ID}-${platform}`;
   

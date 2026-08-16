@@ -1,7 +1,14 @@
-import { neon } from '@neondatabase/serverless';
+import pg from 'pg';
 
 async function migrate() {
-  const sql = neon(process.env.DATABASE_URL);
+  const { Pool } = pg;
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const sql = async (strings, ...values) => {
+    const query = strings.reduce((prev, curr, i) => prev + '$' + i + curr);
+    const res = await pool.query(query, values);
+    return res.rows;
+  };
+  sql.query = (query, values) => pool.query(query, values);
   
   const migrations = [
     `ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS scan_mode TEXT DEFAULT 'interval'`,

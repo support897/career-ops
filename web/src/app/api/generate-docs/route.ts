@@ -619,7 +619,7 @@ Warmest regards,
 Taylor Chorley`;
 
         const emailBody = (
-          `🔗 APPLY HERE: ${applyLink}\n\n` +
+          `${applyLink}\n\n` +
           `--- OUTREACH EMAIL ---\n` +
           `${emailDraftText || ""}\n\n` +
           `--- COVER LETTER ---\n` +

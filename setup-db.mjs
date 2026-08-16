@@ -1,4 +1,4 @@
-import { neon } from '@neondatabase/serverless';
+import pg from 'pg';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
@@ -14,7 +14,14 @@ async function setupDatabase() {
 
   console.log('📦 Setting up Neon database schema...');
   
-  const sql = neon(dbUrl);
+  const { Pool } = pg;
+  const pool = new Pool({ connectionString: dbUrl });
+  const sql = async (strings, ...values) => {
+    const query = strings.reduce((prev, curr, i) => prev + '$' + i + curr);
+    const res = await pool.query(query, values);
+    return res.rows;
+  };
+  sql.query = (query, values) => pool.query(query, values);
   
   const statements = [
     `CREATE TABLE IF NOT EXISTS user_profiles (

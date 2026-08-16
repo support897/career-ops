@@ -59,8 +59,8 @@ const EXPERIENCE_MAP = {
   },
   voice: {
     superpower: 'AI voice agents for lead qualification',
-    proof: 'Deployed Bland AI and Vapi voice agents at Fiesta Fresh Cleaning and APEX that autonomously qualify leads and book appointments 24/7.',
-    company: 'Fiesta Fresh Cleaning',
+    proof: 'Deployed Bland AI and Vapi voice agents at APEX that autonomously qualify leads and book appointments 24/7.',
+    company: 'APEX Website Solutions',
   },
   content: {
     superpower: 'Automated content production pipelines',
@@ -74,7 +74,7 @@ const EXPERIENCE_MAP = {
   },
   email: {
     superpower: 'Cold email and nurture sequence automation',
-    proof: 'Engineered automated cold email sequences at APEX and Fiesta Fresh that deliver personalized outreach at scale.',
+    proof: 'Engineered automated cold email sequences at APEX that deliver personalized outreach at scale.',
     company: 'APEX Website Solutions',
   },
   remote: {
@@ -94,13 +94,13 @@ const EXPERIENCE_MAP = {
   },
   facebook: {
     superpower: 'Facebook and social media automation',
-    proof: 'Built a Node.js Facebook automation app at Fiesta Fresh that publishes daily posts and auto-responds to purchase-intent signals.',
-    company: 'Fiesta Fresh Cleaning',
+    proof: 'Built a Node.js Facebook automation app at APEX that publishes daily posts and auto-responds to purchase-intent signals.',
+    company: 'APEX Website Solutions',
   },
   social_media: {
     superpower: 'Social media automation and engagement',
-    proof: 'Built a Facebook Graph API webhook system at Fiesta Fresh that detects purchase-intent posts and auto-responds with tailored outreach.',
-    company: 'Fiesta Fresh Cleaning',
+    proof: 'Built a Facebook Graph API webhook system at APEX that detects purchase-intent posts and auto-responds with tailored outreach.',
+    company: 'APEX Website Solutions',
   },
   operations: {
     superpower: 'Operations optimization and process automation',
@@ -114,13 +114,13 @@ const EXPERIENCE_MAP = {
   },
   revops: {
     superpower: 'Revenue operations automation',
-    proof: 'Automated the full revenue pipeline at Fiesta Fresh: lead detection, qualification, outreach, and appointment booking.',
-    company: 'Fiesta Fresh Cleaning',
+    proof: 'Automated the full revenue pipeline at APEX: lead detection, qualification, outreach, and appointment booking.',
+    company: 'APEX Website Solutions',
   },
   virtual_assistant: {
     superpower: 'AI-powered virtual assistance and automation',
     proof: 'Built AI voice agents and automated workflows that handle lead qualification, appointment booking, and customer outreach 24/7.',
-    company: 'Fiesta Fresh Cleaning',
+    company: 'APEX Website Solutions',
   },
 };
 
@@ -143,7 +143,7 @@ const SKILL_KEYWORDS = [
 /**
  * Extract relevant keywords from a job description.
  */
-function extractJDKeywords(jdText) {
+export function extractJDKeywords(jdText) {
   const text = (jdText || '').toLowerCase();
   const found = [];
   for (const kw of SKILL_KEYWORDS) {
@@ -190,17 +190,17 @@ export function buildCoverLetterPayload(profile, job, jdText) {
   const opening = `I'm writing to express my strong interest in the ${role} position at ${company}. With over 6 years of experience building AI-powered automation systems across three businesses I founded, I bring a unique combination of technical depth and real-world business outcomes.`;
 
   // Build profile intro
-  const topMatches = matches.slice(0, 3);
+  const topMatches = matches.slice(0, 5);
   let profileIntro = '';
   if (topMatches.length > 0) {
     const skillList = topMatches.map(m => m.keyword.replace(/_/g, ' '));
-    profileIntro = `Your role emphasizes ${skillList.slice(0, 3).join(', ')} — here's what I've built in these areas:\n\n`;
+    profileIntro = `Your role emphasizes ${skillList.slice(0, 5).join(', ')} — here's what I've built in these areas:\n\n`;
     for (const match of topMatches) {
       profileIntro += `${match.proof}\n\n`;
     }
     profileIntro = profileIntro.trim();
   } else {
-    profileIntro = 'I build AI-powered automation systems that replace manual operations with intelligent workflows. At APEX Website Solutions, I built a fully automated B2B lead generation engine. At Lumi and Milo, I designed a multi-agent orchestration system with a dedicated QC agent. At Fiesta Fresh, I built the complete marketing automation stack.';
+    profileIntro = 'I build AI-powered automation systems that replace manual operations with intelligent workflows. At APEX Website Solutions, I built a fully automated B2B lead generation engine. At Lumi and Milo, I designed a multi-agent orchestration system with a dedicated QC agent.';
   }
 
   // Build achievements list
@@ -211,6 +211,8 @@ export function buildCoverLetterPayload(profile, job, jdText) {
 
   // Build closing
   const closing = `I'd welcome the chance to discuss how my experience can contribute to ${company}'s growth. I'm available for a conversation at your convenience and happy to share more about my work.`;
+
+  const language_closing = "Furthermore, I speak fluently English, Spanish (Native), Italian, and basic French, which allows me to effectively communicate with international clients and diverse teams.";
 
   return {
     candidate: {
@@ -230,7 +232,7 @@ export function buildCoverLetterPayload(profile, job, jdText) {
       achievements,
       problems_section: '',
       closing,
-      language_closing: '',
+      language_closing,
       footnotes: [
         { text: `Portfolio: ${portfolio}`, url: portfolio },
       ],
@@ -281,9 +283,9 @@ function renderCoverLetterHtml(template, payload) {
     const items = letter.achievements.map(a => {
       const lead = escapeHtml(a.lead || '');
       const impact = escapeHtml(a.impact || '');
-      return `    <li><b>${lead},</b> ${impact}</li>`;
+      return `    <p><b>${lead}:</b> ${impact}</p>`;
     }).join('\n');
-    achievementsBlock = `<ul class="achievements">\n${items}\n  </ul>`;
+    achievementsBlock = `<div class="achievements">\n${items}\n  </div>`;
   }
 
   // Footnotes

@@ -7,14 +7,21 @@
 // 5. Create Gmail draft via IMAP
 // NEVER sends emails — draft only
 
-import { neon } from '@neondatabase/serverless';
+import pg from 'pg';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { chromium } from 'playwright';
 import { createGmailDraft } from './lib/gmail-draft.mjs';
 import yaml from 'yaml';
 
-const sql = neon(process.env.DATABASE_URL || readFileSync('.env', 'utf8').match(/DATABASE_URL=(.+)/)?.[1]);
+const { Pool } = pg;
+const dbUrl = process.env.DATABASE_URL || readFileSync('.env', 'utf8').match(/DATABASE_URL=(.+)/)?.[1];
+const pool = new Pool({ connectionString: dbUrl });
+const sql = async (strings, ...values) => {
+  const query = strings.reduce((prev, curr, i) => prev + '$' + i + curr);
+  const res = await pool.query(query, values);
+  return res.rows;
+};
 const VIP_USER_ID = 'user_3GfaXsz2WyxzFl0LcD4ktVnNsCS';
 const OUTPUT_DIR = join(import.meta.dirname, 'output', 'gmail-drafts');
 const BATCH_SIZE = 10;
@@ -39,11 +46,19 @@ function generateEmailBody(company, role, url) {
     .slice(0, 2)
     .join(' and ') || 'AI-powered automation systems';
 
-  return `Dear ${company} Hiring Team,
+  return `${url}
+
+Dear ${company} Hiring Team,
 
 I'm writing to express my interest in the ${role} position at ${company}.
 
-I build ${matchingExperience}. With over 6 years of experience across three businesses I founded, I bring a unique combination of technical depth and business outcomes.
+I build ${matchingExperience}. With over 6 years of experience across three businesses I founded, I bring a unique combination of technical depth and business outcomes. I have personally built, deployed, and run production AI agents, covering the full stack from prospecting to campaign management to sales operations.
+
+At APEX Website Solutions, I built a fully automated B2B lead generation system that scrapes prospects, generates personalized audits, sends cold email, and books discovery calls through an AI voice agent, all with zero manual input. At Lumi and Milo, I designed a multi-agent orchestration system with a dedicated QC agent that reviews every piece of content before human approval.
+
+I am fluent in TypeScript, Node.js, Python, REST APIs, and webhooks. I develop with Claude, Cursor, and multi-agent orchestration as my primary tools. I do not just evaluate AI tools; I build production systems with them.
+
+Furthermore, I speak fluently English, Spanish (Native), Italian, and basic French, which allows me to effectively communicate with international clients and diverse teams.
 
 I'd be thrilled to bring this experience to ${company}. Wishing you a great week regardless.
 
@@ -61,7 +76,7 @@ I am writing to express my strong interest in the ${role} position at ${company}
 
 With over 6 years of experience building AI-powered automation systems across lead generation, content production, and marketing operations, I bring a unique combination of technical depth and business outcomes. I have personally built, deployed, and run production AI agents across three businesses I founded, covering the full stack from prospecting to campaign management to sales operations.
 
-At APEX Website Solutions, I built a fully automated B2B lead generation system that scrapes prospects, generates personalized audits, sends cold email, and books discovery calls through an AI voice agent, all with zero manual input. At Lumi and Milo, I designed a multi-agent orchestration system with a dedicated QC agent that reviews every piece of content before human approval. At Fiesta Fresh, I built the complete marketing automation stack from social media to sales.
+At APEX Website Solutions, I built a fully automated B2B lead generation system that scrapes prospects, generates personalized audits, sends cold email, and books discovery calls through an AI voice agent, all with zero manual input. At Lumi and Milo, I designed a multi-agent orchestration system with a dedicated QC agent that reviews every piece of content before human approval.
 
 I am fluent in TypeScript, Node.js, Python, REST APIs, and webhooks. I develop with Claude, Cursor, and multi-agent orchestration as my primary tools. I do not just evaluate AI tools; I build production systems with them.
 

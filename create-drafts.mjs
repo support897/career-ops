@@ -2,13 +2,20 @@
 // create-drafts.mjs — Create Gmail drafts for all existing draft applications
 // NEVER sends emails — only creates drafts in Gmail Drafts folder
 
-import { neon } from '@neondatabase/serverless';
+import pg from 'pg';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { chromium } from 'playwright';
 import { createGmailDraft } from './lib/gmail-draft.mjs';
 
-const sql = neon(process.env.DATABASE_URL || readFileSync('.env', 'utf8').match(/DATABASE_URL=(.+)/)?.[1]);
+const { Pool } = pg;
+const dbUrl = process.env.DATABASE_URL || readFileSync('.env', 'utf8').match(/DATABASE_URL=(.+)/)?.[1];
+const pool = new Pool({ connectionString: dbUrl });
+const sql = async (strings, ...values) => {
+  const query = strings.reduce((prev, curr, i) => prev + '$' + i + curr);
+  const res = await pool.query(query, values);
+  return res.rows;
+};
 const OUTPUT_DIR = join(import.meta.dirname, 'output', 'gmail-drafts');
 const VIP_USER_ID = 'user_3GfaXsz2WyxzFl0LcD4ktVnNsCS';
 

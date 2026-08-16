@@ -28,8 +28,14 @@ let sql = null;
 
 async function getSql() {
   if (!sql) {
-    const { neon } = await import('@neondatabase/serverless');
-    sql = neon(process.env.DATABASE_URL);
+    const pg = await import('pg');
+    const { Pool } = pg.default || pg;
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    sql = async (strings, ...values) => {
+      const query = strings.reduce((prev, curr, i) => prev + '$' + i + curr);
+      const res = await pool.query(query, values);
+      return res.rows;
+    };
   }
   return sql;
 }

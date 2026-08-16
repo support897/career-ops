@@ -296,17 +296,19 @@ export async function generateEmailDraft(
   const name = profile.full_name || "The Candidate";
   const email = profile.email || "";
 
-  const prompt = `Write a concise, compelling cold outreach email for this job application.
+  const prompt = `Write a compelling cold outreach email for this job application.
 
 ## Rules
 - Subject line: "Application: ${job.role} — ${name}"
-- Keep the email UNDER 150 words
+- Keep the email full page length. DO NOT make it short or concise.
 - Start the email body directly with "I believe I'm the perfect candidate" (no formal greeting)
 - Open with their strongest relevant achievement
 - One specific reason why this company/role is exciting
 - Clear call to action
 - Use facts from the CV only — never invent
-- Apply URL at the bottom: ${job.url}
+- Do NOT use bullet points or dashes anywhere in the email body.
+- Highlight the candidate's language proficiency prominently.
+- Embed the raw job URL directly at the top of the body (no 'Apply here' labels): ${job.url}
 
 ## Job
 Company: ${job.company}
