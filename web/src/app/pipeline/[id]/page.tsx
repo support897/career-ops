@@ -4,6 +4,8 @@ import { ReportView } from "@/components/report-view";
 import { getSql } from "@/lib/db";
 import { getUserId } from "@/lib/user-context";
 
+import { headers } from "next/headers";
+
 export const dynamic = "force-dynamic";
 
 function safeYmdDate(val: any): string {
@@ -23,7 +25,8 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
   let reportContent: string | null = null;
   let reportFile: string | null = null;
   let dbJob: any = null;
-  const userId = getUserId();
+  const hdrs = await headers();
+  const userId = getUserId({ headers: { get: (k: string) => hdrs.get(k) } });
   const sql = getSql();
 
   // 1. Try querying by direct UUID from database first
