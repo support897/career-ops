@@ -14,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const { Pool } = pg;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.DATABASE_URL.includes('localhost') || process.env.DATABASE_URL.includes('107.175.88.18') ? false : { rejectUnauthorized: false } });
 
 async function run() {
   console.log("Fetching jobs from job_inbox where job_status = 'evaluated' AND score >= 4...");
