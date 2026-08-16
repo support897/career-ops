@@ -187,7 +187,7 @@ async function main() {
       '--local-vip',
       '--min-score', String(MIN_SCORE),
       '--keep-pipeline',
-      '--max-age', '7'
+      '--max-age', '14'
     ];
     if (DRY_RUN) applyArgsDefault.push('--dry-run');
     applyArgsDefault.push('--limit', String(Math.max(1, Math.round((LIMIT || 1000) * 0.65))));

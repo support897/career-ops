@@ -44,7 +44,7 @@ function patchToProfile(p: ProfilePatch): Record<string, unknown> {
   if (p.email) candidate.email = p.email;
   if (p.location) candidate.location = p.location;
   if (Object.keys(candidate).length) out.candidate = candidate;
-  if (p.roles?.length) out.target_roles = { primary: p.roles.slice(0, 6) };
+  if (p.roles?.length) out.target_roles = { primary: p.roles };
   const comp: Record<string, unknown> = {};
   if (p.compMin && p.compMax) comp.target_range = `${p.compMin}-${p.compMax}`;
   if (p.currency) comp.currency = p.currency;
