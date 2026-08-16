@@ -13,15 +13,15 @@ import { getUserId, resolveDataOwner } from "@/lib/user-context";
 // value with table-breaking chars (| \r \n **) that would scramble the row; detect
 // the Status column from the header (8- and 9-col layouts); atomic write.
 export async function POST(req: Request) {
-  let body: { n?: string; status?: string };
+  let body: { id?: string; n?: string; status?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "bad json" }, { status: 400 });
   }
-  const { n, status } = body;
-  if (!n || typeof status !== "string" || !status.trim()) {
-    return NextResponse.json({ error: "n and status required" }, { status: 400 });
+  const { id, n, status } = body;
+  if ((!n && !id) || typeof status !== "string" || !status.trim()) {
+    return NextResponse.json({ error: "n/id and status required" }, { status: 400 });
   }
   if (/[|\r\n*]/.test(status)) {
     return NextResponse.json({ error: "invalid status (table-breaking characters)" }, { status: 400 });
@@ -39,20 +39,34 @@ export async function POST(req: Request) {
       const userId = getUserId(req);
       const owner = resolveDataOwner(userId);
       
-      const rows = await sql`
-        SELECT id, job_status FROM job_inbox 
-        WHERE user_id = ${owner}
-        ORDER BY created_at DESC
-      `;
-      const idx = parseInt(n) - 1;
-      if (rows[idx]) {
-        const row = rows[idx];
-        const dbStatus = canon.toLowerCase() === "applied" ? "applied" : canon.toLowerCase() === "discarded" ? "discarded" : "new";
+      const dbStatus = canon.toLowerCase() === "applied" ? "applied" : canon.toLowerCase() === "discarded" ? "discarded" : "new";
+      
+      if (id) {
         await sql`
           UPDATE job_inbox 
           SET job_status = ${dbStatus}, done = ${dbStatus !== "new"}, updated_at = NOW()
-          WHERE id = ${row.id} AND user_id = ${owner}
+          WHERE id = ${id} AND user_id = ${owner}
         `;
+      } else if (n) {
+        // Fallback for when id is missing (e.g. legacy frontend)
+        const rows = await sql`
+          SELECT id, job_status FROM job_inbox 
+          WHERE user_id = ${owner}
+          ORDER BY created_at DESC
+        `;
+        const idx = parseInt(n) - 1;
+        if (rows[idx]) {
+          const row = rows[idx];
+          await sql`
+            UPDATE job_inbox 
+            SET job_status = ${dbStatus}, done = ${dbStatus !== "new"}, updated_at = NOW()
+            WHERE id = ${row.id} AND user_id = ${owner}
+          `;
+        }
+      }
+      
+      // If we only had an ID and no N, we can't update the local file, so we return early
+      if (!n) {
         return NextResponse.json({ ok: true, status: canon });
       }
     } catch (e: any) {

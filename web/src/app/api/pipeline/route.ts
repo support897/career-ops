@@ -173,6 +173,10 @@ ${row.why_match || ""}
         pdf: r.doc_status === 'ready' ? '✅' : '❌',
         report: '',
         notes: r.why_match || '',
+        has_cv: !!r.cv_html,
+        has_cl: !!r.cover_letter,
+        has_rl: !!r.reference_letter,
+        has_gmail_draft: !!r.gmail_draft_id,
       }));
 
       // Combine with local applications if any, deduplicating by company + role

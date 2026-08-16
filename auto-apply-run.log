@@ -1,0 +1,580 @@
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (1) from web/.env.local // tip: ⌘ override existing { override: true }
+[Local mode] Database detected. Syncing results to DB under user: default
+
+🚀 Career-Ops Auto-Apply Pipeline — 2026-08-15
+
+📡 Scanning job portals...
+   Scan failed, using pipeline.md only
+📋 Found 92 pending jobs
+
+   ✅ Link Group — InSprint Tester with German: Matches target profile
+   ✅ Coalition Technologies — Remote WordPress Developer: Matches target profile
+   ✅ Shimi Sp. z o.o. — Automation Engineer (AI & Integrations) (m/f/n): Matches target profile
+   ✅ Code and Pepper — QA Engineer (freelance): Matches target profile
+   ✅ SPEEDNET — QA Engineer: Matches target profile
+   ✅ Miaplaza — QA Engineer: Matches target profile
+   ✅ dmTECH Polska — Test Automation Engineer z AI i z j.niemieckim - Application Lifecycle Management (B2B): Matches target profile
+   ✅ FUN CRAFTERS SP. Z O O. — Dev QA Specialist: Matches target profile
+   ✅ Bytamic Solutions — Windows Deployment Automation Engineer (m/f/d) 🚀: Matches target profile
+   ✅ Fabrity S.A. — Tester Manualny (MID): Matches target profile
+   ✅ B3 Consulting Poland — Test Automation Engineer: Matches target profile
+   ✅ NTT DATA Business Solutions — Test Automation Expert/Architect: Matches target profile
+   ✅ Upvanta sp. z o.o. — QA with Retail Marketing / Commerce: Matches target profile
+   ✅ Sii — Senior ServiceNow Developer– AI & Automation (f/m/x): Matches target profile
+   ✅ P&P Solutions — Tester oprogramowania: Matches target profile
+   ✅ Fujitsu Poland Sp. z o.o. — AI & Automation Solutions Developer: Matches target profile
+   ✅ VolleyStation — Content Specialist: Matches target profile
+   ✅ Expert4you — QA Engineer: Matches target profile
+   ✅ Movate Spółka z o.o. — Senior Network Operations Engineer with Spanish: Matches target profile
+   ✅ Movate Spółka z o.o. — Technical Lead– Networking, RF & SD-WAN Technologies with Spanish: Matches target profile
+   ✅ Silky Coders — QA Engineer: Matches target profile
+   ✅ emagine Polska — Senior QA Automation Engineer: Matches target profile
+   ✅ CrustLab — Graphic & Web Designer: Matches target profile
+   ✅ Billennium — Guidewire Business Analyst / Lead BA (Spanish-speaking): Matches target profile
+   ✅ TSS — Tester Bezpieczeństwa: Matches target profile
+   ✅ Nexio Management Sp. z o. o. — Koordynator testów/ Tester (Pharma) (k/m/n): Matches target profile
+   ✅ SCALO — Automation Tester/QA (Playwright+TypeScript): Matches target profile
+   ✅ Ness Solution — Test Automation Engineer: Matches target profile
+   ✅ XM — Python QA Automation Team Leader: Matches target profile
+   ✅ SwingDev — QA Engineer: Matches target profile
+   ✅ Zyte — Platform and Automation Engineer (Remote): Matches target profile
+   ✅ Jitterbit — Software Quality Assurance Engineer, Manual (Linux) (Remote): Matches target profile
+   ✅ Jitterbit — Software QA Engineer, Manual (Linux) (Remote): Matches target profile
+   ✅ Jitterbit — Software Quality Assurance Engineer (Linux) (Remote): Matches target profile
+   ✅ dmTECH Polska — Test Automation Engineer z AI i z j.angielskim- Application Lifecycle Management (B2B): Matches target profile
+   ✅ TQLO SP. Z O.O. — QA Automation Engineer (Salesforce): Matches target profile
+   ✅ Link Group — QA Engineer (AI-Assisted): Matches target profile
+   ✅ Zyte — Platform and Automation Engineer (Remote): Matches target profile
+   ✅ Jitterbit — Software Quality Assurance Engineer, Manual (Linux) (Remote): Matches target profile
+   ✅ Jitterbit — Software QA Engineer, Manual (Linux) (Remote): Matches target profile
+   ✅ Jitterbit — Software Quality Assurance Engineer (Linux) (Remote): Matches target profile
+   ✅ dmTECH Polska — Test Automation Engineer z AI i z j.angielskim- Application Lifecycle Management (B2B): Matches target profile
+   ✅ TQLO SP. Z O.O. — QA Automation Engineer (Salesforce): Matches target profile
+   ✅ Link Group — QA Engineer (AI-Assisted): Matches target profile
+   ✅ Swissitsecuritygroup — Penetration Tester (m/w/d) - Remote: Matches target profile
+   ✅ T-Mobile Polska — Data Platform Architect (with GCP) - Automation & Innovation Department: Matches target profile
+   ✅ Abacus Insights — Associate Data Quality Assurance Engineer (Remote): Matches target profile
+   ✅ Lifted — Application-Level AI Audio Testing (French-Speaking): Matches target profile
+   ✅ EPAM Systems — AWS Cloud Engineer - Resiliency & Automation: Matches target profile
+   ✅ Upvanta sp. z o.o. — InSprint Tester / Quality Assurance Engineer (German): Matches target profile
+   ✅ .intent — Senior QA Engineer (Mobile & IoT): Matches target profile
+   ✅ ITLT — Tester (Salesforce): Matches target profile
+   ✅ BTRUST.PL sp. z o.o. — Mid QA Engineer (Manual / Automation): Matches target profile
+   ✅ DataArt — Senior Business Analyst with Content Automation: Matches target profile
+   ✅ Pirxey — QA Automation Engineer (Playwright & TypeScript): Matches target profile
+   ✅ P&P Solutions — Software Development Engineer (Senior QA / Test Automation): Matches target profile
+   ✅ Awareson Sp. z o.o. — Senior Intelligent Automation Analyst (Finance): Matches target profile
+   ✅ B2Bnetwork — Pentester: Matches target profile
+   ✅ SOFLAB TECHNOLOGY — Playwright Practice Lead / Automation Solutions Architect: Matches target profile
+   ✅ Upvanta sp. z o.o. — Senior Quality Engineer (Mobile Automation / Appium): Matches target profile
+   ✅ Harvey Nash Technology — Multimedia Data Annotator (AI/ML entertaitment industry): Matches target profile
+   ✅ B2Bnetwork — Tester Automatyzujący: Matches target profile
+   ✅ N-iX — Senior Product Owner with Spanish: Matches target profile
+   ✅ Experis Manpower Group — Automation & Power Platform Consultant: Matches target profile
+   ✅ emagine Polska — Tester (Manual, HP ALM): Matches target profile
+   ✅ Antal Sp. z o.o. — QA Engineer: Matches target profile
+   ✅ VM.PL — Wordpress Developer (part-time): Matches target profile
+   ✅ Jit Team — Senior QA Engineer: Matches target profile
+   ✅ Link Group — QA Engineer with French: Matches target profile
+   ✅ airSlate — Email Marketing Specialist: Matches target profile
+   ⏭️  Better Proposals — Junior SEO Specialist: Title mismatch: junior seo specialist
+   ✅ Angry Nerds — Senior QA Specialist: Matches target profile
+   ✅ CoverGo — Senior Software QA Engineer: Matches target profile
+   ✅ Oak National Academy — Quality Assurance Analyst: Matches target profile
+   ✅ PEOPLEMORE P.S.A. — Penetration Tester - WebAPP and API: Matches target profile
+   ✅ Jit Team — Expert QA Consultant: Matches target profile
+   ✅ PEOPLEMORE P.S.A. — QA Engineer – Mobile Test Automation: Matches target profile
+   ✅ Transition Technologies MS — QA Automation Engineer: Matches target profile
+   ✅ Nowy Startup AI — Full-Stack AI & Automation Engineer: Matches target profile
+   ✅ Tukano Software House Sp. z o. o. — Tester Automatyzujący / QA Automation Engineer: Matches target profile
+   ✅ Nexio Management — Tester manualny (Salesforce) (k/m/n): Matches target profile
+   ✅ Andersen — Fullstack QA Engineer: Matches target profile
+   ✅ 7N Sp. z o. o. — Mobile Application Tester: Matches target profile
+   ✅ co.brick Talents — Senior Manual QA Engineer: Matches target profile
+   ✅ EPC Network — QA Engineer: Matches target profile
+   ✅ Billennium — GenAI Test Automation Engineer: Matches target profile
+   ✅ H2B Group — Tester Manualny: Matches target profile
+   ✅ Railsware — Senior QA Engineer (TradeZella product): Matches target profile
+   ✅ Britenet — M365 Migration & Automation Specialist / M365 Consultant: Matches target profile
+   ✅ Billennium — Test Automation Engineer: Matches target profile
+   ✅ BOLD PL — Technical SEO Specialist: Matches target profile
+   ✅ Korn Ferry - Just Join IT — Delivery / Automation Lead: Matches target profile
+   🧠 Ollama detected — using LLM scoring for accurate evaluation
+   ⚠️  Reference letter generator not available: The requested module './cover-letter-generator.mjs' does not provide an export n
+
+📝 Processing: Link Group — InSprint Tester with German
+   🧠 LLM score: 2.6/5 [keyword] (0 reasons)
+   ⏭️  Score 2.6 < 4 dashboard threshold — skipping sync
+
+📝 Processing: Coalition Technologies — Remote WordPress Developer
+   🧠 LLM score: 2.8/5 [llm] (0 reasons)
+   ⏭️  Score 2.8 < 4 dashboard threshold — skipping sync
+
+📝 Processing: Shimi Sp. z o.o. — Automation Engineer (AI & Integrations) (m/f/n)
+   🧠 LLM score: 4.2/5 [llm] (0 reasons)
+   📄 Generating tailored CV...
+   ❌ Tailored CV generation failed: Cannot read properties of null (reading 'cv_generation_mode'). Falling back...
+   ❌ No resume available (Tailoring failed & DB decode failed)
+   📄 Generating CV via LLM...
+   ⚠️  LLM CV failed: Cannot read properties of null (reading 'llm_providers')
+   📄 Generating CV via Native Keywords...
+[cv-generator] Failed: Cannot read properties of null (reading 'cv_generation_mode')
+   📄 Generating Cover Letter via Native Keywords...
+   ✅ Native Cover Letter generated: /Users/ilse/career-ops-2/output/cover-letter-shimi-sp-z-o-o--2026-08-15.pdf
+   📄 Generating Reference Letter via LLM...
+   ⚠️  LLM Reference Letter failed: Cannot read properties of null (reading 'llm_providers')
+   📧 Scraping job description for personalization...
+   🔍 Searching for real verified Shimi Sp. z o.o. recruiter email...
+   🌐 Verified Company Domain: justjoin.it
+   ✅ Found verified recruiter email on job page: forexample@domain.com
+   ⚠️  Gmail draft creation failed: IMAP timeout
+   🔄 Syncing job documents to dashboard inbox...
+(node:59043) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+   ✅ Synced to dashboard inbox
+   📂 Persisting evaluated job to local applications tracker...
+   📄 Local report file saved: /Users/ilse/career-ops-2/reports/091-shimi-sp-z-o-o--2026-08-15.md
+   🔄 Rebuilding local applications tracker...
+   ✅ Local applications tracker updated
+   💾 Backup file draft saved: /Users/ilse/career-ops-2/output/draft-shimi-sp-z-o-o--2026-08-15.md
+
+📝 Processing: Code and Pepper — QA Engineer (freelance)
+   🧠 LLM score: 4.2/5 [llm] (0 reasons)
+   📄 Generating tailored CV...
+   ❌ Tailored CV generation failed: Cannot read properties of null (reading 'cv_generation_mode'). Falling back...
+   ❌ No resume available (Tailoring failed & DB decode failed)
+   📄 Generating CV via LLM...
+   ⚠️  LLM CV failed: Cannot read properties of null (reading 'llm_providers')
+   📄 Generating CV via Native Keywords...
+[cv-generator] Failed: Cannot read properties of null (reading 'cv_generation_mode')
+   📄 Generating Cover Letter via Native Keywords...
+   ✅ Native Cover Letter generated: /Users/ilse/career-ops-2/output/cover-letter-code-and-pepper-2026-08-15.pdf
+   📄 Generating Reference Letter via LLM...
+   ⚠️  LLM Reference Letter failed: Cannot read properties of null (reading 'llm_providers')
+   📧 Scraping job description for personalization...
+   🔍 Searching for real verified Code and Pepper recruiter email...
+   🌐 Verified Company Domain: justjoin.it
+   ✅ Found verified recruiter email on job page: forexample@domain.com
+   ⚠️  Gmail draft creation failed: IMAP timeout
+   🔄 Syncing job documents to dashboard inbox...
+   ✅ Synced to dashboard inbox
+   📂 Persisting evaluated job to local applications tracker...
+   📄 Local report file saved: /Users/ilse/career-ops-2/reports/092-code-and-pepper-2026-08-15.md
+   🔄 Rebuilding local applications tracker...
+   ✅ Local applications tracker updated
+   💾 Backup file draft saved: /Users/ilse/career-ops-2/output/draft-code-and-pepper-2026-08-15.md
+   ⏭️  SPEEDNET — QA Engineer: Already in applications tracker, checking off in pipeline.md
+
+📝 Processing: Miaplaza — QA Engineer
+   🧠 LLM score: 2.8/5 [llm] (0 reasons)
+   ⏭️  Score 2.8 < 4 dashboard threshold — skipping sync
+
+📝 Processing: dmTECH Polska — Test Automation Engineer z AI i z j.niemieckim - Application Lifecycle Management (B2B)
+   🧠 LLM score: 4.2/5 [llm] (0 reasons)
+   📄 Generating tailored CV...
+   ❌ Tailored CV generation failed: Cannot read properties of null (reading 'cv_generation_mode'). Falling back...
+   ❌ No resume available (Tailoring failed & DB decode failed)
+   📄 Generating CV via LLM...
+   ⚠️  LLM CV failed: Cannot read properties of null (reading 'llm_providers')
+   📄 Generating CV via Native Keywords...
+[cv-generator] Failed: Cannot read properties of null (reading 'cv_generation_mode')
+   📄 Generating Cover Letter via Native Keywords...
+   ✅ Native Cover Letter generated: /Users/ilse/career-ops-2/output/cover-letter-dmtech-polska-2026-08-15.pdf
+   📄 Generating Reference Letter via LLM...
+   ⚠️  LLM Reference Letter failed: Cannot read properties of null (reading 'llm_providers')
+   📧 Scraping job description for personalization...
+   🔍 Searching for real verified dmTECH Polska recruiter email...
+   🌐 Verified Company Domain: justjoin.it
+   ✅ Found verified recruiter email on job page: forexample@domain.com
+   ⚠️  Gmail draft creation failed: IMAP timeout
+   🔄 Syncing job documents to dashboard inbox...
+   ✅ Synced to dashboard inbox
+   📂 Persisting evaluated job to local applications tracker...
+   📄 Local report file saved: /Users/ilse/career-ops-2/reports/093-dmtech-polska-2026-08-15.md
+   🔄 Rebuilding local applications tracker...
+   ✅ Local applications tracker updated
+   💾 Backup file draft saved: /Users/ilse/career-ops-2/output/draft-dmtech-polska-2026-08-15.md
+
+📝 Processing: FUN CRAFTERS SP. Z O O. — Dev QA Specialist
+   🧠 LLM score: 2.8/5 [llm] (0 reasons)
+   ⏭️  Score 2.8 < 4 dashboard threshold — skipping sync
+
+📝 Processing: Bytamic Solutions — Windows Deployment Automation Engineer (m/f/d) 🚀
+   🧠 LLM score: 4.2/5 [llm] (0 reasons)
+   📄 Generating tailored CV...
+   ❌ Tailored CV generation failed: Cannot read properties of null (reading 'cv_generation_mode'). Falling back...
+   ❌ No resume available (Tailoring failed & DB decode failed)
+   📄 Generating CV via LLM...
+   ⚠️  LLM CV failed: Cannot read properties of null (reading 'llm_providers')
+   📄 Generating CV via Native Keywords...
+[cv-generator] Failed: Cannot read properties of null (reading 'cv_generation_mode')
+   📄 Generating Cover Letter via Native Keywords...
+   ✅ Native Cover Letter generated: /Users/ilse/career-ops-2/output/cover-letter-bytamic-solutions-2026-08-15.pdf
+   📄 Generating Reference Letter via LLM...
+   ⚠️  LLM Reference Letter failed: Cannot read properties of null (reading 'llm_providers')
+   📧 Scraping job description for personalization...
+   🔍 Searching for real verified Bytamic Solutions recruiter email...
+   🌐 Verified Company Domain: justjoin.it
+   ✅ Found verified recruiter email on job page: forexample@domain.com
+   ⚠️  Gmail draft creation failed: IMAP timeout
+   🔄 Syncing job documents to dashboard inbox...
+   ✅ Synced to dashboard inbox
+   📂 Persisting evaluated job to local applications tracker...
+   📄 Local report file saved: /Users/ilse/career-ops-2/reports/095-bytamic-solutions-2026-08-15.md
+   🔄 Rebuilding local applications tracker...
+   ✅ Local applications tracker updated
+   💾 Backup file draft saved: /Users/ilse/career-ops-2/output/draft-bytamic-solutions-2026-08-15.md
+
+📝 Processing: Fabrity S.A. — Tester Manualny (MID)
+   🧠 LLM score: 4.2/5 [llm] (0 reasons)
+   📄 Generating tailored CV...
+   ❌ Tailored CV generation failed: Cannot read properties of null (reading 'cv_generation_mode'). Falling back...
+   ❌ No resume available (Tailoring failed & DB decode failed)
+   📄 Generating CV via LLM...
+   ⚠️  LLM CV failed: Cannot read properties of null (reading 'llm_providers')
+   📄 Generating CV via Native Keywords...
+[cv-generator] Failed: Cannot read properties of null (reading 'cv_generation_mode')
+   📄 Generating Cover Letter via Native Keywords...
+   ✅ Native Cover Letter generated: /Users/ilse/career-ops-2/output/cover-letter-fabrity-s-a--2026-08-15.pdf
+   📄 Generating Reference Letter via LLM...
+   ⚠️  LLM Reference Letter failed: Cannot read properties of null (reading 'llm_providers')
+   📧 Scraping job description for personalization...
+   🔍 Searching for real verified Fabrity S.A. recruiter email...
+   🌐 Verified Company Domain: justjoin.it
+   ✅ Found verified recruiter email on job page: forexample@domain.com
+   ⚠️  Gmail draft creation failed: IMAP timeout
+   🔄 Syncing job documents to dashboard inbox...
+   ✅ Synced to dashboard inbox
+   📂 Persisting evaluated job to local applications tracker...
+   📄 Local report file saved: /Users/ilse/career-ops-2/reports/096-fabrity-s-a--2026-08-15.md
+   🔄 Rebuilding local applications tracker...
+   ✅ Local applications tracker updated
+   💾 Backup file draft saved: /Users/ilse/career-ops-2/output/draft-fabrity-s-a--2026-08-15.md
+
+📝 Processing: B3 Consulting Poland — Test Automation Engineer
+   🧠 LLM score: 4.2/5 [llm] (0 reasons)
+   📄 Generating tailored CV...
+   ❌ Tailored CV generation failed: Cannot read properties of null (reading 'cv_generation_mode'). Falling back...
+   ❌ No resume available (Tailoring failed & DB decode failed)
+   📄 Generating CV via LLM...
+   ⚠️  LLM CV failed: Cannot read properties of null (reading 'llm_providers')
+   📄 Generating CV via Native Keywords...
+[cv-generator] Failed: Cannot read properties of null (reading 'cv_generation_mode')
+   📄 Generating Cover Letter via Native Keywords...
+   ✅ Native Cover Letter generated: /Users/ilse/career-ops-2/output/cover-letter-b3-consulting-poland-2026-08-15.pdf
+   📄 Generating Reference Letter via LLM...
+   ⚠️  LLM Reference Letter failed: Cannot read properties of null (reading 'llm_providers')
+   📧 Scraping job description for personalization...
+   🔍 Searching for real verified B3 Consulting Poland recruiter email...
+   🌐 Verified Company Domain: justjoin.it
+   ✅ Found verified recruiter email on job page: forexample@domain.com
+   ⚠️  Gmail draft creation failed: IMAP timeout
+   🔄 Syncing job documents to dashboard inbox...
+   ✅ Synced to dashboard inbox
+   📂 Persisting evaluated job to local applications tracker...
+   ⏭️  Job already exists in local applications tracker, skipping local sync
+   💾 Backup file draft saved: /Users/ilse/career-ops-2/output/draft-b3-consulting-poland-2026-08-15.md
+
+📝 Processing: NTT DATA Business Solutions — Test Automation Expert/Architect
+   🧠 LLM score: 4.2/5 [llm] (0 reasons)
+   📄 Generating tailored CV...
+   ❌ Tailored CV generation failed: Cannot read properties of null (reading 'cv_generation_mode'). Falling back...
+   ❌ No resume available (Tailoring failed & DB decode failed)
+   📄 Generating CV via LLM...
+   ⚠️  LLM CV failed: Cannot read properties of null (reading 'llm_providers')
+   📄 Generating CV via Native Keywords...
+[cv-generator] Failed: Cannot read properties of null (reading 'cv_generation_mode')
+   📄 Generating Cover Letter via Native Keywords...
+   ✅ Native Cover Letter generated: /Users/ilse/career-ops-2/output/cover-letter-ntt-data-business-solutions-2026-08-15.pdf
+   📄 Generating Reference Letter via LLM...
+   ⚠️  LLM Reference Letter failed: Cannot read properties of null (reading 'llm_providers')
+   📧 Scraping job description for personalization...
+   🔍 Searching for real verified NTT DATA Business Solutions recruiter email...
+   🌐 Verified Company Domain: justjoin.it
+   ✅ Found verified recruiter email on job page: forexample@domain.com
+   ⚠️  Gmail draft creation failed: IMAP timeout
+   🔄 Syncing job documents to dashboard inbox...
+   ✅ Synced to dashboard inbox
+   📂 Persisting evaluated job to local applications tracker...
+   ⏭️  Job already exists in local applications tracker, skipping local sync
+   💾 Backup file draft saved: /Users/ilse/career-ops-2/output/draft-ntt-data-business-solutions-2026-08-15.md
+
+📝 Processing: Upvanta sp. z o.o. — QA with Retail Marketing / Commerce
+   🧠 LLM score: 2.8/5 [llm] (0 reasons)
+   ⏭️  Score 2.8 < 4 dashboard threshold — skipping sync
+
+📝 Processing: Sii — Senior ServiceNow Developer– AI & Automation (f/m/x)
+   🧠 LLM score: 4.2/5 [llm] (0 reasons)
+   📄 Generating tailored CV...
+   ❌ Tailored CV generation failed: Cannot read properties of null (reading 'cv_generation_mode'). Falling back...
+   ❌ No resume available (Tailoring failed & DB decode failed)
+   📄 Generating CV via LLM...
+   ⚠️  LLM CV failed: Cannot read properties of null (reading 'llm_providers')
+   📄 Generating CV via Native Keywords...
+[cv-generator] Failed: Cannot read properties of null (reading 'cv_generation_mode')
+   📄 Generating Cover Letter via Native Keywords...
+   ✅ Native Cover Letter generated: /Users/ilse/career-ops-2/output/cover-letter-sii-2026-08-15.pdf
+   📄 Generating Reference Letter via LLM...
+   ⚠️  LLM Reference Letter failed: Cannot read properties of null (reading 'llm_providers')
+   📧 Scraping job description for personalization...
+   🔍 Searching for real verified Sii recruiter email...
+   🌐 Verified Company Domain: justjoin.it
+   ✅ Found verified recruiter email on job page: forexample@domain.com
+   ⚠️  Gmail draft creation failed: IMAP timeout
+   🔄 Syncing job documents to dashboard inbox...
+   ✅ Synced to dashboard inbox
+   📂 Persisting evaluated job to local applications tracker...
+   ⏭️  Job already exists in local applications tracker, skipping local sync
+   💾 Backup file draft saved: /Users/ilse/career-ops-2/output/draft-sii-2026-08-15.md
+
+📝 Processing: P&P Solutions — Tester oprogramowania
+   🧠 LLM score: 2.8/5 [llm] (0 reasons)
+   ⏭️  Score 2.8 < 4 dashboard threshold — skipping sync
+
+📝 Processing: Fujitsu Poland Sp. z o.o. — AI & Automation Solutions Developer
+   🧠 LLM score: 4.2/5 [llm] (0 reasons)
+   📄 Generating tailored CV...
+   ❌ Tailored CV generation failed: Cannot read properties of null (reading 'cv_generation_mode'). Falling back...
+   ❌ No resume available (Tailoring failed & DB decode failed)
+   📄 Generating CV via LLM...
+   ⚠️  LLM CV failed: Cannot read properties of null (reading 'llm_providers')
+   📄 Generating CV via Native Keywords...
+[cv-generator] Failed: Cannot read properties of null (reading 'cv_generation_mode')
+   📄 Generating Cover Letter via Native Keywords...
+   ✅ Native Cover Letter generated: /Users/ilse/career-ops-2/output/cover-letter-fujitsu-poland-sp-z-o-o--2026-08-15.pdf
+   📄 Generating Reference Letter via LLM...
+   ⚠️  LLM Reference Letter failed: Cannot read properties of null (reading 'llm_providers')
+   📧 Scraping job description for personalization...
+   🔍 Searching for real verified Fujitsu Poland Sp. z o.o. recruiter email...
+   🌐 Verified Company Domain: justjoin.it
+   ✅ Found verified recruiter email on job page: forexample@domain.com
+   ⚠️  Gmail draft creation failed: IMAP timeout
+   🔄 Syncing job documents to dashboard inbox...
+   ✅ Synced to dashboard inbox
+   📂 Persisting evaluated job to local applications tracker...
+   ⏭️  Job already exists in local applications tracker, skipping local sync
+   💾 Backup file draft saved: /Users/ilse/career-ops-2/output/draft-fujitsu-poland-sp-z-o-o--2026-08-15.md
+
+📝 Processing: VolleyStation — Content Specialist
+   🧠 LLM score: 2.8/5 [llm] (0 reasons)
+   ⏭️  Score 2.8 < 4 dashboard threshold — skipping sync
+
+📝 Processing: Expert4you — QA Engineer
+   🧠 LLM score: 2.8/5 [llm] (0 reasons)
+   ⏭️  Score 2.8 < 4 dashboard threshold — skipping sync
+
+📝 Processing: Movate Spółka z o.o. — Senior Network Operations Engineer with Spanish
+   🧠 LLM score: 2.8/5 [llm] (0 reasons)
+   ⏭️  Score 2.8 < 4 dashboard threshold — skipping sync
+
+📝 Processing: Movate Spółka z o.o. — Technical Lead– Networking, RF & SD-WAN Technologies with Spanish
+   🧠 LLM score: 2.8/5 [llm] (0 reasons)
+   ⏭️  Score 2.8 < 4 dashboard threshold — skipping sync
+
+📝 Processing: Silky Coders — QA Engineer
+   🧠 LLM score: 2.8/5 [llm] (0 reasons)
+   ⏭️  Score 2.8 < 4 dashboard threshold — skipping sync
+   ⏭️  emagine Polska — Senior QA Automation Engineer: Already in applications tracker, checking off in pipeline.md
+
+📝 Processing: CrustLab — Graphic & Web Designer
+   🧠 LLM score: 2.8/5 [llm] (0 reasons)
+   ⏭️  Score 2.8 < 4 dashboard threshold — skipping sync
+
+📝 Processing: Billennium — Guidewire Business Analyst / Lead BA (Spanish-speaking)
+   🧠 LLM score: 2.8/5 [llm] (0 reasons)
+   ⏭️  Score 2.8 < 4 dashboard threshold — skipping sync
+
+📝 Processing: TSS — Tester Bezpieczeństwa
+   🧠 LLM score: 2.8/5 [llm] (0 reasons)
+   ⏭️  Score 2.8 < 4 dashboard threshold — skipping sync
+
+📝 Processing: Nexio Management Sp. z o. o. — Koordynator testów/ Tester (Pharma) (k/m/n)
+   🧠 LLM score: 2.8/5 [llm] (0 reasons)
+   ⏭️  Score 2.8 < 4 dashboard threshold — skipping sync
+
+📝 Processing: SCALO — Automation Tester/QA (Playwright+TypeScript)
+   🧠 LLM score: 4.2/5 [llm] (0 reasons)
+   📄 Generating tailored CV...
+   ❌ Tailored CV generation failed: Cannot read properties of null (reading 'cv_generation_mode'). Falling back...
+   ❌ No resume available (Tailoring failed & DB decode failed)
+   📄 Generating CV via LLM...
+   ⚠️  LLM CV failed: Cannot read properties of null (reading 'llm_providers')
+   📄 Generating CV via Native Keywords...
+[cv-generator] Failed: Cannot read properties of null (reading 'cv_generation_mode')
+   📄 Generating Cover Letter via Native Keywords...
+   ✅ Native Cover Letter generated: /Users/ilse/career-ops-2/output/cover-letter-scalo-2026-08-15.pdf
+   📄 Generating Reference Letter via LLM...
+   ⚠️  LLM Reference Letter failed: Cannot read properties of null (reading 'llm_providers')
+   📧 Scraping job description for personalization...
+   🔍 Searching for real verified SCALO recruiter email...
+   🌐 Verified Company Domain: justjoin.it
+   ✅ Found verified recruiter email on job page: forexample@domain.com
+   ⚠️  Gmail draft creation failed: IMAP timeout
+   🔄 Syncing job documents to dashboard inbox...
+   ✅ Synced to dashboard inbox
+   📂 Persisting evaluated job to local applications tracker...
+   📄 Local report file saved: /Users/ilse/career-ops-2/reports/103-scalo-2026-08-15.md
+   🔄 Rebuilding local applications tracker...
+   ✅ Local applications tracker updated
+   💾 Backup file draft saved: /Users/ilse/career-ops-2/output/draft-scalo-2026-08-15.md
+   ⏭️  Ness Solution — Test Automation Engineer: Already in applications tracker, checking off in pipeline.md
+
+📝 Processing: XM — Python QA Automation Team Leader
+   🧠 LLM score: 4.2/5 [llm] (0 reasons)
+   📄 Generating tailored CV...
+   ❌ Tailored CV generation failed: Cannot read properties of null (reading 'cv_generation_mode'). Falling back...
+   ❌ No resume available (Tailoring failed & DB decode failed)
+   📄 Generating CV via LLM...
+   ⚠️  LLM CV failed: Cannot read properties of null (reading 'llm_providers')
+   📄 Generating CV via Native Keywords...
+[cv-generator] Failed: Cannot read properties of null (reading 'cv_generation_mode')
+   📄 Generating Cover Letter via Native Keywords...
+   ✅ Native Cover Letter generated: /Users/ilse/career-ops-2/output/cover-letter-xm-2026-08-15.pdf
+   📄 Generating Reference Letter via LLM...
+   ⚠️  LLM Reference Letter failed: Cannot read properties of null (reading 'llm_providers')
+   📧 Scraping job description for personalization...
+   🔍 Searching for real verified XM recruiter email...
+   🌐 Verified Company Domain: nofluffjobs.com
+   ⚠️ No verified named recruiter email found for XM — relying strictly on Playwright ATS form submission.
+   ⚠️  Gmail draft creation failed: IMAP timeout
+   🔄 Syncing job documents to dashboard inbox...
+   ✅ Synced to dashboard inbox
+   📂 Persisting evaluated job to local applications tracker...
+   📄 Local report file saved: /Users/ilse/career-ops-2/reports/104-xm-2026-08-15.md
+   🔄 Rebuilding local applications tracker...
+   ✅ Local applications tracker updated
+   💾 Backup file draft saved: /Users/ilse/career-ops-2/output/draft-xm-2026-08-15.md
+
+📝 Processing: SwingDev — QA Engineer
+   🧠 LLM score: 4.2/5 [llm] (0 reasons)
+   📄 Generating tailored CV...
+   ❌ Tailored CV generation failed: Cannot read properties of null (reading 'cv_generation_mode'). Falling back...
+   ❌ No resume available (Tailoring failed & DB decode failed)
+   📄 Generating CV via LLM...
+   ⚠️  LLM CV failed: Cannot read properties of null (reading 'llm_providers')
+   📄 Generating CV via Native Keywords...
+[cv-generator] Failed: Cannot read properties of null (reading 'cv_generation_mode')
+   📄 Generating Cover Letter via Native Keywords...
+   ✅ Native Cover Letter generated: /Users/ilse/career-ops-2/output/cover-letter-swingdev-2026-08-15.pdf
+   📄 Generating Reference Letter via LLM...
+   ⚠️  LLM Reference Letter failed: Cannot read properties of null (reading 'llm_providers')
+   📧 Scraping job description for personalization...
+   🔍 Searching for real verified SwingDev recruiter email...
+   🌐 Verified Company Domain: swingdevils.org
+   ⚠️ No verified named recruiter email found for SwingDev — relying strictly on Playwright ATS form submission.
+   ⚠️  Gmail draft creation failed: IMAP timeout
+   🔄 Syncing job documents to dashboard inbox...
+   ✅ Synced to dashboard inbox
+   📂 Persisting evaluated job to local applications tracker...
+   📄 Local report file saved: /Users/ilse/career-ops-2/reports/105-swingdev-2026-08-15.md
+   🔄 Rebuilding local applications tracker...
+   ✅ Local applications tracker updated
+   💾 Backup file draft saved: /Users/ilse/career-ops-2/output/draft-swingdev-2026-08-15.md
+
+📝 Processing: Zyte — Platform and Automation Engineer (Remote)
+   🧠 LLM score: 4.2/5 [llm] (0 reasons)
+   📄 Generating tailored CV...
+   ❌ Tailored CV generation failed: Cannot read properties of null (reading 'cv_generation_mode'). Falling back...
+   ❌ No resume available (Tailoring failed & DB decode failed)
+   📄 Generating CV via LLM...
+   ⚠️  LLM CV failed: Cannot read properties of null (reading 'llm_providers')
+   📄 Generating CV via Native Keywords...
+[cv-generator] Failed: Cannot read properties of null (reading 'cv_generation_mode')
+   📄 Generating Cover Letter via Native Keywords...
+   ✅ Native Cover Letter generated: /Users/ilse/career-ops-2/output/cover-letter-zyte-2026-08-15.pdf
+   📄 Generating Reference Letter via LLM...
+   ⚠️  LLM Reference Letter failed: Cannot read properties of null (reading 'llm_providers')
+   📧 Scraping job description for personalization...
+   🔍 Searching for real verified Zyte recruiter email...
+   🌐 Verified Company Domain: apply.workable.com
+   ⚠️ No verified named recruiter email found for Zyte — relying strictly on Playwright ATS form submission.
+   ⚠️  Gmail draft creation failed: IMAP timeout
+   🔄 Syncing job documents to dashboard inbox...
+   ✅ Synced to dashboard inbox
+   📂 Persisting evaluated job to local applications tracker...
+   📄 Local report file saved: /Users/ilse/career-ops-2/reports/106-zyte-2026-08-15.md
+   🔄 Rebuilding local applications tracker...
+   ✅ Local applications tracker updated
+   💾 Backup file draft saved: /Users/ilse/career-ops-2/output/draft-zyte-2026-08-15.md
+
+📝 Processing: Jitterbit — Software Quality Assurance Engineer, Manual (Linux) (Remote)
+   🧠 LLM score: 2.8/5 [llm] (0 reasons)
+   ⏭️  Score 2.8 < 4 dashboard threshold — skipping sync
+
+📝 Processing: Jitterbit — Software QA Engineer, Manual (Linux) (Remote)
+   🧠 LLM score: 4.2/5 [llm] (0 reasons)
+   📄 Generating tailored CV...
+   ❌ Tailored CV generation failed: Cannot read properties of null (reading 'cv_generation_mode'). Falling back...
+   ❌ No resume available (Tailoring failed & DB decode failed)
+   📄 Generating CV via LLM...
+   ⚠️  LLM CV failed: Cannot read properties of null (reading 'llm_providers')
+   📄 Generating CV via Native Keywords...
+[cv-generator] Failed: Cannot read properties of null (reading 'cv_generation_mode')
+   📄 Generating Cover Letter via Native Keywords...
+   ✅ Native Cover Letter generated: /Users/ilse/career-ops-2/output/cover-letter-jitterbit-2026-08-15.pdf
+   📄 Generating Reference Letter via LLM...
+   ⚠️  LLM Reference Letter failed: Cannot read properties of null (reading 'llm_providers')
+   📧 Scraping job description for personalization...
+   🔍 Searching for real verified Jitterbit recruiter email...
+   🌐 Verified Company Domain: jitterbit.com
+   ⚠️ No verified named recruiter email found for Jitterbit — relying strictly on Playwright ATS form submission.
+   ⚠️  Gmail draft creation failed: IMAP timeout
+   🔄 Syncing job documents to dashboard inbox...
+   ✅ Synced to dashboard inbox
+   📂 Persisting evaluated job to local applications tracker...
+   📄 Local report file saved: /Users/ilse/career-ops-2/reports/107-jitterbit-2026-08-15.md
+   🔄 Rebuilding local applications tracker...
+   ✅ Local applications tracker updated
+   💾 Backup file draft saved: /Users/ilse/career-ops-2/output/draft-jitterbit-2026-08-15.md
+
+📝 Processing: Jitterbit — Software Quality Assurance Engineer (Linux) (Remote)
+   🧠 LLM score: 4.2/5 [llm] (0 reasons)
+   📄 Generating tailored CV...
+   ❌ Tailored CV generation failed: Cannot read properties of null (reading 'cv_generation_mode'). Falling back...
+   ❌ No resume available (Tailoring failed & DB decode failed)
+   📄 Generating CV via LLM...
+   ⚠️  LLM CV failed: Cannot read properties of null (reading 'llm_providers')
+   📄 Generating CV via Native Keywords...
+[cv-generator] Failed: Cannot read properties of null (reading 'cv_generation_mode')
+   📄 Generating Cover Letter via Native Keywords...
+   ✅ Native Cover Letter generated: /Users/ilse/career-ops-2/output/cover-letter-jitterbit-2026-08-15.pdf
+   📄 Generating Reference Letter via LLM...
+   ⚠️  LLM Reference Letter failed: Cannot read properties of null (reading 'llm_providers')
+   📧 Scraping job description for personalization...
+   🔍 Searching for real verified Jitterbit recruiter email...
+   🌐 Verified Company Domain: jitterbit.com
+   ⚠️ No verified named recruiter email found for Jitterbit — relying strictly on Playwright ATS form submission.
+   ⚠️  Gmail draft creation failed: IMAP timeout
+   🔄 Syncing job documents to dashboard inbox...
+   ✅ Synced to dashboard inbox
+   📂 Persisting evaluated job to local applications tracker...
+   📄 Local report file saved: /Users/ilse/career-ops-2/reports/108-jitterbit-2026-08-15.md
+   🔄 Rebuilding local applications tracker...
+   ✅ Local applications tracker updated
+   💾 Backup file draft saved: /Users/ilse/career-ops-2/output/draft-jitterbit-2026-08-15.md
+
+📝 Processing: dmTECH Polska — Test Automation Engineer z AI i z j.angielskim- Application Lifecycle Management (B2B)
+   🧠 LLM score: 4.2/5 [llm] (0 reasons)
+   📄 Generating tailored CV...
+   ❌ Tailored CV generation failed: Cannot read properties of null (reading 'cv_generation_mode'). Falling back...
+   ❌ No resume available (Tailoring failed & DB decode failed)
+   📄 Generating CV via LLM...
+   ⚠️  LLM CV failed: Cannot read properties of null (reading 'llm_providers')
+   📄 Generating CV via Native Keywords...
+[cv-generator] Failed: Cannot read properties of null (reading 'cv_generation_mode')
+   📄 Generating Cover Letter via Native Keywords...
+   ✅ Native Cover Letter generated: /Users/ilse/career-ops-2/output/cover-letter-dmtech-polska-2026-08-15.pdf
+   📄 Generating Reference Letter via LLM...
+   ⚠️  LLM Reference Letter failed: Cannot read properties of null (reading 'llm_providers')
+   📧 Scraping job description for personalization...
+   🔍 Searching for real verified dmTECH Polska recruiter email...
+   🌐 Verified Company Domain: justjoin.it
+   ✅ Found verified recruiter email on job page: forexample@domain.com

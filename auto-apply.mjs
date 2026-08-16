@@ -19,7 +19,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
 import { createRequire } from 'module';
-import { generateLLMReferenceLetter, generateLLMCoverLetter, generateLLMTailoredCV } from './lib/llm-cv-builder.mjs';
+import { generateLLMReferenceLetter, generateLLMCoverLetter } from './lib/llm-cv-builder.mjs';
 
 const require = createRequire(import.meta.url);
 const jsyaml = require('js-yaml');
@@ -395,72 +395,38 @@ function matchToExperience(requirements, profile) {
 }
 
 function generatePersonalizedEmail(company, role, jdText, profileData, jobUrl) {
-  // Support Care Account (support_worker) tone & exact template from Google Doc
-  if (targetUserId === 'support_worker') {
-    let email = "";
-    if (jobUrl) {
-      email += `🔗 APPLY HERE: ${jobUrl}\n\n`;
-    }
-    email += `Hi!\n\n`;
-    email += `I believe I’m the perfect candidate for your team. If you’re looking for someone kind and organized, whose number one priority is making sure every client has the right supports in place to live the life they choose. Then I’m the right fit for you.\n\n`;
-    email += `Being a support coordinator is not a job for me, it’s my passion. I believe everyone deserves a plan that actually works for their life, not just on paper, and that’s exactly what I aim to build for every client I work with.\n\n`;
-    email += `I’ve been lucky to work in this space for over 6 years, connecting people with the right services, building strong relationships with providers, and making sure every support plan reflects what the person actually wants, not just what’s easiest to arrange. I’ve also worked across remote teams, which taught me how to stay organized, communicate clearly, and keep everyone on the same page even when we’re not in the same room.\n\n`;
-    email += `Having experience as both a support worker and a support coordinator has made me really empathetic, because I understand exactly what a client needs from both sides, and I know how to actually deliver it, not just plan it. My main goal is always the same: making sure the person I’m helping feels heard, supported, and in control of their own choices.\n\n`;
-    email += `I understand that being a support coordinator also involves the practical side, case management, liaising with providers, monitoring plans, and stepping in when something isn’t working, which is why I’m willing to go above and beyond for every client I work with, as you can tell from my references.\n\n`;
-    email += `Furthermore, I speak fluently English, Spanish, Italian, and basic French, which has helped me connect with clients and families from different backgrounds and made them feel truly understood.\n\n`;
-    email += `In addition, I have the following certificates:\n`;
-    email += `• Blue card\n`;
-    email += `• First Aid, AED and CPR\n`;
-    email += `• Child psychology\n`;
-    email += `• Montessori Early Childhood Education\n`;
-    email += `• Childcare and EYFS\n`;
-    email += `• Early Childhood Education\n`;
-    email += `• NDIS worker screening check: Willing to obtain\n\n`;
-    email += `The most important thing is that the clients feel comfortable and confident with me, so if you’re interested, I’m more than happy to arrange a free day of my services to see if I’m the right fit :)\n\n`;
-    email += `I understand that finding the right support coordinator is not an easy task, but as someone with family members with disability, I assure you I’ll listen and treat your client as I’d like anyone in my family to be treated.\n\n`;
-    email += `If you’re looking for someone who will help you with care, genuine dedication, dignity, and respect, who can also bring a warm, cultural twist to your team, I’d love to hear from you!\n\n`;
-    email += `And honestly, regardless of the outcome of this application, I sincerely hope you’re able to find someone who treats your clients with the respect and care they deserve.\n\n`;
-    email += `I’ve attached my resume, certificates and recommendation letter. If you need anything else please let me know.\n\n`;
-    email += `Thank you so much for your time, I look forward to hearing from you!\n\n`;
-    email += `Email: placenciailse@gmail.com\n`;
-    email += `Phone number: 0498570497`;
-
-    // Strict no dashes rule
-    return email
-      .replace(/ — /g, ', ')
-      .replace(/ – /g, ', ')
-      .replace(/ - /g, ', ');
-  }
-
-  // Primary Account (default) — unchanged
   const requirements = extractRequirements(jdText);
   const matches = matchToExperience(requirements, profileData);
 
   let email = "";
   if (jobUrl) {
-    email += `🔗 APPLY HERE: ${jobUrl}\n\n`;
+    email += `${jobUrl}\n\n`;
   }
 
-  email += `Dear ${company} Hiring Team,\n\n`;
   email += `I believe I'm the perfect candidate for the ${role} position.\n\n`;
 
   email += `A little about me, I'm ${userCreds.fullName}, a ${role} based in ${userCreds.location || 'Australia'}. Over the past 6 years, I've designed, coded, and deployed end-to-end automation systems across three businesses I founded. Not the kind of automation you set and forget, I'm talking about pipelines that run 24/7: scraping prospects, generating personalized reports, sending cold outreach, deploying websites, and booking meetings through AI voice agents, all with zero manual input. I've written every line of code, debugged workflows at 2am, and iterated until each system worked flawlessly. That's the level of care I'd bring to ${company}.\n\n`;
 
   if (matches.length > 0) {
     const topMatches = matches.slice(0, 3);
-    email += `What excites me about the ${role} position at ${company} is how closely it aligns with these areas I've been perfecting:\n\n`;
-    for (const match of topMatches) {
+    email += `What excites me about the ${role} position at ${company} is how closely it aligns with these areas I've been perfecting: `;
+    const achievementSentences = topMatches.map(match => {
       const proofText = match.proof.includes(':') ? match.proof.split(':')[1].trim() : match.proof;
       const cleanProof = proofText
         .replace(/^Fully /, 'Built a fully ')
         .replace(/^Automated /, 'Built an automated ')
         .replace(/^Managed /, 'Managed ');
-      email += `• ${cleanProof.charAt(0).toUpperCase() + cleanProof.slice(1)}\n\n`;
-    }
+      let sentence = cleanProof.charAt(0).toUpperCase() + cleanProof.slice(1);
+      if (!sentence.endsWith('.')) sentence += '.';
+      return sentence;
+    });
+    email += achievementSentences.join(' ') + `\n\n`;
     email += `These aren't just bullet points from a resume, they're systems I've built from scratch that are still running today, generating real results without any human intervention. I believe ${company} would benefit from this same hands-on approach.\n\n`;
   } else {
     email += `What draws me to ${company} isn't just the ${role} title, it's the kind of challenges I'd get to work on. I build AI-powered automation that replaces manual operations with intelligent workflows, and I've done it across marketing, sales, content production, and customer acquisition. I don't just configure tools, I build the tools myself, from the first line of code to the production deployment.\n\n`;
   }
+
+  email += `Furthermore, I speak fluently English, Spanish (Native), Italian, and basic French. This linguistic background uniquely positions me to build trust and effectively communicate with diverse, international clients across multiple regions.\n\n`;
 
   email += `I understand finding a reliable worker is hard nowadays but I'm confident I'm the right fit for you so I offer you one day of my services for free so you can see what I have to offer.\n\n`;
   email += `My CV, cover letter, and reference letter are attached for your review.\n\n`;
@@ -1243,7 +1209,7 @@ ${whyMatch}
       const tsvFilename = `${reportNum}-${slug}.tsv`;
       const tsvPath = path.join(additionsDir, tsvFilename);
       
-      const tsvRow = `${reportNum}\t${TODAY}\t${job.company}\t${job.role || job.title}\t${jobScore}/5\tApplied\t✅\t[${reportNum}](reports/${reportFilename})\t${whyMatch.slice(0, 100).replace(/\s+/g, ' ')}\n`;
+      const tsvRow = `${reportNum}\t${TODAY}\t${job.company}\t${job.role || job.title}\tEvaluated\t${jobScore}/5\t✅\t[${reportNum}](reports/${reportFilename})\t${whyMatch.slice(0, 100).replace(/\s+/g, ' ')}\n`;
       fs.writeFileSync(tsvPath, tsvRow, 'utf8');
       
       // 5. Run merge-tracker.mjs to rebuild data/applications.md
@@ -1417,38 +1383,17 @@ ${whyMatch}
     let cvHtmlPath = cv?.htmlPath || null;
     
     // 1. CV Generation
-    if (useLlm && llmDocs.cv !== false) {
-      console.log(`   📄 Generating CV via LLM...`);
+    if (cvGeneratorFn) {
+      console.log(`   📄 Generating CV via Native Keywords...`);
       try {
-        const cvMdText = readFileSync(join(__dirname, 'cv.md'), 'utf-8');
-        const llmCvHtml = await generateLLMTailoredCV(profileForDoc, cvMdText, jdText);
-        cvHtmlPath = join(__dirname, `output/llm-cv-${slug}-${TODAY}.html`);
-        const pdfPath = join(__dirname, `output/llm-cv-${slug}-${TODAY}.pdf`);
-        writeFileSync(cvHtmlPath, llmCvHtml, 'utf8');
-        
-        const cvMdFlag = `--cv-md="${join(__dirname, 'cv.md')}"`;
-        execSync(`node generate-pdf.mjs "${cvHtmlPath}" "${pdfPath}" --format=letter --report=000 ${cvMdFlag}`, { encoding: 'utf8', cwd: __dirname, timeout: 30000 });
-        
-        finalCvPath = pdfPath;
-        console.log(`   ✅ LLM CV generated: ${pdfPath}`);
-      } catch (e) {
-        console.log(`   ⚠️  LLM CV failed: ${e.message.slice(0, 80)}`);
-      }
-    }
-
-    if (!finalCvPath || finalCvPath === cv?.pdfPath) {
-      if (cvGeneratorFn) {
-        console.log(`   📄 Generating CV via Native Keywords...`);
-        try {
-          enhancedCv = await cvGeneratorFn(profileForDoc, jdText, join(__dirname, 'output'));
-          if (enhancedCv.success) {
-            finalCvPath = enhancedCv.pdfPath;
-            cvHtmlPath = enhancedCv.htmlPath;
-            console.log(`   ✅ Native CV generated: ${finalCvPath}`);
-          }
-        } catch (e) {
-          console.log(`   ⚠️  Native CV failed: ${e.message.slice(0, 80)}`);
+        enhancedCv = await cvGeneratorFn(profileForDoc, jdText, join(__dirname, 'output'));
+        if (enhancedCv.success) {
+          finalCvPath = enhancedCv.pdfPath;
+          cvHtmlPath = enhancedCv.htmlPath;
+          console.log(`   ✅ Native CV generated: ${finalCvPath}`);
         }
+      } catch (e) {
+        console.log(`   ⚠️  Native CV failed: ${e.message.slice(0, 80)}`);
       }
     }
 
@@ -1590,8 +1535,8 @@ Taylor Chorley`;
             const fromEmail = emailConfig?.gmail?.user || 'placenciailse@gmail.com';
 
             let fullEmailBody = emailBody || "";
-            if (!fullEmailBody.includes("APPLY HERE")) {
-              fullEmailBody = `🔗 APPLY HERE: ${job.url}\n\n` + fullEmailBody;
+            if (!fullEmailBody.includes(job.url)) {
+              fullEmailBody = `${job.url}\n\n` + fullEmailBody;
             }
             fullEmailBody = fullEmailBody
               .replace(/ — /g, ", ")
@@ -1693,7 +1638,7 @@ ${emailBody}
     }
     
     // Track - Only set Submitted if atsApplied is strictly true with verified confirmation
-    const finalStatus = atsApplied ? 'Applied (Confirmed)' : (DRY_RUN ? 'Dry Run' : (isVip ? 'Gmail Drafted' : 'Needs Review'));
+    const finalStatus = atsApplied ? 'Applied (Confirmed)' : 'Evaluated';
     stats.sent++;
     applications.push({
       num: applications.length + 1,

@@ -8,7 +8,7 @@
      the PDF pipeline injects as a later :root block. Defaults reproduce the
      original hardcoded values, so a profile without a `style:` block is unchanged. */
   :root {
-    --accent-color: #1A56A0;
+    --accent-color: #ff8bb1;
     --font-family: "Helvetica", Arial, sans-serif;
     --font-size: 10pt;
     /* Matches generate-pdf.mjs's PDF_PAGE_MARGIN — the actual PDF page margin
@@ -93,20 +93,11 @@
   }
 
   .achievements {
-    list-style: none;
     margin-bottom: 4pt;
   }
 
-  .achievements li {
-    margin-bottom: 5pt;
-    padding-left: 14pt;
-    position: relative;
-  }
-
-  .achievements li::before {
-    content: "\2022";
-    position: absolute;
-    left: 0;
+  .achievements p {
+    margin-bottom: 8pt;
   }
 
   .language-closing {

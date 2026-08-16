@@ -219,6 +219,12 @@ export function PipelineView({
                     </span>
                   </th>
                 ))}
+                {tab === "READY_TO_APPLY" && (
+                  <th className="px-4 py-2.5 font-medium">Documents</th>
+                )}
+                {tab === "READY_TO_APPLY" && (
+                  <th className="px-4 py-2.5 font-medium text-right">Actions</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -243,6 +249,60 @@ export function PipelineView({
                     </span>
                   </td>
                   <td className="px-4 py-3 text-faint tabular-nums">{r.date}</td>
+                  {tab === "READY_TO_APPLY" && (
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-2">
+                        {r.has_cv && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-muted w-16">CV:</span>
+                            <a href={`/api/documents?id=${r.id}&type=cv`} target="_blank" className="text-xs font-semibold text-brand hover:underline px-2 py-1 bg-surface rounded border border-border">View</a>
+                            <a href={`/api/documents?id=${r.id}&type=cv`} download className="text-xs font-semibold text-brand hover:underline px-2 py-1 bg-surface rounded border border-border">Download</a>
+                          </div>
+                        )}
+                        {r.has_cl && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-muted w-16">Cover:</span>
+                            <a href={`/api/documents?id=${r.id}&type=cl`} target="_blank" className="text-xs font-semibold text-brand hover:underline px-2 py-1 bg-surface rounded border border-border">View</a>
+                            <a href={`/api/documents?id=${r.id}&type=cl`} download className="text-xs font-semibold text-brand hover:underline px-2 py-1 bg-surface rounded border border-border">Download</a>
+                          </div>
+                        )}
+                        {r.has_rl && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-muted w-16">Ref:</span>
+                            <a href={`/api/documents?id=${r.id}&type=rl`} target="_blank" className="text-xs font-semibold text-brand hover:underline px-2 py-1 bg-surface rounded border border-border">View</a>
+                            <a href={`/api/documents?id=${r.id}&type=rl`} download className="text-xs font-semibold text-brand hover:underline px-2 py-1 bg-surface rounded border border-border">Download</a>
+                          </div>
+                        )}
+                        {!r.has_cv && !r.has_cl && !r.has_rl && <span className="text-xs text-muted">Pending</span>}
+                        {r.has_gmail_draft && <div className="mt-1"><span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-800">Draft Sent</span></div>}
+                      </div>
+                    </td>
+                  )}
+                  {tab === "READY_TO_APPLY" && (
+                    <td className="px-4 py-3 text-right align-top">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await fetch("/api/status", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ id: r.id, n: r.n, status: "Applied" }),
+                            });
+                            if (res.ok) {
+                              window.dispatchEvent(new CustomEvent("co-job-done"));
+                              // Small timeout to allow the backend to settle before refetching or reloading
+                              setTimeout(() => window.location.reload(), 200);
+                            }
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        }}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 text-sm font-semibold shadow-sm transition max-sm:min-h-[44px]"
+                      >
+                        ✅ Applied
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
