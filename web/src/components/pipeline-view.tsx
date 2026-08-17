@@ -219,10 +219,10 @@ export function PipelineView({
                     </span>
                   </th>
                 ))}
-                {tab === "READY_TO_APPLY" && (
+                {(tab === "READY_TO_APPLY" || tab === "EVALUATED") && (
                   <th className="px-4 py-2.5 font-medium">Documents</th>
                 )}
-                {tab === "READY_TO_APPLY" && (
+                {(tab === "READY_TO_APPLY" || tab === "EVALUATED") && (
                   <th className="px-4 py-2.5 font-medium text-right">Actions</th>
                 )}
               </tr>
@@ -249,7 +249,7 @@ export function PipelineView({
                     </span>
                   </td>
                   <td className="px-4 py-3 text-faint tabular-nums">{r.date}</td>
-                  {tab === "READY_TO_APPLY" && (
+                  {(tab === "READY_TO_APPLY" || tab === "EVALUATED") && (
                     <td className="px-4 py-3">
                       <div className="flex flex-col gap-2">
                         {r.has_cv && (
@@ -274,7 +274,11 @@ export function PipelineView({
                           </div>
                         )}
                         {!r.has_cv && !r.has_cl && !r.has_rl && <span className="text-xs text-muted">Pending</span>}
-                        {r.has_gmail_draft && <div className="mt-1"><span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-800">Draft Sent</span></div>}
+                        {r.has_gmail_draft ? (
+                          <div className="mt-1"><span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-800">Gmail Draft: Synced ✅</span></div>
+                        ) : (
+                          <div className="mt-1"><span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">Gmail Draft: Not Yet ⏳</span></div>
+                        )}
                       </div>
                     </td>
                   )}
@@ -300,6 +304,30 @@ export function PipelineView({
                         className="inline-flex items-center justify-center gap-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 text-sm font-semibold shadow-sm transition max-sm:min-h-[44px]"
                       >
                         ✅ Applied
+                      </button>
+                    </td>
+                  )}
+                  {tab === "EVALUATED" && (
+                    <td className="px-4 py-3 text-right align-top">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await fetch("/api/generate-docs", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ jobId: r.id, company: r.company, role: r.role, url: r.url }),
+                            });
+                            if (res.ok) {
+                              window.dispatchEvent(new CustomEvent("co-job-done"));
+                              setTimeout(() => window.location.reload(), 200);
+                            }
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        }}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-md bg-brand hover:bg-brand/90 text-white px-4 py-2 text-sm font-semibold shadow-sm transition max-sm:min-h-[44px]"
+                      >
+                        Generate Documents
                       </button>
                     </td>
                   )}
