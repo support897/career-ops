@@ -344,7 +344,7 @@ I am writing to express my strong interest in the ${role} position at ${company}
 
 ${cvSummary.split(".").slice(0, 2).join(".").trim()}.
 
-What draws me to this role specifically is the opportunity to apply my experience directly to ${requirement1.toLowerCase()}. At APEX Website Solutions, I architected a fully automated B2B lead generation engine that scrapes qualified prospects, generates audit reports, and books calls without any manual intervention, a system that operates 24/7 at scale. This same principle of designing once and deploying infinitely is exactly what I bring to every engagement.
+What draws me to this role specifically is the opportunity to apply my experience directly to ${requirement1.toLowerCase()}. At Fiesta Fresh Cleaning, I architected a fully automated B2B lead generation engine that scrapes qualified prospects, generates audit reports, and books calls without any manual intervention, a system that operates 24/7 at scale. This same principle of designing once and deploying infinitely is exactly what I bring to every engagement.
 
 I have also demonstrated ability in ${requirement2.toLowerCase()}. At Lumi and Milo, I built a Python and Gemini API content pipeline that takes a topic from idea to published YouTube video in a single click, reducing production time from hours to minutes and removing human bottlenecks entirely.
 

@@ -293,8 +293,8 @@ async function applyToJob(url, userId, candidateInfo, cvPath) {
       // 1. Run browser evaluation to fill all types of questions and standard fields
       await page.evaluate((candidate) => {
         const Q_ANSWERS = {
-          'one sentence': 'I founded and built 4 automated SaaS businesses including Career Flow (job search pipeline), Unimark (small business AI marketing), APEX Website Solutions (B2B lead gen engine), and Lumi & Milo (autonomous YouTube content pipeline).',
-          'automation you built': 'I built Career Flow (job search pipeline automation), Unimark (AI marketing SaaS), APEX Website Solutions (B2B lead gen engine), and Lumi & Milo (autonomous video production pipeline).',
+          'one sentence': 'I founded and built 4 automated SaaS businesses including Career Flow (job search pipeline), Unimark (small business AI marketing), Fiesta Fresh Cleaning (B2B lead gen engine), and Lumi & Milo (autonomous YouTube content pipeline).',
+          'automation you built': 'I built Career Flow (job search pipeline automation), Unimark (AI marketing SaaS), Fiesta Fresh Cleaning (B2B lead gen engine), and Lumi & Milo (autonomous video production pipeline).',
           'internal tool': 'I built a multi-agent content production pipeline with a QC agent that reviews all output for tone, pacing, and brand consistency before human approval, reducing production effort to a single click.',
           'tool you built': 'I built a multi-agent content production pipeline with a QC agent that reviews all output for tone, pacing, and brand consistency before human approval, reducing production effort to a single click.',
           'why.*company': 'I have spent 6+ years building AI-powered automation systems for marketing and sales operations. Your company is at the intersection of AI and intelligent workflows, which is exactly where I want to apply my experience building production agents.',

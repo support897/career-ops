@@ -233,101 +233,74 @@ ${html}
 // ── Cover Letter Generation ───────────────────────────────────────────────────
 
 /**
- * Generate a personalized cover letter for this job.
- * Uses career-ops keyword matching approach.
+ * Generate a personalized cover letter for this job using a deterministic template.
  */
 export async function generateCoverLetterText(
   job: Pick<InboxJob, "company" | "role" | "jd_text" | "why_match">,
   profile: Pick<UserProfile, "cv_data" | "cv_markdown" | "full_name" | "email" | "location" | "profile_config">
 ): Promise<string> {
-  const cvSummary = profile.cv_markdown || (profile.cv_data ? JSON.stringify(profile.cv_data).slice(0, 3000) : "");
-  const jd = job.jd_text || `${job.role} at ${job.company}`;
-  const name = profile.full_name || "The Candidate";
-  const email = profile.email || "";
-  const location = profile.location || "";
+  const company = job.company || "your company";
+  const role = job.role || "this role";
+  const name = profile.full_name || "Ilse Placencia";
+  const email = profile.email || "placenciailse@gmail.com";
+  
+  return `Dear ${company} Hiring Team,
 
-  const prompt = `Write a professional, personalized cover letter for this job application.
+I am writing to express my strong interest in the ${role} position at ${company}.
 
-## Rules
-- Use ONLY facts from the candidate's CV (never invent experience)
-- Match the language and keywords from the job description
-- 3-4 paragraphs: opening, proof of skills, why this company, call to action
-- Warm but professional tone
-- DO NOT use generic phrases like "I am a highly motivated individual"
-- Address real skill matches from the JD to the CV
+With over 6 years of experience building AI-powered automation systems across lead generation, content production, and marketing operations, I bring a unique combination of technical depth and business outcomes. I have personally built, deployed, and run production AI agents across three businesses I founded, covering the full stack from prospecting to campaign management to sales operations.
 
-## Job Details
-Company: ${job.company}
-Role: ${job.role}
-${jd.slice(0, 2000)}
+At Fiesta Fresh Cleaning, I built a fully automated B2B lead generation system that scrapes prospects, generates personalized audits, sends cold email, and books discovery calls through an AI voice agent, all with zero manual input. At Lumi and Milo, I designed a multi-agent orchestration system with a dedicated QC agent that reviews every piece of content before human approval.
 
-## Candidate
-Name: ${name}
-Email: ${email}
-Location: ${location}
+I am fluent in TypeScript, Node.js, Python, REST APIs, and webhooks. I develop with Claude, Cursor, and multi-agent orchestration as my primary tools. I do not just evaluate AI tools; I build production systems with them.
 
-## Their Background
-${cvSummary.slice(0, 2000)}
+What draws me to ${company} is your commitment to innovative technology. I want to build the systems that make your teams more effective, not just recommend tools. My experience with multi-agent orchestration, API integrations, and end-to-end automation maps directly to the systems you need.
 
-Return ONLY the cover letter text (no subject line, no HTML, no markdown).`;
-
-  const text = await callGemini(prompt);
-
-  // Add signature
-  return `${text.trim()}
+I would welcome the chance to discuss how my experience building end-to-end automation systems can contribute to ${company}'s growth.
 
 Best regards,
 ${name}
-${email} | ${location}`;
+${email} | 04 98570497
+ilseplacencia.shop`;
 }
 
 // ── Email Draft Generation ────────────────────────────────────────────────────
 
 /**
- * Generate a cold outreach / application email draft.
- * Short, punchy, personalized to the JD.
+ * Generate a cold outreach / application email draft using a deterministic template.
  */
 export async function generateEmailDraft(
   job: Pick<InboxJob, "company" | "role" | "jd_text" | "url">,
   profile: Pick<UserProfile, "cv_data" | "cv_markdown" | "full_name" | "email" | "location">
 ): Promise<string> {
-  const cvSummary = profile.cv_markdown || (profile.cv_data ? JSON.stringify(profile.cv_data).slice(0, 2000) : "");
-  const jd = job.jd_text || `${job.role} at ${job.company}`;
-  const name = profile.full_name || "The Candidate";
-  const email = profile.email || "";
+  const company = job.company || "your company";
+  const role = job.role || "this role";
+  const url = job.url || "";
+  const name = profile.full_name || "Ilse Placencia";
+  const firstName = name.split(" ")[0];
+  const email = profile.email || "placenciailse@gmail.com";
 
-  const prompt = `Write a compelling cold outreach email for this job application.
+  return `Subject: Application: ${role} — ${name}
 
-## Rules
-- Subject line: "Application: ${job.role} — ${name}"
-- Keep the email full page length. DO NOT make it short or concise.
-- Start the email body directly with "I believe I'm the perfect candidate" (no formal greeting)
-- Open with their strongest relevant achievement
-- One specific reason why this company/role is exciting
-- Clear call to action
-- Use facts from the CV only — never invent
-- Do NOT use bullet points or dashes anywhere in the email body.
-- Highlight the candidate's language proficiency prominently.
-- Embed the raw job URL directly at the top of the body (no 'Apply here' labels): ${job.url}
+${url}
 
-## Job
-Company: ${job.company}
-Role: ${job.role}
-${jd.slice(0, 1500)}
+I believe I'm the perfect candidate for the ${role} position at ${company}.
 
-## Candidate
-${cvSummary.slice(0, 1500)}
+I build AI-powered automation systems. With over 6 years of experience across three businesses I founded, I bring a unique combination of technical depth and business outcomes. I have personally built, deployed, and run production AI agents, covering the full stack from prospecting to campaign management to sales operations.
 
-Return the email in this format:
-Subject: [subject line]
+* At Fiesta Fresh Cleaning, I built a fully automated B2B lead generation system that scrapes prospects, generates personalized audits, sends cold email, and books discovery calls through an AI voice agent, all with zero manual input.
+* At Lumi and Milo, I designed a multi-agent orchestration system with a dedicated QC agent that reviews every piece of content before human approval.
 
-[email body]
+I am fluent in TypeScript, Node.js, Python, REST APIs, and webhooks. I develop with Claude, Cursor, and multi-agent orchestration as my primary tools. I do not just evaluate AI tools; I build production systems with them.
+
+Furthermore, I speak fluently English, Spanish (Native), Italian, and basic French, which allows me to effectively communicate with international clients and diverse teams.
+
+I'd be thrilled to bring this experience to ${company}. Wishing you a great week regardless.
 
 Best regards,
 ${name}
-${email}`;
-
-  return callGemini(prompt);
+${email} | +61498570497
+https://www.ilseplacencia.shop`;
 }
 
 // ── Full Pipeline ─────────────────────────────────────────────────────────────

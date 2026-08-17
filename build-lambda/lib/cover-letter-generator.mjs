@@ -24,8 +24,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const EXPERIENCE_MAP = {
   automation: {
     superpower: 'End-to-end automation pipeline design',
-    proof: 'Built a fully automated B2B lead generation engine at APEX Website Solutions that scrapes prospects, generates audit reports, sends cold emails, and books calls 24/7 with zero manual input.',
-    company: 'APEX Website Solutions',
+    proof: 'Built a fully automated B2B lead generation engine at Fiesta Fresh Cleaning that scrapes prospects, generates audit reports, sends cold emails, and books calls 24/7 with zero manual input.',
+    company: 'Fiesta Fresh Cleaning',
   },
   ai: {
     superpower: 'Multi-agent orchestration and AI voice agents',
@@ -40,12 +40,12 @@ const EXPERIENCE_MAP = {
   lead_generation: {
     superpower: 'B2B lead generation and cold outreach automation',
     proof: 'Built a complete lead generation system at APEX that scrapes qualified prospects, generates personalized audits, sends cold emails, and books discovery calls through an AI voice agent.',
-    company: 'APEX Website Solutions',
+    company: 'Fiesta Fresh Cleaning',
   },
   n8n: {
     superpower: 'Workflow orchestration with n8n, Make, and Node.js',
     proof: 'Architected automated workflows at APEX using n8n and Google Antigravity that handle prospect scraping, audit generation, email sequences, and call booking.',
-    company: 'APEX Website Solutions',
+    company: 'Fiesta Fresh Cleaning',
   },
   python: {
     superpower: 'Python automation and AI integration',
@@ -55,12 +55,12 @@ const EXPERIENCE_MAP = {
   api: {
     superpower: 'API integration and webhook automation',
     proof: 'Integrated multiple APIs across businesses including Vapi, Bland AI, Facebook Graph API, and custom Node.js services for lead capture and outreach.',
-    company: 'APEX Website Solutions',
+    company: 'Fiesta Fresh Cleaning',
   },
   voice: {
     superpower: 'AI voice agents for lead qualification',
     proof: 'Deployed Bland AI and Vapi voice agents at APEX that autonomously qualify leads and book appointments 24/7.',
-    company: 'APEX Website Solutions',
+    company: 'Fiesta Fresh Cleaning',
   },
   content: {
     superpower: 'Automated content production pipelines',
@@ -70,12 +70,12 @@ const EXPERIENCE_MAP = {
   growth: {
     superpower: 'Growth engineering and demand generation',
     proof: 'Built automated lead generation and outreach systems at APEX that generate B2B demand on autopilot.',
-    company: 'APEX Website Solutions',
+    company: 'Fiesta Fresh Cleaning',
   },
   email: {
     superpower: 'Cold email and nurture sequence automation',
     proof: 'Engineered automated cold email sequences at APEX that deliver personalized outreach at scale.',
-    company: 'APEX Website Solutions',
+    company: 'Fiesta Fresh Cleaning',
   },
   remote: {
     superpower: 'Remote-first async team management',
@@ -85,42 +85,42 @@ const EXPERIENCE_MAP = {
   b2b: {
     superpower: 'B2B lead generation and sales automation',
     proof: 'Built complete B2B sales automation at APEX: prospect scraping, audit reports, cold email, AI voice calls, and website deployment.',
-    company: 'APEX Website Solutions',
+    company: 'Fiesta Fresh Cleaning',
   },
   saas: {
     superpower: 'SaaS workflow automation',
     proof: 'Built end-to-end automation systems using n8n, Make, and custom Node.js services that integrate multiple SaaS platforms.',
-    company: 'APEX Website Solutions',
+    company: 'Fiesta Fresh Cleaning',
   },
   facebook: {
     superpower: 'Facebook and social media automation',
     proof: 'Built a Node.js Facebook automation app at APEX that publishes daily posts and auto-responds to purchase-intent signals.',
-    company: 'APEX Website Solutions',
+    company: 'Fiesta Fresh Cleaning',
   },
   social_media: {
     superpower: 'Social media automation and engagement',
     proof: 'Built a Facebook Graph API webhook system at APEX that detects purchase-intent posts and auto-responds with tailored outreach.',
-    company: 'APEX Website Solutions',
+    company: 'Fiesta Fresh Cleaning',
   },
   operations: {
     superpower: 'Operations optimization and process automation',
     proof: 'Eliminated manual operations across three businesses by building automated workflows for lead generation, content production, and sales.',
-    company: 'APEX Website Solutions',
+    company: 'Fiesta Fresh Cleaning',
   },
   gtm: {
     superpower: 'GTM systems and go-to-market automation',
     proof: 'Built complete GTM automation: lead scraping, cold outreach, AI voice qualification, and website deployment at APEX.',
-    company: 'APEX Website Solutions',
+    company: 'Fiesta Fresh Cleaning',
   },
   revops: {
     superpower: 'Revenue operations automation',
     proof: 'Automated the full revenue pipeline at APEX: lead detection, qualification, outreach, and appointment booking.',
-    company: 'APEX Website Solutions',
+    company: 'Fiesta Fresh Cleaning',
   },
   virtual_assistant: {
     superpower: 'AI-powered virtual assistance and automation',
     proof: 'Built AI voice agents and automated workflows that handle lead qualification, appointment booking, and customer outreach 24/7.',
-    company: 'APEX Website Solutions',
+    company: 'Fiesta Fresh Cleaning',
   },
 };
 
@@ -200,7 +200,7 @@ export function buildCoverLetterPayload(profile, job, jdText) {
     }
     profileIntro = profileIntro.trim();
   } else {
-    profileIntro = 'I build AI-powered automation systems that replace manual operations with intelligent workflows. At APEX Website Solutions, I built a fully automated B2B lead generation engine. At Lumi and Milo, I designed a multi-agent orchestration system with a dedicated QC agent.';
+    profileIntro = 'I build AI-powered automation systems that replace manual operations with intelligent workflows. At Fiesta Fresh Cleaning, I built a fully automated B2B lead generation engine. At Lumi and Milo, I designed a multi-agent orchestration system with a dedicated QC agent.';
   }
 
   // Build achievements list

@@ -362,20 +362,20 @@ function matchToExperience(requirements, profile) {
   const matches = [];
   
   const experienceMap = {
-    'automation': { superpower: 'End-to-end automation pipeline design', proof: 'APEX Website Solutions' },
+    'automation': { superpower: 'End-to-end automation pipeline design', proof: 'Fiesta Fresh Cleaning' },
     'ai': { superpower: 'Multi-agent orchestration and AI voice agents', proof: 'Lumi and Milo' },
     'marketing': { superpower: 'Marketing automation across Facebook, email, SEO, and web', proof: 'Evolve Marketing' },
-    'lead_generation': { superpower: 'B2B lead generation and cold outreach automation', proof: 'APEX Website Solutions' },
-    'n8n': { superpower: 'End-to-end automation pipeline design (Google Antigravity, n8n, Make)', proof: 'APEX Website Solutions' },
-    'typescript': { superpower: 'End-to-end automation pipeline design (Node.js, Python)', proof: 'APEX Website Solutions' },
+    'lead_generation': { superpower: 'B2B lead generation and cold outreach automation', proof: 'Fiesta Fresh Cleaning' },
+    'n8n': { superpower: 'End-to-end automation pipeline design (Google Antigravity, n8n, Make)', proof: 'Fiesta Fresh Cleaning' },
+    'typescript': { superpower: 'End-to-end automation pipeline design (Node.js, Python)', proof: 'Fiesta Fresh Cleaning' },
     'python': { superpower: 'Multi-agent orchestration and AI voice agents (Gemini API)', proof: 'Lumi and Milo' },
-    'api': { superpower: 'B2B lead generation and cold outreach automation', proof: 'APEX Website Solutions' },
-    'gtm': { superpower: 'End-to-end automation pipeline design', proof: 'APEX Website Solutions' },
-    'revops': { superpower: 'Marketing automation across Facebook, email, SEO, and web', proof: 'APEX Website Solutions' },
-    'voice': { superpower: 'Multi-agent orchestration and AI voice agents (Vapi, Bland AI)', proof: 'APEX Website Solutions' },
+    'api': { superpower: 'B2B lead generation and cold outreach automation', proof: 'Fiesta Fresh Cleaning' },
+    'gtm': { superpower: 'End-to-end automation pipeline design', proof: 'Fiesta Fresh Cleaning' },
+    'revops': { superpower: 'Marketing automation across Facebook, email, SEO, and web', proof: 'Fiesta Fresh Cleaning' },
+    'voice': { superpower: 'Multi-agent orchestration and AI voice agents (Vapi, Bland AI)', proof: 'Fiesta Fresh Cleaning' },
     'content': { superpower: 'Content production pipelines (script to publish)', proof: 'Lumi and Milo' },
-    'facebook': { superpower: 'Marketing automation across Facebook', proof: 'APEX Website Solutions' },
-    'email': { superpower: 'B2B lead generation and cold outreach automation', proof: 'APEX Website Solutions' },
+    'facebook': { superpower: 'Marketing automation across Facebook', proof: 'Fiesta Fresh Cleaning' },
+    'email': { superpower: 'B2B lead generation and cold outreach automation', proof: 'Fiesta Fresh Cleaning' },
     'remote': { superpower: 'Managed full-funnel digital campaigns in a fully remote, async-first team', proof: 'Evolve Marketing' },
   };
   
@@ -873,7 +873,7 @@ function extractExperienceHTML(cv) {
   return `
     <div class="job">
       <div class="job-header">
-        <span class="job-company">APEX Website Solutions</span>
+        <span class="job-company">Fiesta Fresh Cleaning</span>
         <span class="job-period">Apr 2026 – Present</span>
       </div>
       <div class="job-role">Founder and Automation Engineer</div>
@@ -898,7 +898,7 @@ function extractExperienceHTML(cv) {
     </div>
     <div class="job">
       <div class="job-header">
-        <span class="job-company">APEX Website Solutions</span>
+        <span class="job-company">Fiesta Fresh Cleaning</span>
         <span class="job-period">Oct 2025 – Present</span>
       </div>
       <div class="job-role">Co-Owner and Marketing Automation Specialist</div>
@@ -968,7 +968,7 @@ function generateCoverLetter(company, role) {
   
   const template = existsSync(join(__dirname, 'templates/cover-letter-template.md'))
     ? readFileSync(join(__dirname, 'templates/cover-letter-template.md'), 'utf8')
-    : `Dear {{COMPANY}} Hiring Team,\n\nI build AI-powered automation systems that replace manual operations with intelligent workflows. With over 6 years of experience across three businesses I founded, I bring a unique combination of technical depth and business outcomes.\n\nAt APEX Website Solutions, I built a fully automated B2B lead generation system that scrapes prospects, generates personalized audits, sends cold email, and books discovery calls through an AI voice agent, all with zero manual input. At Lumi and Milo, I designed a multi-agent orchestration system with a dedicated QC agent.\n\nI am fluent in TypeScript, Node.js, Python, REST APIs, and webhooks. I develop with Claude, Cursor, and multi-agent orchestration as my primary tools. I do not just evaluate AI tools; I build production systems with them.\n\nI would welcome the chance to discuss how my experience can contribute to {{COMPANY}}'s growth.\n\nBest regards,\n{{FULL_NAME}}\n{{EMAIL}} | {{PHONE}}\n{{WEBSITE}}`;
+    : `Dear {{COMPANY}} Hiring Team,\n\nI build AI-powered automation systems that replace manual operations with intelligent workflows. With over 6 years of experience across three businesses I founded, I bring a unique combination of technical depth and business outcomes.\n\nAt Fiesta Fresh Cleaning, I built a fully automated B2B lead generation system that scrapes prospects, generates personalized audits, sends cold email, and books discovery calls through an AI voice agent, all with zero manual input. At Lumi and Milo, I designed a multi-agent orchestration system with a dedicated QC agent.\n\nI am fluent in TypeScript, Node.js, Python, REST APIs, and webhooks. I develop with Claude, Cursor, and multi-agent orchestration as my primary tools. I do not just evaluate AI tools; I build production systems with them.\n\nI would welcome the chance to discuss how my experience can contribute to {{COMPANY}}'s growth.\n\nBest regards,\n{{FULL_NAME}}\n{{EMAIL}} | {{PHONE}}\n{{WEBSITE}}`;
   
   const letter = template
     .replace(/\{\{COMPANY\}\}/g, company)
