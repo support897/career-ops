@@ -363,6 +363,8 @@ export async function POST(req: NextRequest) {
 
     let cvHtml: string | null = null;
     let coverLetter: string | null = null;
+    let coverLetterTextForDb = "";
+    let refLetterHtmlForDb: string | null = null;
 
     // ── Generate CV HTML using the real build-cv-html.mjs ──────────────────
     if (type === "cv" || type === "both") {
@@ -498,6 +500,17 @@ export async function POST(req: NextRequest) {
       );
       fs.writeFileSync(clPayloadPath, JSON.stringify(clPayload, null, 2));
 
+      let coverLetterHtml = "";
+      try {
+        const clMod = await import(/* webpackIgnore: true */ `${root}/generate-cover-letter.mjs`);
+        coverLetterHtml = clMod.buildHtml(clPayload);
+        if (profileYml.style?.accent_color) {
+          coverLetterHtml = coverLetterHtml.replace("</head>", `<style>:root { --accent-color: ${profileYml.style.accent_color}; }</style></head>`);
+        }
+      } catch (err: any) {
+        console.warn("[generate-docs] Cover letter HTML build failed:", err.message);
+      }
+
       // Try running generate-cover-letter.mjs (optional, won't fail if it errors)
       try {
         await execFileAsync(
@@ -515,8 +528,8 @@ export async function POST(req: NextRequest) {
         console.warn("[generate-docs] PDF generation failed:", err.message);
       }
       
-      // Override the coverLetter variable so it saves the text version to DB
-      coverLetter = coverLetterTextForDb;
+      // Override the coverLetter variable so it saves the HTML version to DB
+      coverLetter = coverLetterHtml || coverLetterTextForDb;
     }
 
     // ── Generate Outreach Email ──────────────────────────────────────────────
@@ -602,12 +615,23 @@ export async function POST(req: NextRequest) {
           refLetterText = `Taylor Chorley\nDigital Marketing Supervisor, Evolve Marketing\ntaylorchorley@gmail.com | +1 (604) 551-8229\n\nTo Whom It May Concern,\n\nI've worked with Ilse Placencia since January 2024, when she joined Evolve Marketing as a Digital Marketing Assistant, and I'm genuinely glad to write this on her behalf.\n\nWhat stands out most, honestly, isn't just her skill set, it's how she works. Ilse brings this steady, positive energy to everything, even on the weeks that get hectic. She's the kind of person who checks in on how you're doing before diving into the task list, and that made a real difference on a fully remote team where it's easy to feel disconnected.\n\nThat said, she's also just really good at the job, and not just in one thing either. She's sharp across marketing and AI alike, and she's always finding new tools to make the work faster or better. If a tool she needs doesn't exist yet, she'll just build her own. That kind of resourcefulness isn't something you can teach. She has a genuine feel for what makes people click, and her social content consistently landed on brand, well timed, and built for whatever platform it was going on.\n\nShe's also reliable, something really hard to find nowadays. She meets deadlines, communicates clearly, and shows up prepared to strategy conversations with actual value, not just notes. Her analytics work and customer research made our campaigns improve across the board.\n\nI'd hire Ilse again without hesitation. She's hardworking, kind, easy to work with, and any team would be lucky to have her.\n\nHappy to talk more if it's helpful.\n\nWarmest regards,\nTaylor Chorley`;
         }
 
+        let refLetterHtmlForDb: string | null = null;
+        try {
+          const candidateSlug = slugify(profileYml.candidate?.full_name || "candidate");
+          const companySlug = slugify(company);
+          const today = new Date().toISOString().slice(0, 10);
+          const rlHtmlPath = path.join(root, "output", `ref-letter-${candidateSlug}-${companySlug}-${today}.html`);
+          if (fs.existsSync(rlHtmlPath)) {
+            refLetterHtmlForDb = fs.readFileSync(rlHtmlPath, "utf8");
+          }
+        } catch (e) {}
+
         const emailBody = (
           `${applyLink}\n\n` +
           `--- OUTREACH EMAIL ---\n` +
           `${emailDraftText || ""}\n\n` +
           `--- COVER LETTER ---\n` +
-          `${coverLetter || ""}\n\n` +
+          `${coverLetterTextForDb || ""}\n\n` +
           `--- REFERENCE LETTER ---\n` +
           `${refLetterText}`
         )
@@ -656,6 +680,7 @@ export async function POST(req: NextRequest) {
         ...(cvHtml ? { cv_html: cvHtml } : {}),
         ...(coverLetter ? { cover_letter: coverLetter } : {}),
         ...(emailDraftText ? { email_draft: emailDraftText } : {}),
+        ...(refLetterHtmlForDb ? { reference_letter: refLetterHtmlForDb } : {}),
         ...(gmailDraftId ? { gmail_draft_id: gmailDraftId } : {}),
         doc_status: "ready",
       });

@@ -1,5 +1,13 @@
 import { getSql } from "@/lib/db";
 import { getUserId, resolveDataOwner } from "@/lib/user-context";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { careerOpsRoot } from "@/lib/career-ops";
+
+const execFileAsync = promisify(execFile);
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,26 +38,58 @@ export async function GET(req: Request) {
 
     if (type === "cv") {
       content = job.cv_html;
-      filename = `${slug}-CV.html`;
+      filename = `${slug}-CV.pdf`;
     } else if (type === "cl") {
       content = job.cover_letter;
-      filename = `${slug}-CoverLetter.html`;
+      filename = `${slug}-CoverLetter.pdf`;
     } else if (type === "rl") {
       content = job.reference_letter;
-      filename = `${slug}-Reference.html`;
+      filename = `${slug}-Reference.pdf`;
     }
 
     if (!content) {
       return new Response("Document content not found", { status: 404 });
     }
 
-    // Return as HTML download
-    return new Response(content, {
-      headers: {
-        "Content-Type": "text/html",
-        "Content-Disposition": `attachment; filename="${filename}"`
-      }
-    });
+    // Try to generate PDF on the fly
+    const root = careerOpsRoot();
+    const tempHtml = path.join(os.tmpdir(), `${filename}.html`);
+    const tempPdf = path.join(os.tmpdir(), filename);
+
+    try {
+      fs.writeFileSync(tempHtml, content);
+      await execFileAsync(
+        process.execPath || "node",
+        [
+          path.join(root, "generate-pdf.mjs"),
+          tempHtml,
+          tempPdf,
+          "--format=letter"
+        ],
+        { cwd: root, timeout: 30000, env: { ...process.env, PATH: `${path.dirname(process.execPath)}:${process.env.PATH || ""}` } }
+      );
+      
+      const pdfBuffer = fs.readFileSync(tempPdf);
+      
+      // Cleanup
+      try { fs.unlinkSync(tempHtml); fs.unlinkSync(tempPdf); } catch(e){}
+      
+      return new Response(pdfBuffer, {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="${filename}"`
+        }
+      });
+    } catch (pdfErr) {
+      console.warn("[api/documents] PDF generation failed, returning HTML fallback", pdfErr);
+      // Fallback to HTML if PDF generation fails
+      return new Response(content, {
+        headers: {
+          "Content-Type": "text/html",
+          "Content-Disposition": `attachment; filename="${filename.replace('.pdf', '.html')}"`
+        }
+      });
+    }
 
   } catch (e) {
     console.error("[api/documents]", e);

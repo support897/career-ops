@@ -98,6 +98,7 @@ export type InboxJob = {
   cv_html: string | null;
   cover_letter: string | null;
   email_draft: string | null;
+  reference_letter: string | null;
   doc_status: 'pending' | 'generating' | 'ready' | 'failed';
   job_status: 'new' | 'applied' | 'discarded';
   gmail_draft_id: string | null;
@@ -351,6 +352,7 @@ export async function updateInboxJobPipeline(
     cv_html?: string;
     cover_letter?: string;
     email_draft?: string;
+    reference_letter?: string;
     doc_status?: 'pending' | 'generating' | 'ready' | 'failed';
     gmail_draft_id?: string;
   }
@@ -372,6 +374,7 @@ export async function updateInboxJobPipeline(
       cv_html = COALESCE(${data.cv_html ?? null}, cv_html),
       cover_letter = COALESCE(${data.cover_letter ?? null}, cover_letter),
       email_draft = COALESCE(${data.email_draft ?? null}, email_draft),
+      reference_letter = COALESCE(${data.reference_letter ?? null}, reference_letter),
       doc_status = ${data.doc_status ?? 'pending'},
       gmail_draft_id = COALESCE(${data.gmail_draft_id ?? null}, gmail_draft_id),
       updated_at = NOW()
