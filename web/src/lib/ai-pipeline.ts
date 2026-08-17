@@ -166,70 +166,6 @@ Grade: A=4.5+, B=3.5–4.4, C=2.5–3.4, D=1.5–2.4, F<1.5`;
   }
 }
 
-// ── CV Generation ─────────────────────────────────────────────────────────────
-
-/**
- * Generate a tailored CV HTML for this specific job.
- * Uses the user's master CV and adapts keywords to match the JD.
- * Harvard-style, blue titles, black body text.
- */
-export async function generateTailoredCV(
-  job: Pick<InboxJob, "company" | "role" | "jd_text" | "url">,
-  profile: Pick<UserProfile, "cv_data" | "cv_markdown" | "full_name" | "email" | "location">
-): Promise<string> {
-  const cvData = profile.cv_markdown || (profile.cv_data ? JSON.stringify(profile.cv_data).slice(0, 5000) : "");
-  const jd = job.jd_text || `${job.role} at ${job.company}`;
-
-  const prompt = `You are a professional CV writer. Create a tailored CV in HTML format for this job application.
-
-## Instructions
-1. Use the candidate's EXACT experience and job history (do NOT invent anything)
-2. Adapt the LANGUAGE and KEYWORDS to match the job description
-3. Keep the same number of pages as the master CV
-4. Format: Harvard style with BLUE (#1a56db) titles, BLACK body text
-5. Include ALL sections from the master CV (Summary, Experience, Skills, Education)
-6. Do NOT include a Projects section
-7. Return ONLY the complete HTML (no markdown, no explanation)
-
-## Job Description
-Company: ${job.company}
-Role: ${job.role}
-${jd.slice(0, 3000)}
-
-## Candidate Information
-Name: ${profile.full_name || "Candidate"}
-Email: ${profile.email || ""}
-Location: ${profile.location || ""}
-
-## Master CV Data
-${cvData}
-
-Generate the complete, self-contained HTML CV tailored to this specific job. Use inline styles.`;
-
-  const html = await callGemini(prompt);
-
-  // If the response looks like HTML, return it. Otherwise wrap it.
-  if (html.includes("<html") || html.includes("<div")) {
-    return html;
-  }
-
-  // Fallback: wrap in basic HTML structure
-  return `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<style>
-body { font-family: Georgia, serif; max-width: 800px; margin: 0 auto; padding: 40px; color: #111; }
-h1, h2, h3 { color: #1a56db; }
-h2 { border-bottom: 1px solid #1a56db; padding-bottom: 4px; }
-</style>
-</head>
-<body>
-${html}
-</body>
-</html>`;
-}
-
 // ── Cover Letter Generation ───────────────────────────────────────────────────
 
 /**
@@ -241,44 +177,36 @@ export async function generateCoverLetterText(
 ): Promise<string> {
   const cvSummary = profile.cv_markdown || (profile.cv_data ? JSON.stringify(profile.cv_data).slice(0, 3000) : "");
   const jd = job.jd_text || `${job.role} at ${job.company}`;
-  const name = profile.full_name || "Ilse Placencia";
-  const email = profile.email || "placenciailse@gmail.com";
-  const location = profile.location || "";
 
-  const prompt = `Write a professional, personalized cover letter for this job application.
+  const prompt = `Write a professional, personalized cover letter payload for this job application.
 
 ## Rules
 - Use ONLY facts from the candidate's CV (never invent experience)
 - Ensure "Fiesta Fresh Cleaning" is highlighted as a primary work experience when relevant to automation/AI.
-- Match the language and keywords from the job description
-- 3-4 paragraphs: opening, proof of skills, why this company, call to action
-- Warm but professional tone
-- DO NOT use generic phrases like "I am a highly motivated individual"
 - Address real skill matches from the JD to the CV
+
+Return ONLY valid JSON matching this exact structure (no markdown fences, just JSON):
+{
+  "opening": "I'm writing to express my strong interest in the ${job.role} position at ${job.company}...",
+  "profile_intro": "Your role emphasizes [Key JD terms] — here's what I've built in these areas:",
+  "achievements": [
+    { "lead": "Short bold lead", "impact": "Description of achievement..." },
+    { "lead": "Another lead", "impact": "..." }
+  ]
+}
 
 ## Job Details
 Company: ${job.company}
 Role: ${job.role}
 ${jd.slice(0, 2000)}
 
-## Candidate
-Name: ${name}
-Email: ${email}
-Location: ${location}
-
 ## Their Background
-${cvSummary.slice(0, 2000)}
-
-Return ONLY the cover letter text (no subject line, no HTML, no markdown).`;
+${cvSummary.slice(0, 2000)}`;
 
   const text = await callGemini(prompt);
-
-  // Add signature
-  return `${text.trim()}
-
-Best regards,
-${name}
-${email} | ${location}`;
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (jsonMatch) return jsonMatch[0];
+  return text;
 }
 
 // ── Email Draft Generation ────────────────────────────────────────────────────
@@ -295,20 +223,14 @@ export async function generateEmailDraft(
   const name = profile.full_name || "Ilse Placencia";
   const email = profile.email || "placenciailse@gmail.com";
 
-  const prompt = `Write a compelling cold outreach email for this job application.
+  const prompt = `Analyze the job description and extract 2 powerful bullet points from the candidate's experience that perfectly match the role requirements.
 
 ## Rules
-- Subject line: "Application: ${job.role} — ${name}"
-- Keep the email full page length. DO NOT make it short or concise.
-- Start the email body directly with "I believe I'm the perfect candidate for the ${job.role} position at ${job.company}." (no formal greeting)
+- Use ONLY facts from the candidate's CV (never invent experience)
 - Ensure "Fiesta Fresh Cleaning" is highlighted as a primary work experience when relevant to automation/AI.
-- Open with their strongest relevant achievement
-- One specific reason why this company/role is exciting
-- Clear call to action
-- Use facts from the CV only — never invent
-- MUST use bullet points to list achievements or skills. However, NEVER use dashes (-) for bullet points (use asterisks or emojis or other symbols instead).
-- Highlight the candidate's language proficiency prominently.
-- Embed the raw job URL directly at the top of the body (no 'Apply here' labels): ${job.url}
+- DO NOT use dashes (-) for bullet points. Use asterisks (*).
+
+Return ONLY the 2 bullet points as raw text, one per line. Do not include introductory text.
 
 ## Job
 Company: ${job.company}
@@ -316,60 +238,29 @@ Role: ${job.role}
 ${jd.slice(0, 1500)}
 
 ## Candidate
-${cvSummary.slice(0, 1500)}
+${cvSummary.slice(0, 1500)}`;
 
-Return the email in this format:
-Subject: [subject line]
+  const bullets = await callGemini(prompt);
 
-[email body]
+  return `Subject: Application: ${job.role} — ${name}
+
+${job.url || ""}
+
+I believe I'm the perfect candidate for the ${job.role} position at ${job.company}.
+
+I build AI-powered automation systems. With over 6 years of experience across three businesses I founded, I bring a unique combination of technical depth and business outcomes. I have personally built, deployed, and run production AI agents, covering the full stack from prospecting to campaign management to sales operations.
+
+${bullets.trim()}
+
+I am fluent in TypeScript, Node.js, Python, REST APIs, and webhooks. I develop with Claude, Cursor, and multi-agent orchestration as my primary tools. I do not just evaluate AI tools; I build production systems with them.
+
+Furthermore, I speak fluently English, Spanish (Native), Italian, and basic French, which allows me to effectively communicate with international clients and diverse teams.
+
+I'd be thrilled to bring this experience to ${job.company}. Wishing you a great week regardless.
 
 Best regards,
 ${name}
-${email}`;
-
-  return callGemini(prompt);
+${email} | +61498570497
+https://www.ilseplacencia.shop`;
 }
 
-// ── Full Pipeline ─────────────────────────────────────────────────────────────
-
-/**
- * Run the complete AI pipeline for a single job.
- * Scores → if above threshold, generates CV + CL + email.
- */
-export async function runFullPipeline(
-  job: InboxJob,
-  profile: UserProfile,
-  scoreThreshold = 3.0
-): Promise<{ score: ScoreResult; cv_html?: string; cover_letter?: string; email_draft?: string }> {
-  console.log(`[ai-pipeline] Scoring ${job.company} — ${job.role}`);
-
-  // Step 1: Score the job
-  const score = await scoreJob(job, profile);
-
-  console.log(`[ai-pipeline] Score: ${score.score} (${score.grade}) — threshold: ${scoreThreshold}`);
-
-  // Step 2: Only generate docs if above threshold
-  if (score.score < scoreThreshold) {
-    return { score };
-  }
-
-  console.log(`[ai-pipeline] Generating documents for ${job.company}...`);
-
-  // Step 3: Generate all documents in parallel
-  const [cv_html, cover_letter, email_draft] = await Promise.all([
-    generateTailoredCV(job, profile).catch((e) => {
-      console.error(`[ai-pipeline] CV gen failed: ${e.message}`);
-      return "";
-    }),
-    generateCoverLetterText(job, profile).catch((e) => {
-      console.error(`[ai-pipeline] CL gen failed: ${e.message}`);
-      return "";
-    }),
-    generateEmailDraft(job, profile).catch((e) => {
-      console.error(`[ai-pipeline] Email gen failed: ${e.message}`);
-      return "";
-    }),
-  ]);
-
-  return { score, cv_html, cover_letter, email_draft };
-}

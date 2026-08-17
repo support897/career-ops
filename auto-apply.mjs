@@ -19,7 +19,6 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
 import { createRequire } from 'module';
-import { generateLLMReferenceLetter, generateLLMCoverLetter } from './lib/llm-cv-builder.mjs';
 
 const require = createRequire(import.meta.url);
 const jsyaml = require('js-yaml');
@@ -1402,26 +1401,7 @@ ${whyMatch}
     let finalClPath = null;
     let coverLetterText = '';
 
-    if (useLlm && llmDocs.cover_letter !== false) {
-      console.log(`   📄 Generating Cover Letter via LLM...`);
-      try {
-        coverLetterText = await generateLLMCoverLetter(profileForDoc, jdText);
-        console.log(`   ✅ LLM Cover Letter generated.`);
-        
-        // Wrap LLM text in HTML and convert to PDF for attachment
-        const clHtmlContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1a1a2e; padding: 40px; line-height: 1.6; max-width: 680px; margin: 0 auto;}</style></head><body>${coverLetterText.split('\\n').map(l => l.trim() ? `<p>${l}</p>` : '').join('')}</body></html>`;
-        const clHtmlPath = join(__dirname, `output/llm-cl-${slug}-${TODAY}.html`);
-        finalClPath = join(__dirname, `output/llm-cl-${slug}-${TODAY}.pdf`);
-        writeFileSync(clHtmlPath, clHtmlContent, 'utf8');
-        execSync(`node generate-pdf.mjs "${clHtmlPath}" "${finalClPath}" --format=letter --report=000`, { encoding: 'utf8', cwd: __dirname, timeout: 30000 });
-        console.log(`   ✅ LLM Cover Letter PDF generated: ${finalClPath}`);
-      } catch (e) {
-        console.log(`   ⚠️  LLM Cover Letter failed: ${e.message.slice(0, 80)}`);
-      }
-    }
-
-    if (!coverLetterText) {
-      if (clGeneratorFn) {
+    if (clGeneratorFn) {
         console.log(`   📄 Generating Cover Letter via Native Keywords...`);
         try {
           enhancedCl = await clGeneratorFn(profileForDoc, { company: job.company, title: job.role || job.title }, jdText, join(__dirname, 'output'));
@@ -1434,23 +1414,11 @@ ${whyMatch}
           console.log(`   ⚠️  Native Cover Letter failed: ${e.message.slice(0, 80)}`);
         }
       }
-    }
 
     // 3. Reference Letter Generation
     let generatedRefLetterHtml = null;
 
-    if (useLlm && llmDocs.reference_letter !== false) {
-      console.log(`   📄 Generating Reference Letter via LLM...`);
-      try {
-        generatedRefLetterHtml = await generateLLMReferenceLetter(profileForDoc, jdText);
-        console.log(`   ✅ LLM Reference Letter generated.`);
-      } catch (e) {
-        console.log(`   ⚠️  LLM Reference Letter failed: ${e.message.slice(0, 80)}`);
-      }
-    }
-
-    if (!generatedRefLetterHtml) {
-      if (rlGeneratorFn) {
+    if (rlGeneratorFn) {
         console.log(`   📄 Generating Reference Letter via Native Keywords...`);
         try {
           generatedRefLetterHtml = rlGeneratorFn(profileForDoc, job, jdText);
@@ -1459,7 +1427,6 @@ ${whyMatch}
           console.log(`   ⚠️  Native Reference Letter failed: ${e.message.slice(0, 80)}`);
         }
       }
-    }
     
     // Generate PDF for Reference Letter
     let finalRlPath = null;
@@ -1588,7 +1555,7 @@ Taylor Chorley`;
           referenceLetter: activeRefLetter,
           emailDraft: emailBody,
           gmailDraftId,
-          generationMethod: useLlm && llmDocs.cv !== false ? 'llm' : 'keyword'
+          generationMethod: 'keyword'
         });
         console.log(`   ✅ Synced to dashboard inbox`);
       } catch (e) {

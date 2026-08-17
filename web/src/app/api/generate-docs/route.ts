@@ -454,8 +454,25 @@ export async function POST(req: NextRequest) {
         console.warn("[generate-docs] Cover letter generation failed:", e);
       }
 
-      // Also try to build a cover letter payload JSON and run generate-cover-letter.mjs
-      // for the HTML/PDF version — store the text version in DB for inline preview
+      let letterPayload: any = {};
+      let coverLetterTextForDb = coverLetter || "";
+      try {
+        letterPayload = JSON.parse(coverLetter || "{}");
+        // Format back to plain text for DB so UI shows nicely
+        coverLetterTextForDb = `Dear ${company} Hiring Team,\n\n${letterPayload.opening || ""}\n\n${letterPayload.profile_intro || ""}\n`;
+        if (Array.isArray(letterPayload.achievements)) {
+          for (const ach of letterPayload.achievements) {
+            coverLetterTextForDb += `\n* **${ach.lead}**: ${ach.impact}`;
+          }
+        }
+        coverLetterTextForDb += `\n\nI would welcome the chance to discuss how my experience can contribute to ${company}'s growth.`;
+        if (profileYml.candidate?.full_name) {
+          coverLetterTextForDb += `\n\nBest regards,\n${profileYml.candidate.full_name}`;
+        }
+      } catch {
+        letterPayload = { body: coverLetter }; // fallback
+      }
+
       const clPayload = {
         candidate: {
           name: profileYml.candidate?.full_name || "Ilse Placencia",
@@ -465,10 +482,14 @@ export async function POST(req: NextRequest) {
           linkedin: profileYml.candidate?.linkedin || "",
           portfolio: profileYml.candidate?.portfolio_url || "",
         },
-        role,
-        company,
-        date: new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" }),
-        body: coverLetter,
+        letter: {
+          role_title: role,
+          company,
+          date: new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" }),
+          greeting: `Dear ${company} Hiring Team,`,
+          closing: `I would welcome the chance to discuss how my experience can contribute to ${company}'s growth.`,
+          ...letterPayload
+        }
       };
 
       const clPayloadPath = path.join(
@@ -490,9 +511,12 @@ export async function POST(req: NextRequest) {
           ],
           { cwd: root, timeout: 30_000, env: { ...process.env, PATH: `${path.dirname(process.execPath)}:${process.env.PATH || ""}` } }
         );
-      } catch {
-        // PDF generation is optional — we still have the text version
+      } catch (err: any) {
+        console.warn("[generate-docs] PDF generation failed:", err.message);
       }
+      
+      // Override the coverLetter variable so it saves the text version to DB
+      coverLetter = coverLetterTextForDb;
     }
 
     // ── Generate Outreach Email ──────────────────────────────────────────────
@@ -538,26 +562,45 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        const refLetterText = `Taylor Chorley
-Digital Marketing Supervisor, Evolve Marketing
-taylorchorley@gmail.com | +1 (604) 551-8229
+        // --- Reference Letter Generation ---
+        let refLetterText = "";
+        let refLetterPdfPath: string | null = null;
+        try {
+          const rlMod = await import(/* webpackIgnore: true */ `${root}/lib/reference-letter-generator.mjs`);
+          const generatedRefLetterHtml = rlMod.generateReferenceLetter(
+            { fullName: profileYml.candidate?.full_name || "Ilse Placencia" },
+            { company, title: role },
+            jdText
+          );
 
-To Whom It May Concern,
-
-I've worked with Ilse Placencia since January 2024, when she joined Evolve Marketing as a Digital Marketing Assistant, and I'm genuinely glad to write this on her behalf.
-
-What stands out most, honestly, isn't just her skill set, it's how she works. Ilse brings this steady, positive energy to everything, even on the weeks that get hectic. She's the kind of person who checks in on how you're doing before diving into the task list, and that made a real difference on a fully remote team where it's easy to feel disconnected.
-
-That said, she's also just really good at the job, and not just in one thing either. She's sharp across marketing and AI alike, and she's always finding new tools to make the work faster or better. If a tool she needs doesn't exist yet, she'll just build her own. That kind of resourcefulness isn't something you can teach. She has a genuine feel for what makes people click, and her social content consistently landed on brand, well timed, and built for whatever platform it was going on.
-
-She's also reliable, something really hard to find nowadays. She meets deadlines, communicates clearly, and shows up prepared to strategy conversations with actual value, not just notes. Her analytics work and customer research made our campaigns improve across the board.
-
-I'd hire Ilse again without hesitation. She's hardworking, kind, easy to work with, and any team would be lucky to have her.
-
-Happy to talk more if it's helpful.
-
-Warmest regards,
-Taylor Chorley`;
+          const candidateSlug = slugify(profileYml.candidate?.full_name || "candidate");
+          const companySlug = slugify(company);
+          const today = new Date().toISOString().slice(0, 10);
+          
+          const rlHtmlPath = path.join(root, "output", `ref-letter-${candidateSlug}-${companySlug}-${today}.html`);
+          refLetterPdfPath = rlHtmlPath.replace(".html", ".pdf");
+          
+          fs.writeFileSync(rlHtmlPath, generatedRefLetterHtml, 'utf8');
+          
+          // Generate PDF using generate-pdf.mjs
+          await execFileAsync(
+            process.execPath || "node",
+            [
+              path.join(root, "generate-pdf.mjs"),
+              rlHtmlPath,
+              refLetterPdfPath,
+              "--format=letter",
+              "--report=000"
+            ],
+            { cwd: root, timeout: 30_000, env: { ...process.env, PATH: `${path.dirname(process.execPath)}:${process.env.PATH || ""}` } }
+          );
+          
+          refLetterText = `Reference letter attached as PDF.`;
+        } catch (rlErr: any) {
+          console.warn("[generate-docs] Reference letter PDF generation failed:", rlErr.message);
+          // Fallback text
+          refLetterText = `Taylor Chorley\nDigital Marketing Supervisor, Evolve Marketing\ntaylorchorley@gmail.com | +1 (604) 551-8229\n\nTo Whom It May Concern,\n\nI've worked with Ilse Placencia since January 2024, when she joined Evolve Marketing as a Digital Marketing Assistant, and I'm genuinely glad to write this on her behalf.\n\nWhat stands out most, honestly, isn't just her skill set, it's how she works. Ilse brings this steady, positive energy to everything, even on the weeks that get hectic. She's the kind of person who checks in on how you're doing before diving into the task list, and that made a real difference on a fully remote team where it's easy to feel disconnected.\n\nThat said, she's also just really good at the job, and not just in one thing either. She's sharp across marketing and AI alike, and she's always finding new tools to make the work faster or better. If a tool she needs doesn't exist yet, she'll just build her own. That kind of resourcefulness isn't something you can teach. She has a genuine feel for what makes people click, and her social content consistently landed on brand, well timed, and built for whatever platform it was going on.\n\nShe's also reliable, something really hard to find nowadays. She meets deadlines, communicates clearly, and shows up prepared to strategy conversations with actual value, not just notes. Her analytics work and customer research made our campaigns improve across the board.\n\nI'd hire Ilse again without hesitation. She's hardworking, kind, easy to work with, and any team would be lucky to have her.\n\nHappy to talk more if it's helpful.\n\nWarmest regards,\nTaylor Chorley`;
+        }
 
         const emailBody = (
           `${applyLink}\n\n` +
