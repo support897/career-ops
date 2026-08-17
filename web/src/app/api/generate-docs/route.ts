@@ -9,8 +9,7 @@ import { getUserId } from "@/lib/user-context";
 import { updateInboxJobPipeline } from "@/lib/db";
 import { careerOpsRoot } from "@/lib/career-ops";
 import yaml from "js-yaml";
-import { generateEmailDraft } from "@/lib/ai-pipeline";
-
+import { generateEmailDraft, generateCoverLetterText } from "@/lib/ai-pipeline";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -303,73 +302,7 @@ function buildCvPayload(
 }
 
 // ── Cover letter builder ──────────────────────────────────────────────────────
-function buildCoverLetter(
-  profileYml: ProfileYml,
-  jdText: string,
-  company: string,
-  role: string,
-  cvSummary: string
-): string {
-  const cand = profileYml.candidate || {};
-  const name = cand.full_name || "Ilse Placencia";
-  const email = cand.email || "";
-  const phone = cand.phone || "";
-  const portfolio = cand.portfolio_url || "";
-  const today = new Date().toLocaleDateString("en-AU", {
-    day: "numeric", month: "long", year: "numeric",
-  });
 
-  // Extract 2-3 JD requirements to address directly
-  const requirementLines = jdText
-    .split("\n")
-    .filter((l) =>
-      l.trim().match(/^[-•*]/) &&
-      l.length > 20 &&
-      l.toLowerCase().match(/experience|skill|knowledge|ability|proven|strong|background/)
-    )
-    .slice(0, 3)
-    .map((l) => l.replace(/^[-•*]\s*/, "").trim());
-
-  const requirement1 = requirementLines[0] || "automation and AI systems design";
-  const requirement2 = requirementLines[1] || "cross-functional collaboration and delivery";
-
-  let bodyText = `${today}
-
-Hiring Manager
-${company}
-
-Dear Hiring Manager,
-
-I am writing to express my strong interest in the ${role} position at ${company}. With hands-on experience building end-to-end automation systems, AI pipelines, and multi-agent workflows, I am confident I can deliver immediate and lasting value to your team.
-
-${cvSummary.split(".").slice(0, 2).join(".").trim()}.
-
-What draws me to this role specifically is the opportunity to apply my experience directly to ${requirement1.toLowerCase()}. At Fiesta Fresh Cleaning, I architected a fully automated B2B lead generation engine that scrapes qualified prospects, generates audit reports, and books calls without any manual intervention, a system that operates 24/7 at scale. This same principle of designing once and deploying infinitely is exactly what I bring to every engagement.
-
-I have also demonstrated ability in ${requirement2.toLowerCase()}. At Lumi and Milo, I built a Python and Gemini API content pipeline that takes a topic from idea to published YouTube video in a single click, reducing production time from hours to minutes and removing human bottlenecks entirely.
-
-I thrive in remote, async-first environments and take ownership from discovery through delivery. I move fast, communicate clearly, and never leave a workflow half-automated.
-
-I've attached my cv and would welcome the opportunity to discuss how my experience aligns with what you are building at ${company}. Please feel free to reach me at ${email}${phone ? " or " + phone : ""}.
-
-Thank you for your time and consideration.
-
-Best regards,
-${name}
-${email}${phone ? "\n" + phone : ""}${portfolio ? "\n" + portfolio : ""}`;
-
-  // Strip all dashes
-  bodyText = bodyText
-    .replace(/ — /g, ", ")
-    .replace(/ —/g, ", ")
-    .replace(/—/g, ", ")
-    .replace(/ – /g, ", ")
-    .replace(/ –/g, ", ")
-    .replace(/–/g, ", ")
-    .replace(/ - /g, ", ");
-
-  return bodyText;
-}
 
 // ── Main handler ───────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
@@ -505,13 +438,21 @@ export async function POST(req: NextRequest) {
     // ── Generate cover letter ────────────────────────────────────────────────
     if (type === "cover" || type === "both") {
       // Build plain-text cover letter following cover.md logic
-      coverLetter = buildCoverLetter(
-        profileYml,
-        jdText,
-        company,
-        role,
-        tailored.summary
-      );
+      try {
+        coverLetter = await generateCoverLetterText(
+          { company, role, jd_text: jdText, why_match: tailored.summary },
+          {
+            cv_markdown: cvMd,
+            cv_data: null as any,
+            full_name: profileYml.candidate?.full_name || "Ilse Placencia",
+            email: profileYml.candidate?.email || "",
+            location: profileYml.candidate?.location || "",
+            profile_config: {}
+          }
+        );
+      } catch (e: any) {
+        console.warn("[generate-docs] Cover letter generation failed:", e);
+      }
 
       // Also try to build a cover letter payload JSON and run generate-cover-letter.mjs
       // for the HTML/PDF version — store the text version in DB for inline preview
