@@ -177,6 +177,7 @@ ${row.why_match || ""}
         has_cl: !!r.cover_letter,
         has_rl: !!r.reference_letter,
         has_gmail_draft: !!r.gmail_draft_id,
+        url: r.url,
       }));
 
       // Combine with local applications if any, deduplicating by company + role

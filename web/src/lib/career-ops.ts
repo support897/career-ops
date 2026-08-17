@@ -115,6 +115,7 @@ export type Application = {
   has_cl?: boolean;
   has_rl?: boolean;
   has_gmail_draft?: boolean;
+  url?: string;
 };
 
 /**
