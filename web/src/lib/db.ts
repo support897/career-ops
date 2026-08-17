@@ -400,10 +400,18 @@ export async function updateInboxJobStatus(
 
   const owner = resolveDataOwner(userId);
   const sql = getSql();
+  // Stamp applied_at the first time a job is marked applied, and clear it if the
+  // job is moved back out. The column was added for the Applied button but never
+  // written, so "applied" jobs carried no date and the applied pipeline could not
+  // be ordered or reported on.
   const result = await sql`
     UPDATE job_inbox SET
       job_status = ${status},
       done = ${status !== 'new'},
+      applied_at = CASE
+        WHEN ${status} = 'applied' THEN COALESCE(applied_at, NOW())
+        ELSE NULL
+      END,
       updated_at = NOW()
     WHERE id = ${jobId} AND user_id = ${owner}
     RETURNING id

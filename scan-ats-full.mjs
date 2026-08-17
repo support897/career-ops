@@ -203,12 +203,12 @@ export const SOURCES = {
 const KNOWN_FLAGS = [
   '--since', '--limit', '--ats', '--seeds', '--dry-run', '--liveness',
   '--verbose', '--md-out', '--json', '--include-undated', '--include-blacklisted',
-  '--shuffle', '--resume', '--help', '-h',
+  '--shuffle', '--resume', '--help', '-h', '--max-minutes',
 ];
 
 // Flags that consume the next argv token as a value (space-separated form —
 // the `--flag=value` form is self-contained and never needs this).
-const VALUE_FLAGS = ['--since', '--limit', '--ats', '--seeds', '--md-out'];
+const VALUE_FLAGS = ['--since', '--limit', '--ats', '--seeds', '--md-out', '--max-minutes'];
 
 const USAGE = `Usage:
   node scan-ats-full.mjs                      # scan all ATS directories, last 3 days
@@ -293,9 +293,21 @@ function parseArgs(argv) {
     console.error(`Error: unknown ATS source(s): ${unknown.join(', ')}. Valid: ${Object.keys(SOURCES).join(', ')}`);
     process.exit(1);
   }
+  // A malformed budget must not silently become "no budget" — that is exactly
+  // the unbounded sweep this flag exists to prevent.
+  const maxMinutesRaw = valueOf('--max-minutes');
+  let maxMinutes = null;
+  if (maxMinutesRaw !== null) {
+    maxMinutes = Number(maxMinutesRaw);
+    if (!Number.isFinite(maxMinutes) || maxMinutes <= 0) {
+      console.error(`Error: --max-minutes must be a positive number of minutes, got "${maxMinutesRaw}".`);
+      process.exit(1);
+    }
+  }
   return {
     sinceDays,
     limit,
+    maxMinutes,
     ats,
     seeds,
     dryRun: args.includes('--dry-run'),
@@ -733,6 +745,13 @@ async function main() {
   // Run-level, because resolverOutage below is per-source and long out of
   // scope by the time the checkpoint's fate is decided at the end of main().
   let stoppedByOutage = false;
+  // Wall-clock budget for the whole sweep. Absent --max-minutes this is
+  // Infinity, preserving the previous run-to-completion behaviour for manual
+  // invocations; auto-apply passes a budget so an hourly cycle still has time
+  // left to score jobs and write documents.
+  const sweepDeadline = opts.maxMinutes ? Date.now() + opts.maxMinutes * 60_000 : Infinity;
+  const budgetExpired = () => Date.now() > sweepDeadline;
+  let stoppedByBudget = false;
 
   for (const name of opts.ats) {
     const source = SOURCES[name];
@@ -837,7 +856,7 @@ async function main() {
           },
         });
       }
-    }, () => resolverOutage);
+    }, () => resolverOutage || budgetExpired());
     // Second chance for boards the parallel sweep truncated: retry alone on a
     // quiet line. Re-processing the full board is safe — seenUrls already
     // holds every match from the partial first pass.
@@ -862,6 +881,25 @@ async function main() {
       }
     }
     totalErrors += errors;
+    if (!resolverOutage && budgetExpired() && lastDone < entries.length) {
+      // Mirrors the outage path below: this source did NOT finish, so it must
+      // not join completedSources or --resume would skip the remainder.
+      stoppedByBudget = true;
+      // The counter was bumped by the full slice up front; only credit boards
+      // actually attempted, or the resumed run double-counts them.
+      totalCompaniesScanned -= entries.length - lastDone;
+      let checkpointWritten = false;
+      if (!opts.dryRun) {
+        checkpointWritten = writeCheckpoint({
+          ...checkpointBase(),
+          current: { name, resumeAt: startAt + lastResumeAt, datasetLen: list.length, datasetHash },
+          counters: snapshotCounters(),
+        });
+      }
+      log(`\n  ⏱  ${name}: hit the ${opts.maxMinutes}-minute sweep budget at company ${startAt + lastDone} of ${entriesAll.length}.`);
+      if (checkpointWritten) log(`     Checkpointed — the next run resumes here with --resume.`);
+      break;
+    }
     if (resolverOutage) {
       // Deliberately before completedSources/checkpoint: this source did NOT
       // finish, and marking it done would make --resume skip the rest of it.

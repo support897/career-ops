@@ -572,6 +572,15 @@ async function findCompanyEmail(job) {
 
 // ─── Scan ──────────────────────────────────────────────────────────────────
 
+// Wall-clock minutes the reverse-ATS sweep may consume per cycle. The full
+// dataset is ~38,900 boards (about an hour), far longer than one hourly cycle,
+// so it is walked a slice at a time via its checkpoint.
+const SWEEP_BUDGET_MIN = Number(process.env.SWEEP_BUDGET_MIN) || 8;
+// Backlog size at which a cycle skips discovery and spends everything on
+// evaluation. Discovery is worthless while scored jobs are waiting for
+// documents, which is how 182 jobs accumulated unprocessed.
+const EVAL_FIRST_BACKLOG = Number(process.env.EVAL_FIRST_BACKLOG) || 25;
+
 async function scanForJobs() {
   console.log('📡 Scanning job portals...');
   const urls = new Set();
@@ -623,10 +632,15 @@ async function scanForJobs() {
   // always threw, so the broadest source of jobs never executed at all.
   console.log('📡 Scanning all ATS directories (Greenhouse/Lever/Ashby/Workday)...');
   try {
-    execSync('node scan-ats-full.mjs --since 3', {
+    // --resume picks up at the checkpointed board, so consecutive cycles walk
+    // the dataset instead of restarting at greenhouse and never reaching icims.
+    // --max-minutes makes the sweep yield the cycle while there is still time
+    // to score jobs and generate documents; the external timeout below is only
+    // a backstop for a sweep that ignores its own budget.
+    execSync(`node scan-ats-full.mjs --since 3 --resume --max-minutes ${SWEEP_BUDGET_MIN}`, {
       encoding: 'utf8',
       cwd: __dirname,
-      timeout: 20 * 60 * 1000,
+      timeout: (SWEEP_BUDGET_MIN + 5) * 60 * 1000,
       maxBuffer: 64 * 1024 * 1024,
       stdio: ['ignore', 'inherit', 'inherit'],
     });
@@ -809,6 +823,10 @@ let scoreJobFn = null;
 let llmScoreJobFn = null;
 let isOllamaAvailableFn = null;
 let ollamaAvailable = false;
+// Gating LLM scoring on Ollama alone meant a configured Gemini key was ignored
+// and every job silently fell back to keyword scoring.
+let llmAvailable = false;
+let llmBackend = 'keyword';
 
 async function loadScorer() {
   if (scoreJobFn) return scoreJobFn;
@@ -819,10 +837,19 @@ async function loadScorer() {
     isOllamaAvailableFn = scorer.isOllamaAvailable;
     // Check Ollama availability once at startup
     ollamaAvailable = await isOllamaAvailableFn();
-    if (ollamaAvailable) {
-      console.log(`   🧠 Ollama detected — using LLM scoring for accurate evaluation`);
+    if (typeof scorer.isLlmAvailable === 'function') {
+      llmAvailable = await scorer.isLlmAvailable();
+      llmBackend = typeof scorer.llmBackendName === 'function' ? scorer.llmBackendName() : 'LLM';
     } else {
-      console.log(`   📊 Ollama not available — using keyword scoring`);
+      llmAvailable = ollamaAvailable;
+      llmBackend = 'Ollama';
+    }
+    if (llmAvailable) {
+      console.log(`   🧠 LLM scoring via ${llmBackend}`);
+    } else {
+      console.log('   📊 No LLM backend reachable — keyword scoring only.');
+      console.log('      Keyword scores cap below the 4.0 threshold, so no documents will be generated.');
+      console.log('      Set GEMINI_API_KEY (or run Ollama) to enable real scoring.');
     }
     return scoreJobFn;
   } catch (e) {
@@ -1148,7 +1175,16 @@ async function main() {
     // Local mode: scan and read from pipeline.md
     pending = getPendingFromPipeline();
     let newUrls = [];
-    if (!READ_LOCAL_PIPELINE) {
+    // Discovery is skipped, not merely shortened, when a backlog is already
+    // waiting: the sweep can consume an entire cycle, and every minute it
+    // spends finding job 183 is a minute not spent turning the first 182 into
+    // documents and drafts. The next cycle resumes discovery once drained.
+    const backlogFirst = pending.length >= EVAL_FIRST_BACKLOG;
+    if (backlogFirst) {
+      console.log(`⏭️  Skipping discovery this cycle — ${pending.length} jobs already pending (threshold ${EVAL_FIRST_BACKLOG}).`);
+      console.log('   Evaluation, documents and drafts get the full cycle. Discovery resumes once the backlog drains.');
+    }
+    if (!READ_LOCAL_PIPELINE && !backlogFirst) {
       newUrls = await scanForJobs();
     }
     if (newUrls.length > 0) {
@@ -1361,7 +1397,7 @@ ${whyMatch}
       };
       
       // LLM scoring (Ollama) for VIP users only; keyword scoring for everyone
-      if (isVip && ollamaAvailable && llmScoreJobFn) {
+      if (isVip && llmAvailable && llmScoreJobFn) {
         try {
           scoreResult = await llmScoreJobFn(jobForScoring, profileForScoring);
           console.log(`   🧠 LLM score: ${scoreResult.score}/5 [${scoreResult.source}] (${matchReasons.length} reasons)`);

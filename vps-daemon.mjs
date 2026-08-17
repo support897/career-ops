@@ -19,12 +19,23 @@ import { spawn, execSync } from 'child_process';
 import { existsSync, readFileSync, writeFileSync, unlinkSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { config as loadEnv } from 'dotenv';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+// The daemon needs the env itself, not just the child: VIP_USER_ID below
+// decides which tenant every scored job is written under, and an unset value
+// silently sends the whole run to 'default' where the dashboard never looks.
+// Root .env wins, matching auto-apply.mjs and hourly-scan.mjs.
+loadEnv({ path: [join(__dirname, 'web', '.env.local'), join(__dirname, '.env')] });
 const LOCK_PATH = join(__dirname, 'data', '.cycle.lock');
 const INTERVAL_MS = (parseInt(process.env.CYCLE_INTERVAL_MIN || '60', 10) || 60) * 60 * 1000;
 const TIMEOUT_MS = (parseInt(process.env.CYCLE_TIMEOUT_MIN || '40', 10) || 40) * 60 * 1000;
-const ARGS = ['auto-apply.mjs', '--userId', 'default', '--local-vip', '--min-score', '4.0', '--max-age', '14'];
+// The dashboard reads job_inbox for VIP_USER_ID. Hardcoding 'default' here
+// wrote every scored job, document and draft under a tenant the UI never
+// queries: 190 processed jobs sat invisible while the dashboard showed the 12
+// older rows. Fall back to 'default' only if the id is genuinely unset.
+const RUN_USER_ID = process.env.VIP_USER_ID || process.env.NEXT_PUBLIC_USER_ID || 'default';
+const ARGS = ['auto-apply.mjs', '--userId', RUN_USER_ID, '--local-vip', '--min-score', '4.0', '--max-age', '14'];
 
 let holdsLock = false; // only the instance that acquired the lock may release it
 
