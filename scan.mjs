@@ -57,6 +57,27 @@ try {
   // dotenv is optional — fall back to process.env if not installed
 }
 
+// ── --json machine mode (#1906) ──────────────────────────────────────
+// `--json` reserves stdout for exactly one JSON object so the pipeline
+// (auto-apply.mjs) can consume scan results directly. Every human-facing log
+// is redirected to stderr rather than rewritten at ~150 call sites, so running
+// with --json changes what stdout carries but never what the scan does.
+const JSON_MODE = process.argv.includes('--json');
+if (JSON_MODE) {
+  const toStderr = (...args) => {
+    process.stderr.write(args.map(a => (typeof a === 'string' ? a : String(a))).join(' ') + '\n');
+  };
+  console.log = toStderr;
+  console.info = toStderr;
+  console.warn = toStderr;
+}
+
+/** Emit the single stdout JSON object for --json mode. */
+function emitJsonResult(payload) {
+  if (!JSON_MODE) return;
+  process.stdout.write(JSON.stringify(payload) + '\n');
+}
+
 const parseYaml = yaml.load;
 
 // ── Config ──────────────────────────────────────────────────────────
@@ -1962,6 +1983,7 @@ function guardStatusFor(code) {
 }
 
 async function main() {
+  const scanStartedAt = new Date();
   const args = process.argv.slice(2);
   const dryRun = args.includes('--dry-run');
   const verify = args.includes('--verify');
@@ -2609,6 +2631,58 @@ async function main() {
     });
   }
 
+  // Mirror this run into Postgres so both dashboards can show an honest scan
+  // status. The TSV above only ever existed on the VPS filesystem, which is why
+  // the scan_runs table sat empty while scans ran hourly. Best-effort by design.
+  if (!dryRun) {
+    try {
+      const { recordScanRun } = await import('./lib/scan-run-recorder.mjs');
+      await recordScanRun({
+        startedAt: scanStartedAt,
+        status: errors.length > 0 ? 'partial' : 'completed',
+        companies: summaryCompanies,
+        boards: summaryBoards,
+        found: totalFound,
+        newAdded: verifiedOffers.length,
+        filteredTitle: totalFilteredTitle,
+        filteredLocation: totalFilteredLocation,
+        filteredOther: totalFilteredTier + totalFilteredPostingAge + totalFilteredSalary
+          + totalFilteredContent + totalFilteredCooldown + totalFilteredBlacklist
+          + totalFilteredVisa + totalFilteredPostedDate + totalFilteredCountryEligibility,
+        dupes: totalDupes,
+        errors: errors.length,
+        note: verifiedOffers.length === 0 && totalFound > 0
+          ? `found ${totalFound} but added 0 — ${totalFilteredTitle} removed by title filter, ${totalFilteredLocation} by location`
+          : null,
+      });
+    } catch (recErr) {
+      console.error(`   ⚠️  scan-run recorder unavailable: ${recErr.message}`);
+    }
+  }
+
+  // Machine-readable result for the pipeline. `new_urls` is the contract
+  // auto-apply.mjs consumes; the richer `new_offers` lets callers skip a
+  // re-fetch when they need company/title/source too.
+  emitJsonResult({
+    ok: true,
+    scanned_at: new Date().toISOString(),
+    dry_run: dryRun,
+    new_urls: verifiedOffers.map(o => o.url).filter(Boolean),
+    new_offers: verifiedOffers.map(o => ({
+      url: o.url,
+      company: o.company ?? null,
+      title: o.title ?? null,
+      location: o.location ?? null,
+      source: o.source ?? null,
+    })),
+    counts: {
+      found: totalFound,
+      added: verifiedOffers.length,
+      dupes: totalDupes,
+      errors: errors.length,
+    },
+  });
+
   console.log(`\n→ Run /career-ops pipeline to evaluate new offers.`);
   console.log('→ Share results and get help: https://discord.gg/8pRpHETxa4');
 
@@ -2635,6 +2709,17 @@ async function main() {
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   main().catch(err => {
     console.error('Fatal:', err.message);
+    // In --json mode the caller parses stdout; give it a valid object that says
+    // plainly that the scan failed, instead of empty output it would misread.
+    if (JSON_MODE) {
+      process.stdout.write(JSON.stringify({
+        ok: false,
+        error: err.message,
+        new_urls: [],
+        new_offers: [],
+        counts: { found: 0, added: 0, dupes: 0, errors: 1 },
+      }) + '\n');
+    }
     process.exit(1);
   });
 }

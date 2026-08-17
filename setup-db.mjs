@@ -71,6 +71,31 @@ async function setupDatabase() {
       processed_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ DEFAULT NOW(),
       updated_at TIMESTAMPTZ DEFAULT NOW(),
+      score NUMERIC(3,2),
+      score_breakdown JSONB,
+      why_match TEXT,
+      jd_text TEXT,
+      cv_html TEXT,
+      cover_letter TEXT,
+      reference_letter TEXT,
+      email_draft TEXT,
+      doc_status TEXT DEFAULT 'pending',
+      job_status TEXT DEFAULT 'new',
+      apply_url TEXT,
+      salary TEXT,
+      posted_at DATE,
+      source TEXT,
+      -- tailored documents as PDF bytes, so the hosted dashboard can serve real
+      -- downloads instead of silently falling back to HTML
+      cv_pdf BYTEA,
+      cl_pdf BYTEA,
+      rl_pdf BYTEA,
+      docs_generated_at TIMESTAMPTZ,
+      -- honest Gmail draft tracking: none | created | verified | missing
+      gmail_draft_id TEXT,
+      gmail_draft_state TEXT NOT NULL DEFAULT 'none',
+      gmail_draft_verified_at TIMESTAMPTZ,
+      applied_at TIMESTAMPTZ,
       UNIQUE(user_id, url)
     )`,
     `CREATE TABLE IF NOT EXISTS scan_history (

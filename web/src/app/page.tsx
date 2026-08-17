@@ -9,7 +9,7 @@ export default async function Home() {
   const hdrs = await headers();
   const userId = getUserId({ headers: { get: (k: string) => hdrs.get(k) } });
 
-  // Cloud-mode: read from Neon DB (not local filesystem)
+  // Cloud-mode: read from Postgres (not local filesystem)
   const [inboxJobs, applications] = await Promise.all([
     getInboxJobs(userId).catch(() => []),
     getApplications(userId).catch(() => []),

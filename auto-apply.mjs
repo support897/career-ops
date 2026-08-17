@@ -23,11 +23,17 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const jsyaml = require('js-yaml');
 
-// Load environment variables from the web app's .env.local configuration file
+// Load environment variables. The repo-root `.env` is AUTHORITATIVE: it holds the
+// canonical DATABASE_URL for the CLI and the 24/7 daemon. `web/.env.local` is
+// loaded afterwards only to fill in keys the root file lacks — dotenv never
+// overrides an already-set variable, so root always wins.
+// This ordering matters: these two files drifted apart once before (root pointed
+// at local Postgres while web/.env.local still pointed at a dead Neon instance),
+// which silently split the runner and the dashboard across two databases.
 const dotenv = require('dotenv');
-const dotenvPath = join(dirname(fileURLToPath(import.meta.url)), 'web', '.env.local');
-if (existsSync(dotenvPath)) {
-  dotenv.config({ path: dotenvPath });
+const projectRoot = dirname(fileURLToPath(import.meta.url));
+for (const envPath of [join(projectRoot, '.env'), join(projectRoot, 'web', '.env.local')]) {
+  if (existsSync(envPath)) dotenv.config({ path: envPath });
 }
 
 
@@ -568,29 +574,89 @@ async function findCompanyEmail(job) {
 
 async function scanForJobs() {
   console.log('📡 Scanning job portals...');
+  const urls = new Set();
+  let scanOk = false;
+  let scanError = null;
+
+  // ── 1. Tracked companies + job boards via scan.mjs --json ──────────────
+  // stderr is deliberately NOT discarded: it carries the human log and any
+  // stack trace. Swallowing it is what hid this failure for weeks.
   try {
-    // Scan tracked companies + job boards
-    const result = execSync('node scan.mjs --json 2>/dev/null', { 
-      encoding: 'utf8', cwd: __dirname, timeout: 120000 
+    const raw = execSync('node scan.mjs --json', {
+      encoding: 'utf8',
+      cwd: __dirname,
+      timeout: 15 * 60 * 1000,
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'inherit'],
     });
-    const data = JSON.parse(result);
-    const trackedUrls = data.new_urls || [];
-    
-    // Reverse ATS scan — walks ALL Greenhouse/Lever/Ashby/Workday directories
-    console.log('📡 Scanning all ATS directories (Greenhouse/Lever/Ashby/Workday)...');
-    try {
-      execSync('node scan-ats-full.mjs --since 3 2>/dev/null', { 
-        encoding: 'utf8', cwd: __dirname, timeout: 300000 
-      });
-    } catch (atsErr) {
-      console.log('   ATS full scan failed, continuing with tracked results only');
+
+    // Defensive parse: take the last non-empty line so a stray stdout write
+    // from a dependency cannot break the contract.
+    const line = raw.split('\n').map(l => l.trim()).filter(Boolean).pop();
+    if (!line) throw new Error('scan.mjs --json produced no stdout');
+    const data = JSON.parse(line);
+
+    if (data.ok === false) {
+      throw new Error(`scan.mjs reported failure: ${data.error || 'unknown'}`);
     }
-    
-    return trackedUrls;
-  } catch (e) {
-    console.log('   Scan failed, using pipeline.md only');
-    return [];
+    if (!Array.isArray(data.new_urls)) {
+      throw new Error('scan.mjs --json response is missing the new_urls array');
+    }
+
+    for (const u of data.new_urls) if (u) urls.add(u);
+    scanOk = true;
+    const c = data.counts || {};
+    console.log(
+      `   ✅ portal scan: ${data.new_urls.length} new url(s) ` +
+      `(found ${c.found ?? '?'}, dupes ${c.dupes ?? '?'}, errors ${c.errors ?? '?'})`
+    );
+  } catch (err) {
+    scanError = err.message;
+    // LOUD. A scan failure is a real incident, not a footnote: with no new
+    // urls the entire cycle does nothing, so it must be visible in the log.
+    console.error(`   ❌ PORTAL SCAN FAILED: ${err.message}`);
+    console.error('      No new URLs from scan.mjs this cycle — the ATS sweep below still runs.');
   }
+
+  // ── 2. Reverse-ATS sweep — ALWAYS runs ────────────────────────────────
+  // Previously this sat inside the try block above, after the JSON.parse that
+  // always threw, so the broadest source of jobs never executed at all.
+  console.log('📡 Scanning all ATS directories (Greenhouse/Lever/Ashby/Workday)...');
+  try {
+    execSync('node scan-ats-full.mjs --since 3', {
+      encoding: 'utf8',
+      cwd: __dirname,
+      timeout: 20 * 60 * 1000,
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ['ignore', 'inherit', 'inherit'],
+    });
+    console.log('   ✅ ATS directory sweep completed');
+  } catch (atsErr) {
+    console.error(`   ❌ ATS FULL SCAN FAILED: ${atsErr.message}`);
+  }
+
+  // ── 3. Anything the sweep appended to pipeline.md counts too ──────────
+  // scan-ats-full.mjs writes straight to pipeline.md rather than returning
+  // urls. The caller snapshots pending BEFORE this function runs, so without
+  // this fold-in those rows would sit unseen until the next cycle. Returning
+  // them as urls is safe: the caller only appends urls pipeline.md lacks.
+  // getPendingFromPipeline() yields objects, so take .url.
+  try {
+    for (const job of getPendingFromPipeline()) if (job?.url) urls.add(job.url);
+  } catch (pipeErr) {
+    console.error(`   ⚠️  could not read pipeline.md: ${pipeErr.message}`);
+  }
+
+  const all = [...urls];
+  if (all.length === 0) {
+    console.error(
+      '   ❌ NO JOBS FOUND FROM ANY SOURCE this cycle' +
+      (scanOk ? '' : ` (portal scan failed: ${scanError})`)
+    );
+  } else {
+    console.log(`   📥 ${all.length} candidate url(s) from all sources`);
+  }
+  return all;
 }
 
 function markJobCompletedInPipeline(url) {

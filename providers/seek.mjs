@@ -1,362 +1,199 @@
+// @ts-check
+/** @typedef {import('./_types.js').Provider} Provider */
+
+// SEEK provider — public JobSearch v5 REST API. NO cookies, NO browser, NO key.
+//
+// This replaces a 362-line Puppeteer + stealth-plugin + saved-cookie scraper that
+// failed every run with "Cookies expired (30d). Re-login needed." and emailed a
+// reminder about it. Cookies were never the right mechanism here: SEEK exposes the
+// same search its own website consumes as an unauthenticated JSON endpoint.
+//
+// Verified from this VPS on 2026-08-17:
+//   GET https://www.seek.com.au/api/jobsearch/v5/search
+//       ?siteKey=AU-Main&sourcesystem=houston&keywords=remote
+//       &where=All%20Australia&page=1&dateRange=3
+//   → HTTP 200, 20 jobs/page, totalCount 5628, no auth of any kind.
+//
+// Nothing here expires, so this cannot silently rot the way the cookie jar did.
+//
+// Portal entry fields (all optional):
+//   siteKey        — SEEK market key (default "AU-Main"; NZ-Main for seek.co.nz)
+//   searchKeywords — keywords; may be a string or an array of strings (each is
+//                    searched separately, which returns far more than OR-ing them)
+//   searchLocation — `where` value (default "All Australia")
+//   sinceDays      — dateRange filter in days (default 14)
+//   maxPages       — pages per keyword (default 5, i.e. up to 100 jobs each)
+
+const DEFAULT_ORIGIN = 'https://www.seek.com.au';
+const SEARCH_PATH = '/api/jobsearch/v5/search';
+const DEFAULT_SITE_KEY = 'AU-Main';
+const DEFAULT_LOCATION = 'All Australia';
+const DEFAULT_SINCE_DAYS = 14;
+const DEFAULT_MAX_PAGES = 5;
+const PAGE_DELAY_MS = 250;
+
+// SSRF guard: only SEEK's own hosts, matching the pattern used by the other
+// providers in this directory.
+const ALLOWED_HOSTS = new Set([
+  'www.seek.com.au',
+  'seek.com.au',
+  'www.seek.co.nz',
+  'seek.co.nz',
+]);
+
+/** @param {string} origin */
+function assertSeekOrigin(origin) {
+  let parsed;
+  try {
+    parsed = new URL(origin);
+  } catch {
+    throw new Error(`seek: invalid origin: ${origin}`);
+  }
+  if (parsed.protocol !== 'https:') throw new Error(`seek: origin must use HTTPS: ${origin}`);
+  if (!ALLOWED_HOSTS.has(parsed.hostname)) {
+    throw new Error(`seek: untrusted hostname "${parsed.hostname}"`);
+  }
+  return `${parsed.protocol}//${parsed.hostname}`;
+}
+
 /**
- * seek.mjs — SEEK job provider using saved cookies (headless)
- * 
- * Uses Puppeteer Stealth with saved session cookies for headless scraping.
- * Cookie expiration triggers email notification.
+ * @param {string} origin
+ * @param {{siteKey:string, keywords:string, location:string, page:number, sinceDays:number}} q
  */
-
-import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import puppeteer from 'puppeteer-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import nodemailer from 'nodemailer';
-
-puppeteer.use(StealthPlugin());
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const CONFIG_PATH = join(__dirname, '../config/seek.yml');
-const EMAIL_CONFIG_PATH = join(__dirname, '../config/email.yml');
-const CHROME_PATH = process.env.CHROME_PATH
-  || (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium'
-  : existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome'
-  : existsSync('/ms-playwright/chromium-1228/chrome-linux/chrome') ? '/ms-playwright/chromium-1228/chrome-linux/chrome'
-  : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
-
-// ─── Cookie loading ────────────────────────────────────────────────────────
-
-async function loadCookies(userId) {
-  // Try DB first if userId provided
-  if (userId) {
-    try {
-      const { getUserCookies } = await import('../lib/db-reader.mjs');
-      const { decryptCookies } = await import('../lib/cookie-crypto.mjs');
-      const row = await getUserCookies(userId, 'seek');
-      if (row?.encrypted) {
-        const cookies = decryptCookies(userId, row.encrypted);
-        if (cookies && cookies.length > 0) {
-          console.log(`[seek] Loaded ${cookies.length} cookies from DB for user ${userId.slice(0, 12)}...`);
-          return { cookies, exportedAt: row.exportedAt, source: 'db' };
-        }
-      }
-    } catch (e) {
-      console.warn(`[seek] DB cookie load failed, falling back to file: ${e.message}`);
-    }
-  }
-
-  // Fallback to local YAML file
-  if (!existsSync(CONFIG_PATH)) return null;
-  
-  const yaml = readFileSync(CONFIG_PATH, 'utf8');
-  const cookies = [];
-  
-  const cookieRegex = /- name:\s*"([^"]+)"\s*\n\s*value:\s*"([^"]+)"/g;
-  let match;
-  while ((match = cookieRegex.exec(yaml)) !== null) {
-    cookies.push({ name: match[1], value: match[2], domain: '.seek.com.au' });
-  }
-  
-  const exportedMatch = yaml.match(/exportedAt:\s*"([^"]+)"/);
-  const exportedAt = exportedMatch?.[1] ? new Date(exportedMatch[1]) : null;
-  
-  return { cookies, exportedAt, source: 'file' };
+function buildSearchUrl(origin, q) {
+  const u = new URL(SEARCH_PATH, origin);
+  u.searchParams.set('siteKey', q.siteKey);
+  u.searchParams.set('sourcesystem', 'houston'); // required; identifies the caller
+  if (q.keywords) u.searchParams.set('keywords', q.keywords);
+  if (q.location) u.searchParams.set('where', q.location);
+  u.searchParams.set('page', String(q.page));
+  if (q.sinceDays > 0) u.searchParams.set('dateRange', String(q.sinceDays));
+  return u.toString();
 }
 
-function checkCookieAge(exportedAt) {
-  if (!exportedAt) return { valid: false, days: -1 };
-  const age = Date.now() - exportedAt.getTime();
-  const days = Math.round(age / (24 * 60 * 60 * 1000));
-  return { valid: days < 30, days };
+/**
+ * Normalise one v5 result into the scanner's Job shape.
+ * @param {any} item
+ * @param {string} origin
+ * @returns {import('./_types.js').Job | null}
+ */
+export function parseSeekItem(item, origin = DEFAULT_ORIGIN) {
+  const id = item?.id != null ? String(item.id) : '';
+  const title = String(item?.title || '').trim();
+  if (!id || !title) return null;
+
+  // Company: `advertiser.description` is the display name SEEK shows on the
+  // card; `companyName` is present on some records only.
+  const company = String(item?.advertiser?.description || item?.companyName || '').trim();
+
+  const location = Array.isArray(item?.locations) && item.locations.length
+    ? String(item.locations[0]?.label || '').trim()
+    : String(item?.location || '').trim();
+
+  // Build a description from the fields the list payload already carries, so we
+  // stay zero-token: no extra request per job. Feeds scan.mjs's content_filter.
+  const parts = [];
+  if (item?.teaser) parts.push(String(item.teaser).trim());
+  if (Array.isArray(item?.bulletPoints) && item.bulletPoints.length) {
+    parts.push(item.bulletPoints.map((b) => `• ${String(b).trim()}`).join('\n'));
+  }
+  if (item?.salaryLabel) parts.push(`Salary: ${String(item.salaryLabel).trim()}`);
+  if (Array.isArray(item?.workTypes) && item.workTypes.length) {
+    parts.push(`Work type: ${item.workTypes.join(', ')}`);
+  }
+  // workArrangements marks Remote/Hybrid/On-site — important for the location filter.
+  const arrangements = item?.workArrangements?.data;
+  if (Array.isArray(arrangements) && arrangements.length) {
+    const labels = arrangements.map((a) => String(a?.label || '').trim()).filter(Boolean);
+    if (labels.length) parts.push(`Work arrangement: ${labels.join(', ')}`);
+  }
+
+  let postedAt;
+  if (item?.listingDate) {
+    const t = Date.parse(item.listingDate);
+    if (!Number.isNaN(t)) postedAt = t;
+  }
+
+  /** @type {import('./_types.js').Job} */
+  const job = {
+    title,
+    url: `${origin}/job/${id}`,
+    company,
+    location,
+  };
+  if (parts.length) job.description = parts.join('\n');
+  if (postedAt) job.postedAt = postedAt;
+  return job;
 }
 
-// ─── Expiration email ──────────────────────────────────────────────────────
-
-async function sendExpirationEmail() {
-  try {
-    if (!existsSync(EMAIL_CONFIG_PATH)) return;
-    const emailConfig = readFileSync(EMAIL_CONFIG_PATH, 'utf8');
-    const userMatch = emailConfig.match(/user:\s*"([^"]+)"/);
-    const passMatch = emailConfig.match(/app_password:\s*"([^"]+)"/);
-    if (!userMatch || !passMatch) return;
-    
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: userMatch[1], pass: passMatch[1] },
-    });
-    
-    await transporter.sendMail({
-      from: `"Career-Ops" <${userMatch[1]}>`,
-      to: userMatch[1],
-      subject: '[Career-Ops] SEEK Cookies Expired — Please Re-login',
-      html: `<h2>SEEK Session Expired</h2>
-        <p>Your SEEK cookies have expired.</p>
-        <p><strong>To fix:</strong> Run <code>node seek-save-cookies.js</code></p>`,
-    });
-  } catch (err) {}
+/** Normalise the keyword option into a list of separate searches. */
+export function keywordList(entry) {
+  const raw = entry?.searchKeywords ?? entry?.keywords ?? '';
+  const list = Array.isArray(raw) ? raw : [raw];
+  const out = [];
+  for (const k of list) {
+    const s = String(k ?? '').trim();
+    if (s && !out.includes(s)) out.push(s);
+  }
+  return out.length ? out : [''];
 }
 
-// ─── Headless scraping ─────────────────────────────────────────────────────
-
-async function scrapeSEEKJobs(keywords, maxJobs = 25, userId) {
-  const data = await loadCookies(userId);
-  
-  if (!data || data.cookies.length === 0) {
-    console.log('  ⚠️  SEEK: No cookies. Run: node seek-save-cookies.js');
-    return [];
-  }
-  
-  const { valid, days } = checkCookieAge(data.exportedAt);
-  if (!valid) {
-    console.log(`  ❌ SEEK: Cookies expired (${days}d). Re-login needed.`);
-    await sendExpirationEmail();
-    return [];
-  }
-  
-  if (days > 25) console.log(`  ⚠️  SEEK: Cookies expiring in ${30 - days} days.`);
-  
-  const browser = await puppeteer.launch({
-    headless: 'new',
-    executablePath: CHROME_PATH,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  });
-  
-  try {
-    const page = await browser.newPage();
-    await page.setCookie(...data.cookies.map(c => ({
-      name: c.name, value: c.value, domain: c.domain || '.seek.com.au', path: '/', httpOnly: true, secure: true,
-    })));
-    
-    // SEEK search URL
-    const searchUrl = `https://www.seek.com.au/${keywords.replace(/\s+/g, '-')}-jobs?daterange=7`;
-    await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    
-    await page.waitForFunction(() => {
-      return document.querySelectorAll('a[href*="/job/"]').length > 0;
-    }, { timeout: 15000 }).catch(() => {});
-    
-    if (page.url().includes('login') || page.url().includes('oauth')) {
-      console.log('  ❌ SEEK: Session expired during scraping.');
-      await sendExpirationEmail();
-      return [];
-    }
-    
-    const jobs = await page.evaluate((maxJobs) => {
-      const links = document.querySelectorAll('a[href*="/job/"]');
-      const seen = new Set();
-      
-      return Array.from(links).map(a => {
-        const title = a.textContent.trim().substring(0, 100);
-        return {
-          title,
-          url: a.href.split('?')[0],
-        };
-      }).filter(j => {
-        if (!j.title || j.title.length < 5 || seen.has(j.url)) return false;
-        seen.add(j.url);
-        return true;
-      }).slice(0, maxJobs);
-    }, maxJobs);
-    
-    return jobs;
-    
-  } catch (err) {
-    console.error('  ❌ SEEK:', err.message);
-    return [];
-  } finally {
-    await browser.close();
-  }
-}
-
-// ─── Provider interface ────────────────────────────────────────────────────
-
+/** @type {Provider} */
 export default {
   id: 'seek',
-  name: 'SEEK Jobs',
-  
-  detect(ctx) {
-    return false;
+
+  detect(_entry) {
+    // SEEK is an aggregator, not a company ATS — require `provider: seek`
+    // explicitly in portals.yml, same convention as the jobstreet provider.
+    return null;
   },
 
   async fetch(entry, ctx) {
-    const { readFileSync, existsSync } = await import('fs');
-    const yaml = await import('js-yaml');
-    let defaultQuery = '"AI Trainer" OR "Video Editor" OR "Webflow" OR "Virtual Assistant" OR "QA"';
-    try {
-      if (existsSync('portals.yml')) {
-        const config = yaml.load(readFileSync('portals.yml', 'utf8'));
-        const positive = config?.title_filter?.positive || [];
-        const mainKeywords = positive.filter(k => k.length >= 2 && k.length <= 25);
-        if (mainKeywords.length > 0) {
-          const selected = [...new Set(mainKeywords)].slice(0, 8);
-          defaultQuery = selected.map(k => `"${k}"`).join(' OR ');
-        }
-      }
-    } catch (e) {
-      // Fallback to default
-    }
-    const keywords = entry.scan_query || entry.searchKeywords || defaultQuery;
-    return scrapeSEEKJobs(keywords, 25, ctx?.userId);
-  },
+    const origin = assertSeekOrigin(entry.api || entry.origin || DEFAULT_ORIGIN);
+    const siteKey = entry.siteKey || DEFAULT_SITE_KEY;
+    const location = entry.searchLocation ?? DEFAULT_LOCATION;
+    const sinceDays = Number(entry.sinceDays) || DEFAULT_SINCE_DAYS;
+    const maxPages = Number(entry.maxPages) || DEFAULT_MAX_PAGES;
+    const keywords = keywordList(entry);
 
-  async apply(url, ctx) {
-    return applyToJob(url, ctx?.userId, ctx?.candidateInfo || {}, ctx?.cvPath);
+    const jobs = [];
+    const seen = new Set();
+    let firstError = null;
+
+    for (const kw of keywords) {
+      for (let page = 1; page <= maxPages; page++) {
+        const url = buildSearchUrl(origin, { siteKey, keywords: kw, location, page, sinceDays });
+
+        let json;
+        try {
+          json = /** @type {any} */ (await ctx.fetchJson(url));
+        } catch (err) {
+          // One bad keyword or page must not sink the whole provider — record it
+          // and carry on, so a partial result still reaches the pipeline.
+          if (!firstError) firstError = err;
+          console.error(`seek: "${kw || '(all)'}" page ${page} failed — ${err.message}`);
+          break;
+        }
+
+        const data = Array.isArray(json?.data) ? json.data : [];
+        if (data.length === 0) break;
+
+        for (const item of data) {
+          const job = parseSeekItem(item, origin);
+          if (!job || seen.has(job.url)) continue;
+          seen.add(job.url);
+          jobs.push(job);
+        }
+
+        // Last page for this keyword.
+        if (data.length < 20) break;
+        await new Promise((r) => setTimeout(r, PAGE_DELAY_MS));
+      }
+    }
+
+    // Only fail loudly if we got literally nothing AND something went wrong;
+    // silence here is what let the old cookie scraper rot unnoticed.
+    if (jobs.length === 0 && firstError) throw firstError;
+    return jobs;
   },
 };
-
-// ─── Auto-apply to SEEK jobs ────────────────────────────────────────────────
-
-async function applyToJob(url, userId, candidateInfo, cvPath) {
-  const data = await loadCookies(userId);
-  if (!data || data.cookies.length === 0) {
-    return { success: false, error: 'No SEEK cookies available' };
-  }
-
-  const { valid } = checkCookieAge(data.exportedAt);
-  if (!valid) {
-    return { success: false, error: 'SEEK cookies expired' };
-  }
-
-  const browser = await puppeteer.launch({
-    headless: 'new',
-    executablePath: CHROME_PATH,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  });
-
-  try {
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1280, height: 800 });
-
-    await page.setCookie(...data.cookies.map(c => ({
-      name: c.name, value: c.value, domain: c.domain || '.seek.com.au', path: '/', httpOnly: true, secure: true,
-    })));
-
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-
-    if (page.url().includes('login') || page.url().includes('oauth')) {
-      return { success: false, error: 'SEEK session expired — re-login needed' };
-    }
-
-    await page.waitForSelector('button[data-testid="apply-button"], a[data-testid="apply-button"], button[aria-label*="Apply"]', { timeout: 15000 }).catch(() => {});
-
-    const applyBtn = await page.$('button[data-testid="apply-button"], a[data-testid="apply-button"], button[aria-label*="Apply"]');
-    if (!applyBtn) {
-      return { success: false, error: 'No Apply button found — may require external redirect' };
-    }
-
-    await applyBtn.click();
-    await new Promise(r => setTimeout(r, 3000));
-
-    const confirmationPatterns = [/thank you/i, /submitted/i, /application complete/i, /application received/i, /you.?ve applied/i];
-    const nextStepSelectors = [
-      'button[data-testid="submit-application"]',
-      'button[type="submit"]',
-      'button:has-text("Continue")',
-      'button:has-text("Next")',
-      'button:has-text("Review")',
-      'button[aria-label*="Submit"]',
-    ];
-
-    for (let step = 0; step < 8; step++) {
-      if (candidateInfo.email) {
-        await page.evaluate((email) => {
-          const inputs = document.querySelectorAll('input[name*="email"], input[type="email"], input[placeholder*="email" i]');
-          inputs.forEach(i => { i.value = email; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });
-        }, candidateInfo.email);
-      }
-      if (candidateInfo.phone) {
-        await page.evaluate((phone) => {
-          const inputs = document.querySelectorAll('input[name*="phone"], input[type="tel"], input[placeholder*="phone" i]');
-          inputs.forEach(i => { i.value = phone; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });
-        }, candidateInfo.phone);
-      }
-      if (candidateInfo.firstName) {
-        await page.evaluate((name) => {
-          const input = document.querySelector('input[name*="first" i], input[placeholder*="first" i]');
-          if (input) { input.value = name; input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); }
-        }, candidateInfo.firstName);
-      }
-      if (candidateInfo.lastName) {
-        await page.evaluate((name) => {
-          const input = document.querySelector('input[name*="last" i], input[placeholder*="last" i]');
-          if (input) { input.value = name; input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); }
-        }, candidateInfo.lastName);
-      }
-
-      if (cvPath && existsSync(cvPath)) {
-        const fileInputs = await page.$$('input[type="file"]');
-        for (const fi of fileInputs) {
-          const visible = await fi.evaluate(el => el.offsetParent !== null).catch(() => false);
-          if (visible) {
-            try {
-              await fi.uploadFile(cvPath);
-              await new Promise(r => setTimeout(r, 2000));
-            } catch {}
-            break;
-          }
-        }
-      }
-
-      const pageText = await page.evaluate(() => document.body?.innerText || '').catch(() => '');
-      if (confirmationPatterns.some(p => p.test(pageText))) {
-        return { success: true, method: 'SEEK Apply (step ' + step + ')' };
-      }
-
-      let clicked = false;
-      for (const sel of nextStepSelectors) {
-        try {
-          const btn = await page.$(sel);
-          if (btn && await btn.isVisible().catch(() => false)) {
-            await btn.click();
-            clicked = true;
-            break;
-          }
-        } catch {}
-      }
-
-      if (clicked) {
-        await new Promise(r => setTimeout(r, 3000));
-        const afterText = await page.evaluate(() => document.body?.innerText || '').catch(() => '');
-        if (confirmationPatterns.some(p => p.test(afterText))) {
-          return { success: true, method: 'SEEK Apply' };
-        }
-        continue;
-      }
-
-      break;
-    }
-
-    return { success: false, error: 'Could not complete SEEK application form' };
-  } catch (err) {
-    return { success: false, error: err.message };
-  } finally {
-    await browser.close();
-  }
-}
-
-// ─── Standalone testing ────────────────────────────────────────────────────
-
-if (process.argv[1]?.endsWith('seek.mjs')) {
-  console.log('\n🔍 Testing SEEK provider (headless)...\n');
-  
-  const data = loadCookies();
-  if (!data) {
-    console.log('❌ No config found. Run: node seek-save-cookies.js');
-    process.exit(1);
-  }
-  
-  const { valid, days } = checkCookieAge(data.exportedAt);
-  console.log(`Cookie age: ${days} days, Valid: ${valid}`);
-  
-  if (!valid) {
-    console.log('❌ Cookies expired. Run: node seek-save-cookies.js');
-    process.exit(1);
-  }
-  
-  scrapeSEEKJobs('AI automation', 10).then(jobs => {
-    console.log(`\n✅ Found ${jobs.length} jobs:\n`);
-    jobs.forEach((job, i) => {
-      console.log(`${i + 1}. ${job.title}`);
-      console.log(`   ${job.url}\n`);
-    });
-  }).catch(err => console.error('❌ Error:', err.message));
-}

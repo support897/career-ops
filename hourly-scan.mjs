@@ -26,11 +26,17 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const jsyaml = require('js-yaml');
 
-// Load environment variables from the web app's .env.local configuration file
+// Load environment variables. The repo-root `.env` is AUTHORITATIVE: it holds the
+// canonical DATABASE_URL for the CLI and the 24/7 daemon. `web/.env.local` is
+// loaded afterwards only to fill in keys the root file lacks — dotenv never
+// overrides an already-set variable, so root always wins.
+// This ordering matters: these two files drifted apart once before (root pointed
+// at local Postgres while web/.env.local still pointed at a dead Neon instance),
+// which silently split the runner and the dashboard across two databases.
 const dotenv = require('dotenv');
-const dotenvPath = join(dirname(fileURLToPath(import.meta.url)), 'web', '.env.local');
-if (existsSync(dotenvPath)) {
-  dotenv.config({ path: dotenvPath });
+const projectRoot = dirname(fileURLToPath(import.meta.url));
+for (const envPath of [join(projectRoot, '.env'), join(projectRoot, 'web', '.env.local')]) {
+  if (existsSync(envPath)) dotenv.config({ path: envPath });
 }
 
 

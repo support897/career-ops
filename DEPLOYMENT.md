@@ -6,7 +6,7 @@ Careerflow uses a cloud-first architecture with:
 
 - **Vercel**: Web dashboard hosting + Vercel Cron
 - **AWS Lambda**: Job scanning engine (runs every 6 hours)
-- **Neon PostgreSQL**: Cloud database for all data
+- **Self-hosted PostgreSQL**: single database for all data, running in Docker on the VPS
 - **EventBridge**: Schedules Lambda executions
 
 ```
@@ -15,7 +15,7 @@ Careerflow uses a cloud-first architecture with:
 ├─────────────────────────────────────────────────────────────┤
 │                                                               │
 │  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐    │
-│  │   Vercel    │────▶│    Neon     │◀────│AWS Lambda   │    │
+│  │   Vercel    │────▶│  Postgres   │◀────│  VPS runner │    │
 │  │   Cron      │     │  PostgreSQL │     │ (Scanner)   │    │
 │  │ (6 AM UTC)  │     │             │     │             │    │
 │  └─────────────┘     └─────────────┘     └─────────────┘    │
@@ -31,9 +31,9 @@ Careerflow uses a cloud-first architecture with:
 
 ## Quick Start
 
-### 1. Set Up Neon Database
+### 1. Set Up PostgreSQL
 
-1. Go to [Neon Console](https://console.neon.tech/)
+1. The database runs in Docker on the VPS (container `career-ops-postgres`).
 2. Create a new project (or use existing)
 3. Copy the connection string
 4. Update `.env`:
@@ -105,7 +105,7 @@ LAMBDA_SCAN_URL=https://your-lambda-url.lambda-url.region.on.aws/
 - **Duration**: 400,000 GB-seconds free/month ✅
 - **Typical usage**: ~$0/month
 
-### Neon PostgreSQL (Free Tier)
+### Self-hosted PostgreSQL
 - **Storage**: 512 MB free ✅
 - **Compute**: 191.9 compute-hours/month free ✅
 - **Typical usage**: ~$0/month
@@ -147,7 +147,7 @@ If scanning takes too long:
 
 ### Database Connection Errors
 1. Verify DATABASE_URL in .env
-2. Check Neon console for connection limits
+2. Check the Postgres container for connection limits: `docker exec career-ops-postgres psql -U career_admin -d career_ops -c "SHOW max_connections;"`
 3. Ensure SSL mode is enabled
 
 ### Vercel Cron Not Running

@@ -66,6 +66,11 @@ location_filter:
     - "AEST"
     - "APAC"
     - "Remote"
+    - "Work from home"
+    - "WFH"
+  # 'Hybrid' deliberately NOT blocked: many Australian listings say
+  # "hybrid" while still being commutable/remote-friendly, and blocking it
+  # discarded local roles. On-site/Onsite remain blocked.
   block:
     - "United States"
     - "USA"
@@ -79,10 +84,8 @@ location_filter:
     - "Remotely in the USA"
     - "On-site"
     - "Onsite"
-    - "Hybrid"
     - "India"
     - "Bengaluru"
-
 
 # -- Salary filter (optional) --
 # Filter scanned jobs by annual compensation range. Applied AFTER location
@@ -108,7 +111,7 @@ location_filter:
 # are never skipped — same "don't penalize missing data" rule as location_filter.
 # Absent, 0, or non-positive → disabled (all ages pass).
 #
-max_posting_age_days: 14
+# max_posting_age_days: 45
 
 # -- Trust filter (optional) --
 # Enriches each scanned job with a trust score (0-100) and flags.
@@ -188,75 +191,28 @@ max_posting_age_days: 14
 # skip_tiers: [intern, entry]  # optional: skip listings by seniority tier (note: unrecognized/plain titles fall back to 'mid')
 
 title_filter:
+  # Sourced from the Explore page on the Vercel front end (both profiles merged):
+  # PRIMARY_TECH_FILTERS + SUPPORT_WORKER_FILTERS, deduplicated.
+  # 'support worker' and 'ndis coordinator' were REMOVED from the negatives —
+  # the tech profile excluded them, which would have cancelled out the
+  # support-worker roles now that both sets are scanned together.
   positive:
-    # -- AI Automation & Testing roles --
     - "AI Automation"
-    - "Automation"
-    - "Automation Engineer"
+    - "AI Testing"
+    - "Business owner"
+    - "marketing"
+    - "digital marketing"
+    - "website builder"
+    - "video generation"
     - "QA"
     - "Testing"
-    - "Tester"
     - "Quality Assurance"
-    - "Software Tester"
-    - "Automation Specialist"
-    # -- AI Trainer / Evaluator roles --
-    - "AI Trainer"
-    - "AI Training"
-    - "Model Training"
     - "AI Evaluator"
-    - "AI Evaluation"
-    - "Data Labeling"
     - "Data Annotation"
-    - "Data Annotator"
-    - "Data Curation"
-    - "Prompt Evaluator"
-    - "AI Content"
-    - "AI Editor"
-    - "Outlier"
-    - "Scale AI"
-    # -- Video & Creative roles --
     - "Video Editor"
-    - "Video Specialist"
-    - "Video Producer"
-    - "Content Specialist"
-    - "Media Creator"
-    - "Creative Editor"
-    - "Video Creator"
-    - "Creative Specialist"
-    # -- Web Design & Junior Front End roles --
     - "Web Designer"
-    - "Web Design"
-    - "Framer"
-    - "Webflow"
-    - "WordPress"
-    - "Junior Front End"
-    - "Junior Frontend"
-    - "Junior Developer"
-    - "Web Creator"
-    # -- Technical Virtual Assistant & Operations roles --
-    - "Virtual Assistant"
-    - "Technical Assistant"
-    - "Operations Assistant"
-    - "Support Assistant"
-    - "Data Entry"
-    # -- Spanish Speaker / Bilingual roles --
     - "Spanish"
-    - "Bilingual Spanish"
-    - "Español"
-    - "Spanish Speaker"
-    - "Spanish Content"
-    - "Spanish Translator"
-    # -- Marketing & Content Scheduling --
     - "Social Media Coordinator"
-    - "Social Media Specialist"
-    - "Content Coordinator"
-    - "Email Marketing"
-    - "Newsletter"
-    - "SEO Specialist"
-    - "SEO Coordinator"
-    - "Asset Designer"
-    - "Creative Asset"
-    # -- Customer Support --
     - "Customer Service Representative"
     - "Customer Service"
     - "Live Chat Support Agent"
@@ -268,110 +224,69 @@ title_filter:
     - "Technical Support Tier 1"
     - "Technical Support"
     - "Order and Returns Support Agent"
-    - "Order and Returns"
     - "Help Desk Associate"
     - "Help Desk"
     - "Bilingual Customer Support"
     - "Crisis and Text Line Support"
-    - "Crisis Line"
-    - "Text Line Support"
     - "Interpreting Services"
-    - "Interpreter"
-    # -- Sales / Outreach --
     - "Sales Development Rep"
-    - "Sales Development Representative"
-    - "SDR"
     - "Business Development Rep"
-    - "Business Development Representative"
-    - "BDR"
     - "Inside Sales Rep"
-    - "Inside Sales"
     - "Appointment Setter"
     - "Account Executive"
     - "Telesales Rep"
-    - "Telesales"
     - "Warm Lead Closer"
-    - "Lead Closer"
-    # -- Admin / Ops --
+    - "Virtual Assistant"
     - "Data Entry Clerk"
     - "Administrative Assistant"
     - "Scheduling Coordinator"
     - "Executive Assistant"
     - "Bookkeeping Assistant"
-    - "Bookkeeper"
     - "Transcriptionist"
     - "Order Processing Clerk"
-    - "Order Processing"
-    # -- Content / Creative --
     - "Content Writer"
     - "Copywriter"
     - "Proofreader and Editor"
-    - "Proofreader"
-    - "Editor"
     - "Community Manager"
-    # -- Onboarding / Customer Success --
     - "Onboarding Coordinator"
     - "Onboarding Specialist"
     - "Customer Success Associate"
-    - "Customer Success"
     - "Implementation Specialist"
     - "Client Success Coordinator"
-    - "Client Success"
-    # -- Data / AI-adjacent Entry --
     - "Data Annotation Specialist"
     - "AI Training Data Rater"
     - "AI Prompt Evaluator"
     - "QA Tester"
     - "Search Engine Evaluator"
-    # -- Recruiting / HR-adjacent --
     - "Junior Recruiter"
-    - "Recruiter"
     - "Talent Sourcer"
-    - "Sourcer"
     - "HR Coordinator"
-    # -- Healthcare-adjacent Admin --
     - "Medical Billing Specialist"
-    - "Medical Billing"
     - "Insurance Claims Processor"
-    - "Insurance Claims"
     - "Patient Scheduling Coordinator"
-    - "Patient Scheduling"
-    # -- Marketing Ops --
     - "Marketing Assistant"
     - "Email Marketing Coordinator"
     - "Lead Generation Specialist"
-    - "Lead Generation"
     - "Marketing Automation Assistant"
+    - "Support Coordinator"
+    - "NDIS Support Coordinator"
+    - "Support Worker"
+    - "Disability Support"
+    - "Aged Care Coordinator"
+    - "Mental Health Coordinator"
+    - "Case Coordinator"
   negative:
-    - "On-site"
-    - "Onsite"
-    - "Relocation"
-    - ".NET"
-    - "Java "
-    - "iOS"
-    - "Android"
-    - "PHP"
-    - "Ruby"
-    - "Embedded"
-    - "Firmware"
-    - "FPGA"
-    - "ASIC"
-    - "Blockchain"
-    - "Web3"
-    - "Crypto"
-    - "Salesforce Admin"
-    - "SAP "
-    - "Oracle EBS"
-    - "Mainframe"
-    - "COBOL"
-    - "C++"
-    - "Rust"
+    - "architect"
+    - "senior researcher"
+    - "staff engineer"
+    - "devops"
+    - "platform engineer"
+    - "software engineer"
   seniority_boost:
     - "Senior"
     - "Lead"
     - "Head"
     - "Director"
-
 # -- Search queries --
 # Each query triggers a WebSearch. Use site: to filter by portal.
 # The scanner extracts title, URL, and company from results.
@@ -2124,20 +2039,20 @@ job_boards:
     provider: jora
     query: "AI Automation OR QA Engineer OR Data Annotation OR Video Editor OR Spanish"
     location: "Australia"
-    enabled: true
-    notes: "Jora AU — Primary account target roles"
+    enabled: false
+    notes: "DISABLED 2026-08-17: Jora returns 403 to this server on search, jobs.rss and /api/v1/jobs. Cloudflare blocks the datacenter IP. Use aggregator APIs instead."
 
   - name: Jora Australia — Support Coordinator & NDIS
     careers_url: https://au.jora.com
     provider: jora
     query: "Support Coordinator OR NDIS OR Support Worker OR Disability Support"
     location: "Australia"
-    enabled: true
-    notes: "Jora AU — Support Care account target roles"
+    enabled: false
 
   # ── SolidJobs (Polish market) ──────────────────────────────────────
   # Public API — no auth needed. Division in URL path, campaign=career-ops for tracking.
   # Available divisions: it, engineering, marketing, sales, hr, logistics, finances, other
+    notes: "DISABLED 2026-08-17: Jora returns 403 to this server (Cloudflare blocks the datacenter IP). Use aggregator APIs instead."
 
   - name: SolidJobs IT
     careers_url: https://solid.jobs/public-api/offers/it?campaign=career-ops
@@ -2279,21 +2194,92 @@ job_boards:
   - name: LinkedIn Jobs
     provider: linkedin
     enabled: true
-    notes: "Uses saved session cookies. Run: node login-all.js linkedin to set up."
+    # Public guest endpoint (jobs-guest/.../seeMoreJobPostings) — no cookies,
+    # no login. Replaced the saved-cookie Puppeteer scraper.
+    searchLocation: Australia
+    maxPages: 2
+    searchKeywords:
+      - "Data Annotation"
+      - "AI Trainer"
+      - "AI Evaluator"
+      - "QA Tester"
+      - "Automation Specialist"
+      - "Video Editor"
+      - "Web Designer"
+      - "Virtual Assistant"
+      - "Data Entry"
+      - "Customer Service"
+      - "Live Chat Support"
+      - "Social Media Coordinator"
+      - "Email Marketing"
+      - "Lead Generation"
+      - "Appointment Setter"
+      - "Customer Success"
+      - "Copywriter"
+      - "Spanish Bilingual"
+      - "Support Coordinator"
+      - "NDIS"
+      - "Disability Support"
+      - "Aged Care Coordinator"
+      - "Case Coordinator"
 
-  # -- Indeed (cookie-based, requires login) --
   - name: Indeed Jobs
     provider: indeed
-    enabled: true
-    notes: "Uses saved session cookies. Run: node login-all.js indeed to set up."
+    enabled: false
 
   # -- SEEK (cookie-based, requires login) --
+    notes: "DISABLED 2026-08-17: Indeed returns 401/403 to this server. Verified from the VPS with plain HTTP and with a real headless Chromium (Cloudflare interstitial). Cookies do not help - the datacenter IP itself is blocked. Reach Indeed via the aggregator APIs instead."
+
   - name: SEEK Jobs (Australia)
     provider: seek
     enabled: true
-    notes: "Uses saved session cookies. Run: node login-all.js seek to set up."
+    # Public JobSearch v5 API — no cookies, no key, nothing to expire.
+    # Replaced the saved-cookie Puppeteer scraper that failed every run.
+    siteKey: AU-Main
+    searchLocation: All Australia
+    sinceDays: 14
+    maxPages: 3
+    searchKeywords:
+      - "Data Annotation"
+      - "AI Trainer"
+      - "AI Evaluator"
+      - "Search Engine Evaluator"
+      - "QA Tester"
+      - "Quality Assurance"
+      - "Automation Specialist"
+      - "Video Editor"
+      - "Content Specialist"
+      - "Web Designer"
+      - "Webflow"
+      - "Virtual Assistant"
+      - "Data Entry"
+      - "Administrative Assistant"
+      - "Executive Assistant"
+      - "Customer Service"
+      - "Live Chat Support"
+      - "Email Support"
+      - "Help Desk"
+      - "Technical Support"
+      - "Social Media Coordinator"
+      - "Email Marketing"
+      - "Lead Generation"
+      - "Marketing Assistant"
+      - "Appointment Setter"
+      - "Sales Development Representative"
+      - "Onboarding Coordinator"
+      - "Customer Success"
+      - "Transcriptionist"
+      - "Bookkeeping Assistant"
+      - "Copywriter"
+      - "Bilingual Spanish"
+      - "Spanish"
+      - "Support Coordinator"
+      - "NDIS Support Coordinator"
+      - "Disability Support"
+      - "Aged Care Coordinator"
+      - "Mental Health Coordinator"
+      - "Case Coordinator"
 
-  # ── Global Job Aggregators (free API, no auth) ────────────────────────
 
   - name: Jooble
     provider: jooble

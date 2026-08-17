@@ -18,7 +18,7 @@ export const VIP_EMAIL = "placenciailse@gmail.com";
 
 /**
  * The single canonical database owner for this deployment. All data in the
- * shared Neon DB is keyed to this row (`users.id`); every query resolves any
+ * shared Postgres DB is keyed to this row (`users.id`); every query resolves any
  * tenant-ish alias (e.g. "default") back to this owner so no one else's rows
  * ever leak into a user's view.
  */
