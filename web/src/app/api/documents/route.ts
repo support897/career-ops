@@ -12,6 +12,40 @@ const execFileAsync = promisify(execFile);
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+
+/**
+ * Present a plain-text cover letter as a styled document.
+ *
+ * Rows written before cover_letter_html existed only have the text body. Those
+ * still deserve the accent colour and readable typography rather than a wall of
+ * monospaced text, so wrap them to match the generated document.
+ */
+const ACCENT = "#ff8bb1";
+
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string)
+  );
+}
+
+function wrapPlainText(text: string | null, company: string | null) {
+  if (!text) return "";
+  const paras = text
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br/>")}</p>`)
+    .join("\n");
+  return `<!doctype html><html><head><meta charset="utf-8"/><title>Cover Letter${
+    company ? ` - ${escapeHtml(company)}` : ""
+  }</title><style>
+    @page { margin: 0.75in; }
+    body { font: 11.5pt/1.6 Georgia, "Times New Roman", serif; color: #1a1a1a; max-width: 6.9in; }
+    .rule { height: 3px; background: ${ACCENT}; margin: 0 0 22px; }
+    p { margin: 0 0 12px; }
+  </style></head><body><div class="rule"></div>${paras}</body></html>`;
+}
+
 export async function GET(req: Request) {
   const userId = getUserId(req);
   const owner = resolveDataOwner(userId);
@@ -25,7 +59,7 @@ export async function GET(req: Request) {
 
   try {
     const sql = getSql();
-    const rows = await sql`SELECT company, role, cv_html, cover_letter, reference_letter FROM job_inbox WHERE id = ${id} AND user_id = ${owner}`;
+    const rows = await sql`SELECT company, role, cv_html, cover_letter, cover_letter_html, reference_letter FROM job_inbox WHERE id = ${id} AND user_id = ${owner}`;
     
     if (rows.length === 0) {
       return new Response("Not found", { status: 404 });
@@ -40,7 +74,10 @@ export async function GET(req: Request) {
       content = job.cv_html;
       filename = `${slug}-CV.pdf`;
     } else if (type === "cl") {
-      content = job.cover_letter;
+      // Prefer the themed HTML the generator produced. `cover_letter` holds the
+      // plain-text email body; rendering that as a PDF gave an unstyled page
+      // that looked nothing like the pink document attached to the Gmail draft.
+      content = job.cover_letter_html || wrapPlainText(job.cover_letter, job.company);
       filename = `${slug}-CoverLetter.pdf`;
     } else if (type === "rl") {
       content = job.reference_letter;

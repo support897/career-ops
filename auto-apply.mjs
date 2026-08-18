@@ -51,6 +51,14 @@ const userIdArg = process.argv.includes('--userId')
   ? process.argv[process.argv.indexOf('--userId') + 1]
   : null;
 const userId = userIdArg || null;
+// Restrict a run to one posting. Added because there was no way to regenerate
+// documents for a single job: the only controls were --limit N, which takes the
+// first N in queue order, and the score threshold. Useful for verifying a change
+// end to end without producing a batch of Gmail drafts.
+const ONLY_URL = process.argv.includes('--only-url')
+  ? process.argv[process.argv.indexOf('--only-url') + 1]
+  : null;
+
 const maxAgeArg = process.argv.includes('--max-age')
   ? parseInt(process.argv[process.argv.indexOf('--max-age') + 1])
   : null;
@@ -569,6 +577,29 @@ async function findCompanyEmail(job) {
     return realJobEmails[0];
   }
   
+  // Method 2b: the company's own careers and contact pages.
+  // Smaller employers publish an applications inbox there, and unlike a search
+  // engine result it is an address the company chose to publish. Cheap: a few
+  // HEAD-ish GETs against one domain we have already resolved.
+  if (domain && !genericPlaceholders.includes(domain)) {
+    const paths = ['/careers', '/jobs', '/contact', '/about/contact', '/company/careers'];
+    for (const p of paths) {
+      try {
+        const found = await extractEmailsFromPage(`https://${domain}${p}`);
+        const real = (found || []).filter(
+          (e) => !genericPlaceholders.some((g) => e.toLowerCase().includes(g))
+        );
+        // Prefer an address on the company's own domain over anything else.
+        const onDomain = real.find((e) => e.toLowerCase().endsWith(`@${domain.toLowerCase()}`));
+        const pick = onDomain || real[0];
+        if (pick) {
+          console.log(`   ✅ Found published address on ${domain}${p}: ${pick}`);
+          return pick;
+        }
+      } catch (e) { /* page absent or unreachable; try the next one */ }
+    }
+  }
+
   // Method 3: Search web for real recruiter email using strict domain
   try {
     const { chromium } = await import('playwright');
@@ -590,7 +621,9 @@ async function findCompanyEmail(job) {
     }
   } catch (e) {}
   
-  console.log(`   ⚠️ No verified named recruiter email found for ${job.company} — relying strictly on Playwright ATS form submission.`);
+  // Say what is actually true. The Playwright ATS submitter this used to name
+  // was deleted; nothing picks up the slack, and the draft will be unaddressed.
+  console.log(`   ⚠️  No published recruiter address found for ${job.company} — the draft will need a recipient added by hand before sending.`);
   return null;
 }
 
@@ -1232,6 +1265,15 @@ async function main() {
     }
   }
   
+  if (ONLY_URL) {
+    const before = pending.length;
+    pending = pending.filter((j) => j.url === ONLY_URL);
+    console.log(`🎯 --only-url: ${pending.length} of ${before} pending jobs match ${ONLY_URL}`);
+    if (!pending.length) {
+      console.log('   Nothing to do. Check the URL matches job_inbox.url exactly.');
+    }
+  }
+
   stats.scanned = pending.length;
   console.log(`📋 Found ${pending.length} pending jobs\n`);
   
@@ -1555,6 +1597,7 @@ ${whyMatch}
     let enhancedCl = null;
     let finalClPath = null;
     let coverLetterText = '';
+    let coverLetterHtml = null;
 
     // The cover letter is pure prose, so this is where a model earns the most.
     let clOverrides = null;
@@ -1577,6 +1620,14 @@ ${whyMatch}
           if (enhancedCl.success) {
             finalClPath = enhancedCl.pdfPath;
             coverLetterText = readFileSync(enhancedCl.textPath, 'utf8');
+            // The generator writes a themed HTML file alongside the PDF. Keep it
+            // so the dashboard can show the same pink document she attaches,
+            // instead of rendering the plain-text body as an unstyled PDF.
+            try {
+              if (enhancedCl.htmlPath) coverLetterHtml = readFileSync(enhancedCl.htmlPath, 'utf8');
+            } catch (e) {
+              console.log(`   ⚠️  Could not read cover letter HTML: ${e.message.slice(0, 60)}`);
+            }
             console.log(`   ✅ Cover Letter generated (${docMethods.cl}): ${finalClPath}`);
           }
         } catch (e) {
@@ -1674,6 +1725,14 @@ Taylor Chorley`;
             if (!fullEmailBody.includes(job.url)) {
               fullEmailBody = `${job.url}\n\n` + fullEmailBody;
             }
+            // An unaddressed draft looks send-ready in the Gmail list. Say
+            // plainly that it is not, at the top where the preview shows it.
+            if (!companyEmail) {
+              fullEmailBody =
+                `[ACTION NEEDED] No recruiter address could be found for ${job.company}. `
+                + `Add a recipient before sending, or apply directly at the link below.\n\n`
+                + fullEmailBody;
+            }
             fullEmailBody = fullEmailBody
               .replace(/ — /g, ", ")
               .replace(/ —/g, ", ")
@@ -1721,6 +1780,7 @@ Taylor Chorley`;
         await dbWriter.syncToInbox(targetUserId, job, scoreResult || { score: jobScore, dimensionScores: {}, matchReasons }, {
           cvHtml,
           coverLetter: coverLetterText,
+          coverLetterHtml,
           referenceLetter: activeRefLetter,
           emailDraft: emailBody,
           gmailDraftId,
@@ -1806,6 +1866,7 @@ ${emailBody}
         await dbWriter.writeApplication(userId, job.dbId, {
           resumeUrl: userCreds.resumeUrl || finalCvPath || cv?.pdfPath,
           coverLetter: coverLetterText || null,
+          coverLetterHtml: coverLetterHtml || null,
           emailBody,
           emailSubject,
           status: appStatus,

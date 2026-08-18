@@ -27,7 +27,8 @@ const sql = async (strings, ...values) => {
 async function getEmailCreds() {
   const EMAIL_CONFIG_PATH = join(ROOT, 'config/email.yml');
   let user = process.env.GMAIL_USER || 'placenciailse@gmail.com';
-  let pass = process.env.GMAIL_APP_PASSWORD || 'hptfiylhorjaakno';
+  let pass = process.env.GMAIL_APP_PASSWORD;
+  if (!pass) throw new Error('GMAIL_APP_PASSWORD is not set');
   
   try {
     if (existsSync(EMAIL_CONFIG_PATH)) {
