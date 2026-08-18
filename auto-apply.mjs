@@ -793,7 +793,11 @@ function preScreen(job, userProfile) {
       const now = new Date();
       const ageDays = (now - postedDate) / (1000 * 60 * 60 * 24);
       if (ageDays > maxAgeArg) {
-        return { pass: false, reason: `Posted ${Math.round(ageDays)} days ago (older than ${maxAgeArg} days limit)`, skipMarkCompleted: true };
+        // Deliberately NOT skipMarkCompleted. Age only increases, so leaving the
+        // entry pending means re-reading and re-rejecting it every cycle for
+        // ever. That is what froze discovery: the queue could never drain below
+        // the backlog threshold, so the scanner was skipped on every run.
+        return { pass: false, reason: `Posted ${Math.round(ageDays)} days ago (older than ${maxAgeArg} days limit)` };
       }
     }
   }
@@ -1238,10 +1242,26 @@ async function main() {
     // waiting: the sweep can consume an entire cycle, and every minute it
     // spends finding job 183 is a minute not spent turning the first 182 into
     // documents and drafts. The next cycle resumes discovery once drained.
-    const backlogFirst = pending.length >= EVAL_FIRST_BACKLOG;
+    // Count only jobs that could actually be worked on this cycle. Entries
+    // already past the age limit are dead weight: they will be checked off
+    // below, and they must never be able to pause discovery. Counting raw
+    // pending length let 112 stale July postings suppress the scanner
+    // indefinitely.
+    const actionablePending = maxAgeArg
+      ? pending.filter((j) => {
+          const m = j.raw?.match(/posted:\s*(20\d{2}-\d{2}-\d{2})/i);
+          if (!m) return true; // no date known — assume it deserves a look
+          const ageDays = (Date.now() - new Date(m[1]).getTime()) / 86400000;
+          return ageDays <= maxAgeArg;
+        }).length
+      : pending.length;
+
+    const backlogFirst = actionablePending >= EVAL_FIRST_BACKLOG;
     if (backlogFirst) {
-      console.log(`⏭️  Skipping discovery this cycle — ${pending.length} jobs already pending (threshold ${EVAL_FIRST_BACKLOG}).`);
+      console.log(`⏭️  Skipping discovery this cycle — ${actionablePending} workable jobs already pending (threshold ${EVAL_FIRST_BACKLOG}).`);
       console.log('   Evaluation, documents and drafts get the full cycle. Discovery resumes once the backlog drains.');
+    } else if (pending.length > actionablePending) {
+      console.log(`🧮 ${pending.length} pending entries, ${actionablePending} workable (rest are past the ${maxAgeArg}-day age limit and will be checked off).`);
     }
     if (!READ_LOCAL_PIPELINE && !backlogFirst) {
       newUrls = await scanForJobs();
