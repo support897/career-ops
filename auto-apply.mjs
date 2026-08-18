@@ -104,7 +104,7 @@ if (userId && userId !== 'default') {
   console.log(`[DB mode] Profile loaded: ${dbProfile.fullName}, auto-apply: ${autoApplyEnabled}, vip: ${isVip}, dashboard threshold: ${dashboardScoreThreshold}`);
 } else if (hasDb) {
   // Local/Default mode with DB connection: load local config files, but enable DB sync
-  console.log(`[Local mode] Database detected. Syncing results to DB under user: default`);
+  console.log(`[Local mode] Database detected. Syncing results to DB under user: ${targetUserId}`);
   dbWriter = await import('./lib/db-writer.mjs');
   isVip = true;
   autoApplyEnabled = true; // Fully automated apply submission
