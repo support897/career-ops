@@ -16,7 +16,7 @@ import type { InboxJob, UserProfile } from "./db";
 
 // ── Gemini API helper ─────────────────────────────────────────────────────────
 
-async function callGeminiOnly(prompt: string, model = "gemini-2.5-flash"): Promise<string> {
+async function callGeminiOnly(prompt: string, model = "gemini-3.1-flash-lite"): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY not set");
 
@@ -71,7 +71,7 @@ async function callOpenAiCompatible(
  * so cover letters were saved containing only a greeting and a sign-off and
  * documents silently came out blank. Any one working provider now suffices.
  */
-async function callGemini(prompt: string, model = "gemini-2.5-flash"): Promise<string> {
+async function callGemini(prompt: string, model = "gemini-3.1-flash-lite"): Promise<string> {
   const errors: string[] = [];
 
   try {
