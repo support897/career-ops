@@ -61,12 +61,28 @@ export async function GET(request: NextRequest) {
       ? Math.floor((Date.now() - lastScanAt.getTime()) / 60000)
       : null;
 
+    // Liveness cannot be judged on scans alone. A cycle deliberately SKIPS
+    // discovery while a backlog is waiting — evaluating queued jobs is worth
+    // more than finding new ones — so a perfectly healthy night of scoring
+    // writes no scan_runs row at all. Judging on scans alone reported "stale"
+    // while the pipeline was working.
+    const lastActivityAt = counts?.last_activity ? new Date(counts.last_activity) : null;
+    const activityMinutesAgo = lastActivityAt
+      ? Math.floor((Date.now() - lastActivityAt.getTime()) / 60000)
+      : null;
+
+    // Freshest evidence of the runner doing anything at all.
+    const freshest = [minutesAgo, activityMinutesAgo].filter(
+      (n): n is number => typeof n === "number"
+    );
+    const sinceAnyWork = freshest.length ? Math.min(...freshest) : null;
+
     // Three states, each meaning something specific:
     //   idle    — nothing has ever run, so nothing can be claimed
-    //   stale   — it ran once but not recently enough to be trusted as live
-    //   online  — a scan landed inside the expected window
+    //   stale   — it ran once but nothing recently enough to be trusted as live
+    //   online  — a scan OR pipeline write landed inside the expected window
     const engineState =
-      minutesAgo === null ? "idle" : minutesAgo <= STALE_AFTER_MIN ? "online" : "stale";
+      sinceAnyWork === null ? "idle" : sinceAnyWork <= STALE_AFTER_MIN ? "online" : "stale";
 
     return NextResponse.json({
       engine: {
@@ -75,13 +91,18 @@ export async function GET(request: NextRequest) {
         minutesSinceLastScan: minutesAgo,
         staleAfterMinutes: STALE_AFTER_MIN,
         host: lastRun?.host ?? null,
-        // Named so nobody mistakes this for a live process check.
+        minutesSinceAnyWork: sinceAnyWork,
+        lastActivityAt: lastActivityAt ? lastActivityAt.toISOString() : null,
+        // Named so nobody mistakes this for a live process check. When discovery
+        // was skipped, say that rather than implying the scanner failed.
         note:
           engineState === "online"
-            ? `Last scan ${minutesAgo} min ago on ${lastRun?.host ?? "the runner"}.`
+            ? minutesAgo !== null && minutesAgo <= STALE_AFTER_MIN
+              ? `Last scan ${minutesAgo} min ago on ${lastRun?.host ?? "the runner"}.`
+              : `Evaluating a backlog — last pipeline write ${activityMinutesAgo} min ago, discovery paused until it drains.`
             : engineState === "stale"
-              ? `No scan for ${minutesAgo} min — the runner may be down.`
-              : "No scan has been recorded yet.",
+              ? `No scan or pipeline activity for ${sinceAnyWork} min — the runner may be down.`
+              : "Nothing has run yet.",
       },
       lastScan: lastRun
         ? {
