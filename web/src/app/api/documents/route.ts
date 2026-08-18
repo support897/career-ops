@@ -3,7 +3,6 @@ import { getUserId, resolveDataOwner } from "@/lib/user-context";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { careerOpsRoot } from "@/lib/career-ops";
 
@@ -68,20 +67,24 @@ export async function GET(req: Request) {
     const job = rows[0];
     let content = "";
     let filename = "";
-    let slug = `${job.company}-${job.role}`.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
+    // Human-readable download name: Ilse_Placencia_Role_Company_Type_date.pdf
+    const clean = (v: string | null) => (v || "").replace(/[^a-zA-Z0-9]/g, "");
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const niceName = (docType: string) =>
+      `Ilse_Placencia_${clean(job.role)}_${clean(job.company)}_${docType}_${dateStr}.pdf`;
 
     if (type === "cv") {
       content = job.cv_html;
-      filename = `${slug}-CV.pdf`;
+      filename = niceName("CV");
     } else if (type === "cl") {
       // Prefer the themed HTML the generator produced. `cover_letter` holds the
       // plain-text email body; rendering that as a PDF gave an unstyled page
       // that looked nothing like the pink document attached to the Gmail draft.
       content = job.cover_letter_html || wrapPlainText(job.cover_letter, job.company);
-      filename = `${slug}-CoverLetter.pdf`;
+      filename = niceName("CoverLetter");
     } else if (type === "rl") {
       content = job.reference_letter;
-      filename = `${slug}-Reference.pdf`;
+      filename = niceName("ReferenceLetter");
     }
 
     if (!content) {
@@ -90,8 +93,15 @@ export async function GET(req: Request) {
 
     // Try to generate PDF on the fly
     const root = careerOpsRoot();
-    const tempHtml = path.join(os.tmpdir(), `${filename}.html`);
-    const tempPdf = path.join(os.tmpdir(), filename);
+    // generate-pdf.mjs has a path-traversal guard that refuses to write outside
+    // the repo, so the OS temp dir made every render fail and fall through to
+    // the HTML branch below. Every "Download PDF" was really handing back a .html
+    // file. Stage the temp files inside the repo instead.
+    const tempDir = path.join(root, "output", ".pdftmp");
+    fs.mkdirSync(tempDir, { recursive: true });
+    const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const tempHtml = path.join(tempDir, `${stamp}.html`);
+    const tempPdf = path.join(tempDir, `${stamp}.pdf`);
 
     try {
       fs.writeFileSync(tempHtml, content);
@@ -109,7 +119,8 @@ export async function GET(req: Request) {
       const pdfBuffer = fs.readFileSync(tempPdf);
       
       // Cleanup
-      try { fs.unlinkSync(tempHtml); fs.unlinkSync(tempPdf); } catch(e){}
+      try { fs.unlinkSync(tempHtml); } catch { }
+      try { fs.unlinkSync(tempPdf); } catch { }
       
       return new Response(pdfBuffer, {
         headers: {
@@ -118,14 +129,16 @@ export async function GET(req: Request) {
         }
       });
     } catch (pdfErr) {
-      console.warn("[api/documents] PDF generation failed, returning HTML fallback", pdfErr);
-      // Fallback to HTML if PDF generation fails
-      return new Response(content, {
-        headers: {
-          "Content-Type": "text/html",
-          "Content-Disposition": `attachment; filename="${filename.replace('.pdf', '.html')}"`
-        }
-      });
+      // Deliberately NOT falling back to HTML. Documents must download as PDF
+      // only; silently serving a .html file is what hid this bug for so long.
+      try { fs.unlinkSync(tempHtml); } catch { }
+      try { fs.unlinkSync(tempPdf); } catch { }
+      const detail = pdfErr instanceof Error ? pdfErr.message : String(pdfErr);
+      console.error("[api/documents] PDF generation failed:", detail);
+      return new Response(
+        `Could not render this document as a PDF. ${detail}`,
+        { status: 502, headers: { "Content-Type": "text/plain" } }
+      );
     }
 
   } catch (e) {
