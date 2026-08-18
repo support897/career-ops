@@ -314,7 +314,7 @@ async function findRecruiterEmail(company, atsType) {
         // Try to find email in the body
         if (text) {
           const bodyText = text.body.toString();
-          const emails = bodyText.match(/[\w.+-]+@[\w.-]+\.\w{2,}/g) || [];
+          const emails = (bodyText.match(/[\w.+-]+@[\w.-]+\.\w{2,}/g) || []).filter(isPlausibleEmail);
           const recruiterEmail = emails.find(e => 
             !e.includes('noreply') && 
             !e.includes('no-reply') &&
@@ -486,6 +486,25 @@ function generatePersonalizedEmail(company, role, jdText, profileData, jobUrl) {
 
 // ─── Find Company Email ─────────────────────────────────────────────────────
 
+/**
+ * Is this string actually an email address a human could receive mail at?
+ *
+ * The scraper's regex (/[\w.+-]+@[\w.-]+\.\w{2,}/) accepts a numeric TLD, so
+ * dependency versions and image asset names in a job page's markup came back as
+ * recipients: drafts went out addressed to `vue@2.6.12` and `core@2.11`, and the
+ * junk list had grown a hand-written entry per asset (`hero_1@2x`, ...) instead
+ * of fixing the shape. Require every domain label to contain a letter and the
+ * TLD to be letters only, which rejects all of those by construction.
+ */
+function isPlausibleEmail(candidate) {
+  const [local, ...rest] = String(candidate).split('@');
+  if (!local || rest.length !== 1) return false;
+  const labels = rest[0].split('.');
+  if (labels.length < 2) return false;
+  if (!/^[a-z]{2,}$/i.test(labels[labels.length - 1])) return false;
+  return labels.every((label) => /[a-z]/i.test(label));
+}
+
 async function extractEmailsFromPage(url) {
   let browser;
   try {
@@ -497,7 +516,7 @@ async function extractEmailsFromPage(url) {
     
     // Extract all emails from page content
     const emailRegex = /[\w.+-]+@[\w.-]+\.\w{2,}/g;
-    const found = content.match(emailRegex) || [];
+    const found = (content.match(emailRegex) || []).filter(isPlausibleEmail);
     
     // Filter out junk emails
     const junk = ['example.com', 'email.com', 'test.com', 'sentry.io', 'wixpress.com', 
@@ -611,7 +630,7 @@ async function findCompanyEmail(job) {
     await browser.close();
     
     const emailRegex = /[\w.+-]+@[\w.-]+\.\w{2,}/g;
-    const matches = text.match(emailRegex) || [];
+    const matches = (text.match(emailRegex) || []).filter(isPlausibleEmail);
     const filtered = matches.filter(e => 
       e.toLowerCase().endsWith(`@${domain.toLowerCase()}`) && !genericPlaceholders.some(g => e.toLowerCase().includes(g))
     );
