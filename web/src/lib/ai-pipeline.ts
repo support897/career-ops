@@ -16,7 +16,7 @@ import type { InboxJob, UserProfile } from "./db";
 
 // ── Gemini API helper ─────────────────────────────────────────────────────────
 
-async function callGemini(prompt: string, model = "gemini-2.5-flash"): Promise<string> {
+async function callGeminiOnly(prompt: string, model = "gemini-2.5-flash"): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY not set");
 
@@ -29,6 +29,7 @@ async function callGemini(prompt: string, model = "gemini-2.5-flash"): Promise<s
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.3, maxOutputTokens: 8192 },
       }),
+      signal: AbortSignal.timeout(60_000),
     }
   );
 
@@ -39,6 +40,72 @@ async function callGemini(prompt: string, model = "gemini-2.5-flash"): Promise<s
 
   const data = await res.json();
   return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+}
+
+/** OpenAI-compatible chat completion, used for every non-Gemini provider. */
+async function callOpenAiCompatible(
+  prompt: string,
+  { url, apiKey, model }: { url: string; apiKey: string; model: string }
+): Promise<string> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3,
+      max_tokens: 4096,
+    }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!res.ok) throw new Error(`${model} error ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content ?? "";
+}
+
+/**
+ * Gemini first, then the same fallback chain the scorer uses.
+ *
+ * This used to call Gemini and nothing else. Gemini answers 429 on the free
+ * tier for long stretches, and every caller treated the throw as "no content",
+ * so cover letters were saved containing only a greeting and a sign-off and
+ * documents silently came out blank. Any one working provider now suffices.
+ */
+async function callGemini(prompt: string, model = "gemini-2.5-flash"): Promise<string> {
+  const errors: string[] = [];
+
+  try {
+    const out = await callGeminiOnly(prompt, model);
+    if (out.trim()) return out;
+    errors.push("gemini: empty response");
+  } catch (e) {
+    errors.push(`gemini: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  const fallbacks = [
+    { name: "groq", key: process.env.GROQ_API_KEY, url: "https://api.groq.com/openai/v1/chat/completions", model: "llama-3.3-70b-versatile" },
+    { name: "openrouter", key: process.env.OPENROUTER_API_KEY, url: "https://openrouter.ai/api/v1/chat/completions", model: "meta-llama/llama-3.3-70b-instruct" },
+    { name: "openai", key: process.env.OPENAI_API_KEY, url: "https://api.openai.com/v1/chat/completions", model: "gpt-4o-mini" },
+    { name: "nvidia", key: process.env.NVIDIA_API_KEY, url: "https://integrate.api.nvidia.com/v1/chat/completions", model: "meta/llama-3.3-70b-instruct" },
+  ];
+
+  for (const p of fallbacks) {
+    if (!p.key) { errors.push(`${p.name}: no key`); continue; }
+    try {
+      const out = await callOpenAiCompatible(prompt, { url: p.url, apiKey: p.key, model: p.model });
+      if (out.trim()) {
+        console.warn(`[ai-pipeline] Gemini unavailable, served by ${p.name}`);
+        return out;
+      }
+      errors.push(`${p.name}: empty response`);
+    } catch (e) {
+      errors.push(`${p.name}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  // Throw rather than return "": a blank string is what produced the empty
+  // cover letters, and the caller must be able to tell failure from success.
+  throw new Error(`All LLM providers failed. ${errors.join(" | ")}`);
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -182,6 +249,8 @@ export async function generateCoverLetterText(
 
 ## Rules
 - Use ONLY facts from the candidate's CV (never invent experience)
+- NEVER state a number, percentage, multiplier, count or money figure unless that exact figure appears verbatim in the CV below. The CV contains no metrics, so write NO metrics: no "increased X by 40%", no "500+ leads", no "3x faster". Invented figures are rejected by an automated fact check and the document fails to build.
+- Describe impact qualitatively instead: what was built, which tools, what it replaced, who it served.
 - Ensure "Fiesta Fresh Cleaning" is highlighted as a primary work experience when relevant to automation/AI.
 - Address real skill matches from the JD to the CV
 
@@ -201,7 +270,7 @@ Role: ${job.role}
 ${jd.slice(0, 2000)}
 
 ## Their Background
-${cvSummary.slice(0, 2000)}`;
+${cvSummary.slice(0, 6000)}`;
 
   const text = await callGemini(prompt);
   const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -227,6 +296,8 @@ export async function generateEmailDraft(
 
 ## Rules
 - Use ONLY facts from the candidate's CV (never invent experience)
+- NEVER state a number, percentage, multiplier, count or money figure unless that exact figure appears verbatim in the CV below. The CV contains no metrics, so write NO metrics: no "increased X by 40%", no "500+ leads", no "3x faster". Invented figures are rejected by an automated fact check and the document fails to build.
+- Describe impact qualitatively instead: what was built, which tools, what it replaced, who it served.
 - Ensure "Fiesta Fresh Cleaning" is highlighted as a primary work experience when relevant to automation/AI.
 - DO NOT use dashes (-) for bullet points. Use asterisks (*).
 
