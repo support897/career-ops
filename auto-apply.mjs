@@ -1944,15 +1944,12 @@ ${emailBody}
   if (!DRY_RUN) {
     writeFileSync(reportPath, report);
     
-    // Send report email — VIP only
-    if (isVip && emailConfig?.report?.to) {
-      await sendEmail({
-        to: emailConfig.report.to,
-        subject: `${emailConfig.report.subject_prefix || 'Daily Report'} ${TODAY} — ${stats.sent} applications submitted`,
-        body: report,
-      });
-    } else if (isVip) {
-      console.log(`   📧 VIP but no report email configured — report saved to ${reportPath}`);
+    // No email from here. This runs once per cycle (every 15 min), so emailing the
+    // report here produced ~96 near-identical messages a day. daily-digest.mjs sends
+    // a single branded summary at 18:00 Brisbane instead; the report file below is
+    // what it reads for per-cycle scan counts.
+    if (isVip) {
+      console.log(`   📄 Cycle report saved to ${reportPath} (daily email sends at 18:00)`);
     } else {
       console.log(`   📧 Non-VIP — report saved to ${reportPath} (no email sent)`);
     }
