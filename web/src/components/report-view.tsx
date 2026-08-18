@@ -108,39 +108,14 @@ export function ReportView({
   const handleSendGmailDraft = async () => {
     setSendingDraft(true);
     try {
-      let cvBase64 = null;
-      let clBase64 = null;
-      let rlBase64 = null;
-
-      const html2pdf = (await import("html2pdf.js")).default;
-      const opt = {
-        margin: 0.1,
-        image: { type: "jpeg" as const, quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: "in", format: "letter", orientation: "portrait" as const }
-      };
-
-      if (dbCvHtml) {
-        cvBase64 = await html2pdf().set(opt).from(dbCvHtml).output("base64");
-      }
-      if (dbCoverLetter) {
-        const clContent = dbCoverLetter.includes("<") ? dbCoverLetter : `<div style="font-family: sans-serif; padding: 40px; line-height: 1.6; font-size: 14px;">${dbCoverLetter.replace(/\n/g, "<br/>")}</div>`;
-        clBase64 = await html2pdf().set(opt).from(clContent).output("base64");
-      }
-      if (dbReferenceLetter) {
-        const rlContent = dbReferenceLetter.includes("<") ? dbReferenceLetter : `<div style="font-family: sans-serif; padding: 40px; line-height: 1.6; font-size: 14px;">${dbReferenceLetter.replace(/\n/g, "<br/>")}</div>`;
-        rlBase64 = await html2pdf().set(opt).from(rlContent).output("base64");
-      }
-
+      // Attachments are rendered server-side from the stored HTML. This used to
+      // build them here with html2pdf.js, which rasterises the markup and drops
+      // the stylesheet, so Gmail received unstyled, clipped PDFs while the
+      // dashboard download looked correct.
       const res = await fetch("/api/gmail/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jobId: app?.id || id,
-          cvBase64,
-          clBase64,
-          rlBase64
-        }),
+        body: JSON.stringify({ jobId: app?.id || id }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -409,6 +384,8 @@ export function ReportView({
           company={app?.company ?? meta?.title ?? "Company"}
           role={app?.role ?? meta?.role ?? "Role"}
           docType="CV"
+          jobId={app?.id || id}
+          docKind="cv"
         />
       )}
       {showCL && dbCoverLetter && (
@@ -420,6 +397,8 @@ export function ReportView({
           company={app?.company ?? meta?.title ?? id}
           role={app?.role ?? meta?.role ?? "Role"}
           docType="CoverLetter"
+          jobId={app?.id || id}
+          docKind="cl"
         />
       )}
       {showEmail && dbEmailDraft && (
@@ -438,6 +417,8 @@ export function ReportView({
           company={app?.company ?? meta?.title ?? "Company"}
           role={app?.role ?? meta?.role ?? "Role"}
           docType="ReferenceLetter"
+          jobId={app?.id || id}
+          docKind="rl"
         />
       )}
     </div>
@@ -445,34 +426,52 @@ export function ReportView({
 }
 
 function DocModal({
-  title, content, onClose, isHtml = false, company, role, docType
+  title, content, onClose, isHtml = false, company, role, docType, jobId, docKind
 }: {
   title: string; content: string; onClose: () => void; isHtml?: boolean; company?: string; role?: string; docType?: string;
+  jobId?: string | null; docKind?: "cv" | "cl" | "rl";
 }) {
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
+  // Downloads come from the server, never from html2pdf. html2pdf rendered the
+  // document string in a detached element, so the <style> block never applied:
+  // every downloaded file lost the pink branding, the letterhead and the
+  // paragraph spacing, and clipped the last line. /api/documents renders the
+  // same stored HTML through headless Chrome and returns a real PDF.
   const handleDownloadPdf = async () => {
+    if (!jobId || !docKind) {
+      setDownloadError("This document has no saved record to render from.");
+      return;
+    }
     setDownloading(true);
+    setDownloadError(null);
     try {
-      const html2pdf = (await import("html2pdf.js")).default;
+      const res = await fetch(`/api/documents?id=${encodeURIComponent(jobId)}&type=${docKind}`);
+      if (!res.ok) {
+        setDownloadError(await res.text() || "The server could not build the PDF.");
+        return;
+      }
+
       const dateStr = new Date().toISOString().slice(0, 10);
       const safeCompany = (company || "Company").replace(/[^a-zA-Z0-9]/g, "");
       const safeRole = (role || "Role").replace(/[^a-zA-Z0-9]/g, "");
       const safeType = (docType || "Document").replace(/[^a-zA-Z0-9]/g, "");
       const filename = `Ilse_Placencia_${safeRole}_${safeCompany}_${safeType}_${dateStr}.pdf`;
 
-      const opt = {
-        margin: 0,
-        filename: filename,
-        image: { type: "jpeg" as const, quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: "in", format: "letter", orientation: "portrait" as const }
-      };
-
-      await html2pdf().set(opt).from(content).save();
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
     } catch (e) {
-      console.error("PDF generation failed:", e);
+      console.error("PDF download failed:", e);
+      setDownloadError(e instanceof Error ? e.message : "The PDF download failed.");
     } finally {
       setDownloading(false);
     }
@@ -507,6 +506,11 @@ function DocModal({
             <button className="text-2xl hover:opacity-75" onClick={onClose}>×</button>
           </div>
         </div>
+        {downloadError && (
+          <div className="mt-3 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">
+            {downloadError}
+          </div>
+        )}
         <div className="mt-4 overflow-y-auto flex-1 text-sm text-foreground">
           {isHtml ? (
             <iframe srcDoc={content} className="w-full h-[55vh] border-0 rounded-lg" title={title} />
