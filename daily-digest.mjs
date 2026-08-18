@@ -62,7 +62,7 @@ const [totals] = await q(`
     COUNT(*)::int                                                      AS total,
     COUNT(*) FILTER (WHERE (created_at AT TIME ZONE 'Australia/Brisbane')::date = (now() AT TIME ZONE 'Australia/Brisbane')::date)::int       AS new_today,
     COUNT(*) FILTER (WHERE score IS NOT NULL)::int                     AS scored,
-    COUNT(*) FILTER (WHERE score IS NULL)::int                         AS unscored,
+    COUNT(*) FILTER (WHERE score IS NULL)::int                         AS no_score,
     COUNT(*) FILTER (WHERE score >= 4)::int                            AS strong,
     COUNT(*) FILTER (WHERE score >= 4 AND (created_at AT TIME ZONE 'Australia/Brisbane')::date = (now() AT TIME ZONE 'Australia/Brisbane')::date)::int AS strong_today,
     COUNT(*) FILTER (WHERE score >= 4 AND doc_status = 'ready'
@@ -88,6 +88,16 @@ const newBest = await q(`
   ORDER BY score DESC LIMIT 8`);
 
 // Scan counts come from the cycle report files the worker writes each run.
+// The worker's real queue is the unchecked lines in data/pipeline.md. Anything
+// checked off has either been scored or been rejected by the pre-screen filters.
+let queueDepth = 0;
+try {
+  const pl = readFileSync(join(ROOT, "data/pipeline.md"), "utf8");
+  queueDepth = (pl.match(/^- \[ \] /gm) || []).length;
+} catch {}
+totals.screened_out = totals.no_score - queueDepth;
+totals.queued = queueDepth;
+
 let cyclesToday = 0, scannedToday = 0;
 try {
   const f = join(ROOT, "output", `daily-report-${today}.md`);
@@ -156,8 +166,8 @@ const newRows = newBest.length
   : `<tr><td style="padding:10px 12px;color:#7a736d;font-size:14px">No new scored jobs today.</td></tr>`;
 
 const alerts = [];
-if (totals.unscored > 0)
-  alerts.push(`<strong>${totals.unscored}</strong> jobs still waiting to be scored — the free AI tier throttles this, so it drains over a few days.`);
+if (totals.queued > 40)
+  alerts.push(`<strong>${totals.queued}</strong> jobs are queued for scoring — more than a couple of cycles' worth, so expect a short lag.`);
 if (totals.ready_now > 0 && totals.drafts < totals.ready_now)
   alerts.push(`<strong>${totals.ready_now - totals.drafts}</strong> ready-to-apply jobs don't have a Gmail draft yet.`);
 
@@ -237,8 +247,10 @@ const html = `<!DOCTYPE html>
           <td style="padding:9px 14px;border-bottom:1px solid #f0ebe5;text-align:right;font-weight:600">${totals.total}</td></tr>
       <tr><td style="padding:9px 14px;border-bottom:1px solid #f0ebe5;color:#6b6560">Scored so far</td>
           <td style="padding:9px 14px;border-bottom:1px solid #f0ebe5;text-align:right;font-weight:600">${totals.scored}</td></tr>
-      <tr><td style="padding:9px 14px;border-bottom:1px solid #f0ebe5;color:#6b6560">Waiting to be scored</td>
-          <td style="padding:9px 14px;border-bottom:1px solid #f0ebe5;text-align:right;font-weight:600">${totals.unscored}</td></tr>
+      <tr><td style="padding:9px 14px;border-bottom:1px solid #f0ebe5;color:#6b6560">In the queue right now</td>
+          <td style="padding:9px 14px;border-bottom:1px solid #f0ebe5;text-align:right;font-weight:600">${totals.queued}</td></tr>
+      <tr><td style="padding:9px 14px;border-bottom:1px solid #f0ebe5;color:#6b6560">Filtered out before scoring<div style="font-size:11.5px;color:#918a84;margin-top:2px">not remote, wrong keywords, or too old</div></td>
+          <td style="padding:9px 14px;border-bottom:1px solid #f0ebe5;text-align:right;font-weight:600">${totals.screened_out}</td></tr>
       <tr><td style="padding:9px 14px;border-bottom:1px solid #f0ebe5;color:#6b6560">Strong matches (4.0+)</td>
           <td style="padding:9px 14px;border-bottom:1px solid #f0ebe5;text-align:right;font-weight:600">${totals.strong}</td></tr>
       <tr><td style="padding:9px 14px;color:#6b6560">Gmail drafts prepared</td>
@@ -285,7 +297,7 @@ const plain = [
   ...(ready.length ? ready.map((r) => `- ${r.company} — ${r.role} (${Number(r.score).toFixed(2)}) ${r.url || ""}`) : ["- nothing ready"]),
   "", "APPLIED TODAY",
   ...(appliedToday.length ? appliedToday.map((r) => `- ${r.company} — ${r.role}`) : ["- none"]),
-  "", `Pipeline: ${totals.total} tracked · ${totals.scored} scored · ${totals.unscored} awaiting scoring · ${totals.drafts} drafts`,
+  "", `Pipeline: ${totals.total} tracked · ${totals.scored} scored · ${totals.queued} queued · ${totals.screened_out} filtered out · ${totals.drafts} drafts`,
   "", `${DASHBOARD}/pipeline?tab=READY_TO_APPLY`,
 ].join("\n");
 
