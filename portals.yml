@@ -287,6 +287,9 @@ location_filter:
 #
 # max_posting_age_days: 45
 
+# Two-week freshness law: nothing older than 14 days is worth applying to.
+max_posting_age_days: 14
+
 # -- Trust filter (optional) --
 # Enriches each scanned job with a trust score (0-100) and flags.
 # Jobs are NEVER dropped — only annotated. The trust score helps you
@@ -2369,54 +2372,53 @@ job_boards:
   # ── SolidJobs (Polish market) ──────────────────────────────────────
   # Public API — no auth needed. Division in URL path, campaign=career-ops for tracking.
   # Available divisions: it, engineering, marketing, sales, hr, logistics, finances, other
-    notes: "DISABLED 2026-08-17: Jora returns 403 to this server (Cloudflare blocks the datacenter IP). Use aggregator APIs instead."
 
   - name: SolidJobs IT
     careers_url: https://solid.jobs/public-api/offers/it?campaign=career-ops
     provider: solidjobs
-    enabled: true
+    enabled: false
     notes: "Polish IT job board — IT division"
 
   - name: SolidJobs Engineering
     careers_url: https://solid.jobs/public-api/offers/engineering?campaign=career-ops
     provider: solidjobs
-    enabled: true
+    enabled: false
     notes: "Polish job board — Engineering & Production division"
 
   - name: SolidJobs Marketing
     careers_url: https://solid.jobs/public-api/offers/marketing?campaign=career-ops
     provider: solidjobs
-    enabled: true
+    enabled: false
     notes: "Polish job board — Marketing division"
 
   - name: SolidJobs Sales
     careers_url: https://solid.jobs/public-api/offers/sales?campaign=career-ops
     provider: solidjobs
-    enabled: true
+    enabled: false
     notes: "Polish job board — Sales division"
 
   - name: SolidJobs HR
     careers_url: https://solid.jobs/public-api/offers/hr?campaign=career-ops
     provider: solidjobs
-    enabled: true
+    enabled: false
     notes: "Polish job board — HR division"
 
   - name: SolidJobs Logistics
     careers_url: https://solid.jobs/public-api/offers/logistics?campaign=career-ops
     provider: solidjobs
-    enabled: true
+    enabled: false
     notes: "Polish job board — Logistics division"
 
   - name: SolidJobs Finances
     careers_url: https://solid.jobs/public-api/offers/finances?campaign=career-ops
     provider: solidjobs
-    enabled: true
+    enabled: false
     notes: "Polish job board — Finances division"
 
   - name: SolidJobs Other
     careers_url: https://solid.jobs/public-api/offers/other?campaign=career-ops
     provider: solidjobs
-    enabled: true
+    enabled: false
     notes: "Polish job board — Other specialists division"
 
   # ── JustJoin.it / NoFluffJobs (Polish tech market) ────────────────────────
@@ -2426,13 +2428,13 @@ job_boards:
   - name: JustJoin.it
     careers_url: https://justjoin.it/job-offers/all-locations
     provider: justjoin
-    enabled: true
+    enabled: false
     notes: "Polish tech job board — newest public offers"
 
   - name: NoFluffJobs
     careers_url: https://nofluffjobs.com/pl
     provider: nofluffjobs
-    enabled: true
+    enabled: false
     notes: "Polish tech job board — newest public postings"
 
   # -- Indonesia job boards (provider: jobstreet / glints) --
@@ -2445,7 +2447,7 @@ job_boards:
     searchLocation: "Jakarta"
     pageSize: 30
     maxPages: 3
-    enabled: true
+    enabled: false
     notes: "Indonesia's largest job board (SEEK group). Uses SEEK v5 JobSearch API — zero tokens."
 
   - name: Glints Indonesia
@@ -2455,7 +2457,7 @@ job_boards:
     countryCode: ID
     pageSize: 30
     maxPages: 3
-    enabled: true
+    enabled: false
     notes: "SEA job platform covering ID/SG/MY/VN. Uses searchJobsV3 GraphQL endpoint (v2-alc). WAF blocks non-browser requests — works best from Playwright context."
 
   # ── HigherEdJobs (university / higher-ed RSS) ────────────────────────

@@ -1749,32 +1749,31 @@ Taylor Chorley`;
             const emailConfig = jsyaml.load(readFileSync(join(__dirname, 'config/email.yml'), 'utf-8'));
             const fromEmail = emailConfig?.gmail?.user || 'placenciailse@gmail.com';
 
-            let fullEmailBody = emailBody || "";
-            if (!fullEmailBody.includes(job.url)) {
-              fullEmailBody = `${job.url}\n\n` + fullEmailBody;
+            // The approved draft shape is the only one allowed: fixed opening
+            // line, the job's tailored bullets, fixed close. This worker used to
+            // build its own body, so most drafts in Drafts were off-template.
+            const { buildApprovedEmail } = await import('./lib/approved-email.mjs');
+            const approved = buildApprovedEmail({
+              role: job.role || job.title,
+              company: job.company,
+              fullName: userCreds.fullName,
+              applyUrl: job.url,
+              coverLetterHtml,
+              coverLetterText,
+            });
+            if (!approved) {
+              console.log('   ⏭️  No tailored bullets yet — skipping draft, will retry next cycle');
+              throw new Error('no tailored bullets for approved template');
             }
+            let fullEmailBody = approved.body;
             // An unaddressed draft looks send-ready in the Gmail list. Say
             // plainly that it is not, at the top where the preview shows it.
-            if (!companyEmail) {
-              fullEmailBody =
-                `[ACTION NEEDED] No recruiter address could be found for ${job.company}. `
-                + `Add a recipient before sending, or apply directly at the link below.\n\n`
-                + fullEmailBody;
-            }
-            fullEmailBody = fullEmailBody
-              .replace(/ — /g, ", ")
-              .replace(/ —/g, ", ")
-              .replace(/—/g, ", ")
-              .replace(/ – /g, ", ")
-              .replace(/ –/g, ", ")
-              .replace(/–/g, ", ")
-              .replace(/ - /g, ", ");
 
 
             const draftResult = await createGmailDraft({
               from: fromEmail,
               to: companyEmail || "",
-              subject: emailSubject,
+              subject: approved.subject,
               body: fullEmailBody,
               attachments: [
                 finalCvPath && { path: finalCvPath },
