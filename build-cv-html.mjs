@@ -51,12 +51,14 @@ const IMAGE_DATA_URL_RE = /^data:image\/(?:png|jpeg|webp|gif);base64,[a-z0-9+/=\
 const DEFAULT_SECTION_TITLES = {
   summary: 'Professional Summary',
   competencies: 'Core Competencies',
-  experience: 'Work Experience',
+  experience: 'Professional Experience',
   projects: 'Projects',
   education: 'Education',
   certifications: 'Certifications',
   awards: 'Awards & Honors',
-  skills: 'Skills',
+  skills: 'Technical Skills',
+  languages: 'Languages',
+  references: 'References',
 };
 
 // Escape user text for HTML text/attribute context. Covers the five characters
@@ -319,15 +321,16 @@ function buildExperience(entries, partial) {
       const bullets = Array.isArray(e.bullets)
         ? e.bullets.filter(Boolean).map(b => `        <li>${escapeHtml(b)}</li>`).join('\n')
         : '';
-      const location = e.location
-        ? `\n    <div class="job-location">${escapeHtml(e.location)}</div>`
-        : '';
+      // Reference CV layout: pink role with the dates right-aligned on the
+      // header line, then an italic "Company | Location" line beneath. This
+      // matches lib/cv-generator.mjs so both document paths render identically.
+      const location = e.location ? ` | ${escapeHtml(e.location)}` : '';
       return `<div class="job">
     <div class="job-header">
-      <span class="job-company">${escapeHtml(e.company)}</span>
+      <span class="job-role">${escapeHtml(e.role)}</span>
       <span class="job-period">${escapeHtml(e.dates || e.period || '')}</span>
     </div>
-    <div class="job-role">${escapeHtml(e.role)}</div>${location}
+    <div class="job-company"><em>${escapeHtml(e.company)}${location}</em></div>
     <ul>
 ${bullets}
     </ul>
@@ -492,6 +495,62 @@ function buildAwards(entries, partial) {
   }).join('\n    ');
 }
 
+function buildLanguages(languages, partial) {
+  if (!Array.isArray(languages) || languages.length === 0) return '';
+  const entries = languages.filter(Boolean);
+  if (!partial) {
+    // One flowing pipe-separated line: bold name, plain level in parentheses.
+    const line = entries.map(l => {
+      const name = escapeHtml(l.name || '');
+      if (!name) return '';
+      const level = l.level ? ` (${escapeHtml(l.level)})` : '';
+      return `<span class="lang-name">${name}</span>${level}`;
+    }).filter(Boolean).join(' | ');
+    return line ? `<div class="lang-item">${line}</div>` : '';
+  }
+
+  const { entryTemplate, blocks } = partial;
+  return entries.map(l => {
+    const blockValues = new Map([
+      ['LEVEL_BLOCK', { value: escapeHtml(l.level || ''), present: Boolean(l.level) }],
+    ]);
+    return fillEntry(entryTemplate, blocks, {
+      NAME:  escapeHtml(l.name || ''),
+      LEVEL: escapeHtml(l.level || ''),
+    }, blockValues);
+  }).join('\n');
+}
+
+function buildReferences(references, partial) {
+  if (!Array.isArray(references) || references.length === 0) return '';
+  const entries = references.filter(Boolean);
+  if (!partial) {
+    const items = entries.map(r => {
+      const name = escapeHtml(r.name || '');
+      if (!name) return '';
+      // Keep the separator the source line already carried: a leading comma
+      // sits flush ("Taylor Chorley, Supervisor"), anything else gets a space.
+      const raw = typeof r.detail === 'string' ? r.detail.trim() : '';
+      const detail = raw
+        ? (raw.startsWith(',') ? escapeHtml(raw) : ' ' + escapeHtml(raw))
+        : '';
+      return `    <div class="ref-item"><span class="ref-name">${name}</span>${detail}</div>`;
+    }).filter(Boolean).join('\n');
+    return items ? `<div class="ref-list">\n${items}\n  </div>` : '';
+  }
+
+  const { entryTemplate, blocks } = partial;
+  return entries.map(r => {
+    const blockValues = new Map([
+      ['DETAIL_BLOCK', { value: escapeHtml(r.detail || ''), present: Boolean(r.detail) }],
+    ]);
+    return fillEntry(entryTemplate, blocks, {
+      NAME:   escapeHtml(r.name || ''),
+      DETAIL: escapeHtml(r.detail || ''),
+    }, blockValues);
+  }).join('\n');
+}
+
 function buildSkills(categories, partial) {
   if (!Array.isArray(categories) || categories.length === 0) return '';
   if (!partial) {
@@ -584,6 +643,10 @@ function renderReport(payload, partials) {
     AWARDS: buildAwards(payload.awards, partials.get('awards')),
     SECTION_SKILLS: escapeHtml(sectionTitles.skills),
     SKILLS: buildSkills(payload.skills, partials.get('skills')),
+    SECTION_LANGUAGES: escapeHtml(sectionTitles.languages),
+    LANGUAGES: buildLanguages(payload.languages, partials.get('languages')),
+    SECTION_REFERENCES: escapeHtml(sectionTitles.references),
+    REFERENCES: buildReferences(payload.references, partials.get('references')),
   };
   return { substitutions, candidate };
 }
