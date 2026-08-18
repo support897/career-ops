@@ -94,7 +94,7 @@
 
   /* Hide any section the generator left empty (no Projects/Awards data,
      for example) so a bare heading and rule never appear on the page. */
-  .section:not(:has(.job, .edu-item, .cert-item, .skill-item, .summary-text, .award-item)) {
+  .section:not(:has(.job, .edu-item, .cert-item, .skill-item, .lang-item, .ref-item, .summary-text, .award-item)) {
     display: none;
   }
   .section:has(.summary-text:empty) { display: none; }
@@ -164,6 +164,18 @@
   .skill-item { margin-bottom: 3px; }
   .skill-category { font-weight: 700; color: var(--pink); }
 
+  /* ---------------- languages ---------------- */
+  /* Reference CV shows these as ONE flowing line, pink bold language name
+     with the level in plain parentheses, pipe separated. */
+  .lang-item { margin-bottom: 3px; }
+  .lang-name { font-weight: 700; color: var(--pink); }
+
+  /* ---------------- references ---------------- */
+  /* One referee per line, pink bold name then plain detail. */
+  .ref-list { }
+  .ref-item { margin-bottom: 3px; }
+  .ref-name { font-weight: 700; color: var(--pink); }
+
   /* ---------------- awards ---------------- */
   .award-table { }
   .award-item { margin-bottom: 3px; }
@@ -179,7 +191,7 @@
     /* Only keep individual entries intact. Avoiding breaks inside a whole
        .section pushed the entire 8-role experience block onto page 2 and
        left page 1 almost empty. */
-    .job, .edu-item, .cert-item, .skill-item { page-break-inside: avoid; }
+    .job, .edu-item, .cert-item, .skill-item, .lang-item, .ref-item { page-break-inside: avoid; }
     .section-title { page-break-after: avoid; }
   }
 </style>
@@ -237,11 +249,20 @@
     {{SKILLS}}
   </div>
 
-  <!-- AWARDS -->
+  <!-- LANGUAGES -->
   <div class="section">
-    <div class="section-title">{{SECTION_AWARDS}}</div>
-    <div class="award-table">{{AWARDS}}</div>
+    <div class="section-title">{{SECTION_LANGUAGES}}</div>
+    {{LANGUAGES}}
   </div>
+
+  <!-- REFERENCES -->
+  <div class="section">
+    <div class="section-title">{{SECTION_REFERENCES}}</div>
+    {{REFERENCES}}
+  </div>
+
+  <!-- Awards section removed: the generator never substituted its two
+       placeholders, so the raw placeholder text printed into the PDF. -->
 
 </div>
 </body>
