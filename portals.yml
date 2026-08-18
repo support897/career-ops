@@ -1222,8 +1222,8 @@ tracked_companies:
     enabled: true
 
   - name: Temporal
-    careers_url: https://job-boards.greenhouse.io/temporal
-    api: https://boards-api.greenhouse.io/v1/boards/temporal/jobs
+    careers_url: https://jobs.ashbyhq.com/temporal
+    api: https://api.ashbyhq.com/posting-api/job-board/temporal
     notes: "Workflow orchestration."
     enabled: true
 
@@ -1234,8 +1234,8 @@ tracked_companies:
     enabled: true
 
   - name: RunPod
-    careers_url: https://job-boards.greenhouse.io/runpod
-    api: https://boards-api.greenhouse.io/v1/boards/runpod/jobs
+    careers_url: https://jobs.ashbyhq.com/runpod
+    api: https://api.ashbyhq.com/posting-api/job-board/runpod
     notes: "GPU cloud for AI."
     enabled: true
 
@@ -1443,7 +1443,8 @@ tracked_companies:
     enabled: true
 
   - name: Sanctuary AI
-    careers_url: https://jobs.lever.co/sanctuary
+    careers_url: https://jobs.ashbyhq.com/sanctuary
+    api: https://api.ashbyhq.com/posting-api/job-board/sanctuary
     notes: "Vancouver. Humanoid robotics and embodied AI."
     enabled: true
 
@@ -1471,16 +1472,14 @@ tracked_companies:
     enabled: true
 
   - name: Tinybird
-    careers_url: https://jobs.ashbyhq.com/tinybird
-    scan_method: websearch
-    scan_query: 'site:tinybird.co/careers OR site:jobs.ashbyhq.com/tinybird'
+    careers_url: https://jobs.lever.co/tinybird
+    api: https://api.lever.co/v0/postings/tinybird?mode=json
     notes: "Remote. Real-time data platform."
     enabled: true
 
   - name: Clarity AI
-    careers_url: https://jobs.lever.co/clarity-ai
-    scan_method: websearch
-    scan_query: 'site:clarity.ai/careers OR site:jobs.lever.co/clarity-ai'
+    careers_url: https://job-boards.greenhouse.io/clarityai
+    api: https://boards-api.greenhouse.io/v1/boards/clarityai/jobs
     notes: "Madrid/Remote. Sustainability analytics with AI."
     enabled: true
 
@@ -1579,7 +1578,8 @@ tracked_companies:
   # -- DACH logistics / mobility --
 
   - name: Forto
-    careers_url: https://jobs.lever.co/forto
+    careers_url: https://jobs.ashbyhq.com/forto
+    api: https://api.ashbyhq.com/posting-api/job-board/forto
     notes: "Berlin DE. Digital freight forwarder, product & data roles, German + English."
     enabled: true
 
