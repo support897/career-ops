@@ -696,7 +696,15 @@ async function scanForJobs() {
     // --max-minutes makes the sweep yield the cycle while there is still time
     // to score jobs and generate documents; the external timeout below is only
     // a backstop for a sweep that ignores its own budget.
-    execSync(`node scan-ats-full.mjs --since 3 --resume --max-minutes ${SWEEP_BUDGET_MIN}`, {
+    // Only pass --resume when a checkpoint actually exists. scan-ats-full.mjs
+    // hard-exits 1 on "--resume passed but no checkpoint found", which killed
+    // the whole cycle (14 consecutive cycles died this way on 17-18 Aug).
+    const checkpointPath = join(__dirname, 'data', 'cache', 'ats-full-checkpoint.json');
+    const resumeFlag = existsSync(checkpointPath) ? ' --resume' : '';
+    if (!resumeFlag) {
+      console.log('   ℹ️  no ATS checkpoint yet — starting a fresh sweep');
+    }
+    execSync(`node scan-ats-full.mjs --since 3${resumeFlag} --max-minutes ${SWEEP_BUDGET_MIN}`, {
       encoding: 'utf8',
       cwd: __dirname,
       timeout: (SWEEP_BUDGET_MIN + 5) * 60 * 1000,
