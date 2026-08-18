@@ -72,7 +72,19 @@ export function PipelineView({
         else sp.set(k, String(v));
       }
       const qs = sp.toString();
-      router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+      const href = `${pathname}${qs ? `?${qs}` : ""}`;
+      // This route is statically prerendered, and for a static route the client
+      // router's cache key ignores the query string — so router.replace() to the
+      // SAME pathname with only different search params was a silent no-op. Every
+      // tab click, every sort header and the score-filter chip did nothing at all.
+      // history.replaceState is what explore-provider.tsx already uses for
+      // query-only updates, and Next re-runs useSearchParams on it, so the URL
+      // stays the single source of truth without making the page dynamic.
+      if (typeof window !== "undefined") {
+        window.history.replaceState(null, "", href);
+      } else {
+        router.replace(href, { scroll: false });
+      }
     },
     [params, router, pathname],
   );
