@@ -142,6 +142,12 @@ ${dbJob.why_match || ""}
 
   if (!app) notFound();
 
+  // cover_letter holds plain text for LLM-generated rows and HTML for template
+  // rows, and the detail modal renders whatever it receives as HTML — so a
+  // plain-text row showed up as an unstyled wall of monospace with no pink
+  // branding. Prefer the styled column; SELECT * already loaded it.
+  const coverLetterForView = dbJob?.cover_letter_html ?? dbJob?.cover_letter ?? null;
+
   return (
     <ReportView 
       id={id} 
@@ -149,7 +155,7 @@ ${dbJob.why_match || ""}
       report={reportContent} 
       file={reportFile} 
       canDelete={trackerCanDelete()}
-      dbCoverLetter={dbJob?.cover_letter ?? null}
+      dbCoverLetter={coverLetterForView}
       dbCvHtml={dbJob?.cv_html ?? null}
       dbEmailDraft={dbJob?.email_draft ?? null}
       dbGmailDraftId={dbJob?.gmail_draft_id ?? null}
