@@ -103,6 +103,18 @@ function extractBullets(coverLetter: string | null): string[] {
         .filter((t) => t.length > 30);
       if (paragraphs.length > 0) return paragraphs;
     }
+    // Last resort: the LLM path sometimes writes prose with no list at all.
+    // Those body paragraphs are the tailored content, so use them instead of
+    // refusing to build a draft. Greeting and sign-off are excluded.
+    const bodyParas = [...withoutStyles.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)]
+      .map((m) => stripTags(m[1]))
+      .filter(
+        (t) =>
+          t.length > 120 &&
+          !/^(dear|hi|hello)\b/i.test(t) &&
+          !/^(kind regards|best regards|warmest regards|sincerely|thank you)/i.test(t)
+      );
+    if (bodyParas.length > 0) return bodyParas.slice(0, 3);
     return [];
   }
 
