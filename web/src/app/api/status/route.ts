@@ -44,7 +44,9 @@ export async function POST(req: Request) {
       if (id) {
         await sql`
           UPDATE job_inbox 
-          SET job_status = ${dbStatus}, done = ${dbStatus !== "new"}, updated_at = NOW()
+          SET job_status = ${dbStatus}, done = ${dbStatus !== "new"}, updated_at = NOW(),
+              applied_at = CASE WHEN ${dbStatus} = 'applied' AND applied_at IS NULL
+                                THEN NOW() ELSE applied_at END
           WHERE id = ${id} AND user_id = ${owner}
         `;
       } else if (n) {
