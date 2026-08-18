@@ -177,7 +177,19 @@ export async function POST(request: NextRequest) {
     // It always opens with this sentence. Only the bullet points are tailored
     // per job; everything else is fixed wording. Any other Gmail body shape has
     // been removed, including the email_draft text the model used to produce.
-    const bullets = extractBullets(job.cover_letter_html || job.cover_letter);
+    // Two generators write cover letters and they do not agree on shape:
+    // the newer LLM path fills cover_letter_html with prose paragraphs and no
+    // list, while the template path writes a <ul class="achievements"> into
+    // cover_letter. Reading only the preferred column meant a job with a good
+    // bulleted letter in the other column was rejected outright, so try both
+    // before giving up.
+    const bullets = (() => {
+      for (const source of [job.cover_letter_html, job.cover_letter]) {
+        const found = extractBullets(source);
+        if (found.length > 0) return found;
+      }
+      return [] as string[];
+    })();
     if (bullets.length === 0) {
       return NextResponse.json(
         {
