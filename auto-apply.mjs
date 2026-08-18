@@ -80,6 +80,32 @@ let dashboardScoreThreshold = MIN_SCORE_ARG || 2.5;
 const API_PLATFORMS = ['greenhouse', 'ashby', 'lever', 'workday', 'remoteok'];
 const JOB_BOARDS = ['linkedin', 'indeed', 'seek'];
 
+let _llmDocsPromise;
+/** Imported lazily so a keyword-only run never loads the provider chain. */
+function llmDocsMod() {
+  if (!_llmDocsPromise) _llmDocsPromise = import('./lib/llm-docs.mjs');
+  return _llmDocsPromise;
+}
+
+/**
+ * profile_config as saved by the dashboard, cached for the run.
+ *
+ * The local pipeline reads config/profile.yml, which carries no llm_docs key,
+ * so without this the dashboard's LLM checkboxes had no effect on anything.
+ */
+let _dashCfgCache;
+async function loadDashboardConfig(uid) {
+  if (_dashCfgCache !== undefined) return _dashCfgCache;
+  _dashCfgCache = null;
+  try {
+    const reader = await import('./lib/db-reader.mjs');
+    _dashCfgCache = await reader.getProfileConfig(uid);
+  } catch (e) {
+    console.log(`   \u26a0\ufe0f  Could not read dashboard config: ${e.message.slice(0, 80)}`);
+  }
+  return _dashCfgCache;
+}
+
 // Determine if we should sync results to the database
 const hasDb = !!process.env.DATABASE_URL;
 const targetUserId = userId || process.env.VIP_USER_ID || (hasDb ? 'default' : null);
@@ -1465,9 +1491,19 @@ ${whyMatch}
     
     // --- Document Generation Matrix ---
     const activeProfile = dbProfile || profile;
-    const pConfig = activeProfile?.profile_config || {};
+    // Layer the sources least-authoritative first. The YAML is the local
+    // baseline; profile_config from the database is what the dashboard writes,
+    // so her saved checkboxes win. Previously only `activeProfile.profile_config`
+    // was consulted, which is undefined in local mode, so the hardcoded default
+    // below silently disabled the cover letter she had explicitly turned on.
+    const dashCfg = await loadDashboardConfig(targetUserId);
+    const pConfig = {
+      ...(activeProfile || {}),
+      ...(activeProfile?.profile_config || {}),
+      ...(dashCfg || {}),
+    };
     const useLlm = pConfig.llm_enabled !== false; // Default true
-    const llmDocs = pConfig.llm_docs || { cv: true, cover_letter: false, reference_letter: true };
+    const llmDocs = pConfig.llm_docs || { cv: true, cover_letter: true, reference_letter: true };
     const jdText = job.description || job.raw || '';
 
     const profileForDoc = userId ? dbProfile : {
@@ -1482,16 +1518,33 @@ ${whyMatch}
     let enhancedCv = null;
     let finalCvPath = cv?.pdfPath || null;
     let cvHtmlPath = cv?.htmlPath || null;
-    
-    // 1. CV Generation
-    if (cvGeneratorFn) {
-      console.log(`   📄 Generating CV via Native Keywords...`);
+
+    // Which path actually produced each document, for the generation_method
+    // column and for the log. "keyword" until something better succeeds.
+    const docMethods = { cv: 'keyword', cl: 'keyword', rl: 'keyword' };
+
+    // 1. CV Generation — model-written summary, deterministic history.
+    let cvOverrides = null;
+    if (useLlm && llmDocs.cv !== false) {
       try {
-        enhancedCv = await cvGeneratorFn(profileForDoc, jdText, join(__dirname, 'output'));
+        const r = await llmDocsMod().then((m) => m.llmCvSummary(profileForDoc, job, jdText));
+        cvOverrides = { summary: r.summary };
+        docMethods.cv = r.method;
+        console.log(`   🧠 CV summary written by ${r.method}`);
+      } catch (e) {
+        console.log(`   ⚠️  LLM CV summary failed (${e.message.slice(0, 60)}) — using template`);
+      }
+    }
+
+    if (cvGeneratorFn) {
+      console.log(`   📄 Generating CV via ${docMethods.cv === 'keyword' ? 'Native Keywords' : docMethods.cv}...`);
+      try {
+        // jobSlug gives the file a per-company name instead of "cv-candidate".
+        enhancedCv = await cvGeneratorFn(profileForDoc, jdText, join(__dirname, 'output'), slug, cvOverrides);
         if (enhancedCv.success) {
           finalCvPath = enhancedCv.pdfPath;
           cvHtmlPath = enhancedCv.htmlPath;
-          console.log(`   ✅ Native CV generated: ${finalCvPath}`);
+          console.log(`   ✅ CV generated (${docMethods.cv}): ${finalCvPath}`);
         }
       } catch (e) {
         console.log(`   ⚠️  Native CV failed: ${e.message.slice(0, 80)}`);
@@ -1503,14 +1556,28 @@ ${whyMatch}
     let finalClPath = null;
     let coverLetterText = '';
 
+    // The cover letter is pure prose, so this is where a model earns the most.
+    let clOverrides = null;
+    if (useLlm && llmDocs.cover_letter !== false) {
+      try {
+        const r = await llmDocsMod().then((m) =>
+          m.llmCoverLetterCopy(profileForDoc, job, jdText, matchReasons));
+        clOverrides = { opening: r.opening, profile_intro: r.profile_intro, closing: r.closing };
+        docMethods.cl = r.method;
+        console.log(`   🧠 Cover letter written by ${r.method}`);
+      } catch (e) {
+        console.log(`   ⚠️  LLM cover letter failed (${e.message.slice(0, 60)}) — using template`);
+      }
+    }
+
     if (clGeneratorFn) {
-        console.log(`   📄 Generating Cover Letter via Native Keywords...`);
+        console.log(`   📄 Generating Cover Letter via ${docMethods.cl === 'keyword' ? 'Native Keywords' : docMethods.cl}...`);
         try {
-          enhancedCl = await clGeneratorFn(profileForDoc, { company: job.company, title: job.role || job.title }, jdText, join(__dirname, 'output'));
+          enhancedCl = await clGeneratorFn(profileForDoc, { company: job.company, title: job.role || job.title }, jdText, join(__dirname, 'output'), clOverrides);
           if (enhancedCl.success) {
             finalClPath = enhancedCl.pdfPath;
             coverLetterText = readFileSync(enhancedCl.textPath, 'utf8');
-            console.log(`   ✅ Native Cover Letter generated: ${finalClPath}`);
+            console.log(`   ✅ Cover Letter generated (${docMethods.cl}): ${finalClPath}`);
           }
         } catch (e) {
           console.log(`   ⚠️  Native Cover Letter failed: ${e.message.slice(0, 80)}`);
@@ -1657,7 +1724,11 @@ Taylor Chorley`;
           referenceLetter: activeRefLetter,
           emailDraft: emailBody,
           gmailDraftId,
-          generationMethod: 'keyword'
+          // Report what actually produced the documents. This column previously
+          // always said 'keyword', which was true only by accident.
+          generationMethod: [docMethods.cv, docMethods.cl].some((m) => m.startsWith('llm'))
+            ? `${docMethods.cv}/${docMethods.cl}`
+            : 'keyword'
         });
         console.log(`   ✅ Synced to dashboard inbox`);
       } catch (e) {
