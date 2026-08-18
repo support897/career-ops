@@ -409,7 +409,11 @@ export async function POST(req: NextRequest) {
     let cvHtml: string | null = null;
     let coverLetter: string | null = null;
     let coverLetterTextForDb = "";
+    // Whether the model actually returned letter content this run.
+    let coverLetterIsReal = false;
     let refLetterHtmlForDb: string | null = null;
+    let refLetterText = "";
+    let refLetterPdfPath: string | null = null;
 
     // ── Generate CV HTML using the real build-cv-html.mjs ──────────────────
     if (type === "cv" || type === "both") {
@@ -502,7 +506,7 @@ export async function POST(req: NextRequest) {
       }
 
       let letterPayload: any = {};
-      let coverLetterTextForDb = coverLetter || "";
+      coverLetterTextForDb = coverLetter || "";
       try {
         letterPayload = JSON.parse(coverLetter || "{}");
         // Format back to plain text for DB so UI shows nicely
@@ -518,6 +522,20 @@ export async function POST(req: NextRequest) {
         }
       } catch {
         letterPayload = { body: coverLetter }; // fallback
+      }
+
+      // When every LLM provider is unavailable (Gemini free tier is 20 requests
+      // a day) `coverLetter` comes back empty, JSON.parse("{}") succeeds, and the
+      // block above still assembles a letter containing only a greeting and a
+      // sign-off. Persisting that overwrote a previously good letter with an
+      // empty one, so treat it as "nothing generated" instead.
+      coverLetterIsReal = Boolean(
+        String(letterPayload?.opening || "").trim() ||
+        (Array.isArray(letterPayload?.achievements) && letterPayload.achievements.length > 0)
+      );
+      if (!coverLetterIsReal) {
+        console.warn("[generate-docs] No usable cover letter content; keeping the stored version.");
+        coverLetterTextForDb = "";
       }
 
       const clPayload = {
@@ -596,6 +614,61 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ── Reference letter ───────────────────────────────────────────────────
+    // Generated on its own, not inside the Gmail block. It used to live in
+    // there, so `dryRun` runs (which skip Gmail entirely) never produced one
+    // and `reference_letter` stayed empty in the database.
+    // --- Reference Letter Generation ---
+    refLetterText = "";
+    refLetterPdfPath = null;
+    try {
+      const rlMod = await import(/* webpackIgnore: true */ `${root}/lib/reference-letter-generator.mjs`);
+      const generatedRefLetterHtml = rlMod.generateReferenceLetter(
+        { fullName: profileYml.candidate?.full_name || "Ilse Placencia" },
+        { company, title: role },
+        jdText
+      );
+
+      const candidateSlug = slugify(profileYml.candidate?.full_name || "candidate");
+      const companySlug = slugify(company);
+      const today = new Date().toISOString().slice(0, 10);
+      
+      const rlHtmlPath = path.join(root, "output", `ref-letter-${candidateSlug}-${companySlug}-${today}.html`);
+      refLetterPdfPath = rlHtmlPath.replace(".html", ".pdf");
+      
+      fs.writeFileSync(rlHtmlPath, generatedRefLetterHtml, 'utf8');
+      
+      // Generate PDF using generate-pdf.mjs
+      await execFileAsync(
+        process.execPath || "node",
+        [
+          path.join(root, "generate-pdf.mjs"),
+          rlHtmlPath,
+          refLetterPdfPath,
+          "--format=letter",
+          "--report=000"
+        ],
+        { cwd: root, timeout: 30_000, env: { ...process.env, PATH: `${path.dirname(process.execPath)}:${process.env.PATH || ""}` } }
+      );
+      
+      refLetterText = `Reference letter attached as PDF.`;
+    } catch (rlErr: any) {
+      console.warn("[generate-docs] Reference letter PDF generation failed:", rlErr.message);
+      // Fallback text
+      refLetterText = `Taylor Chorley\nDigital Marketing Supervisor, Evolve Marketing\ntaylorchorley@gmail.com | +1 (604) 551-8229\n\nTo Whom It May Concern,\n\nI've worked with Ilse Placencia since January 2024, when she joined Evolve Marketing as a Digital Marketing Assistant, and I'm genuinely glad to write this on her behalf.\n\nWhat stands out most, honestly, isn't just her skill set, it's how she works. Ilse brings this steady, positive energy to everything, even on the weeks that get hectic. She's the kind of person who checks in on how you're doing before diving into the task list, and that made a real difference on a fully remote team where it's easy to feel disconnected.\n\nThat said, she's also just really good at the job, and not just in one thing either. She's sharp across marketing and AI alike, and she's always finding new tools to make the work faster or better. If a tool she needs doesn't exist yet, she'll just build her own. That kind of resourcefulness isn't something you can teach. She has a genuine feel for what makes people click, and her social content consistently landed on brand, well timed, and built for whatever platform it was going on.\n\nShe's also reliable, something really hard to find nowadays. She meets deadlines, communicates clearly, and shows up prepared to strategy conversations with actual value, not just notes. Her analytics work and customer research made our campaigns improve across the board.\n\nI'd hire Ilse again without hesitation. She's hardworking, kind, easy to work with, and any team would be lucky to have her.\n\nHappy to talk more if it's helpful.\n\nWarmest regards,\nTaylor Chorley`;
+    }
+
+    
+    try {
+      const candidateSlug = slugify(profileYml.candidate?.full_name || "candidate");
+      const companySlug = slugify(company);
+      const today = new Date().toISOString().slice(0, 10);
+      const rlHtmlPath = path.join(root, "output", `ref-letter-${candidateSlug}-${companySlug}-${today}.html`);
+      if (fs.existsSync(rlHtmlPath)) {
+        refLetterHtmlForDb = fs.readFileSync(rlHtmlPath, "utf8");
+      }
+    } catch (e) {}
+
     // ── Send to Gmail Drafts (via lib/gmail-draft.mjs) ──────────────────────
     let gmailDraftId: string | null = null;
     if ((type === "cv" || type === "both") && !dryRun) {
@@ -620,56 +693,6 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // --- Reference Letter Generation ---
-        let refLetterText = "";
-        let refLetterPdfPath: string | null = null;
-        try {
-          const rlMod = await import(/* webpackIgnore: true */ `${root}/lib/reference-letter-generator.mjs`);
-          const generatedRefLetterHtml = rlMod.generateReferenceLetter(
-            { fullName: profileYml.candidate?.full_name || "Ilse Placencia" },
-            { company, title: role },
-            jdText
-          );
-
-          const candidateSlug = slugify(profileYml.candidate?.full_name || "candidate");
-          const companySlug = slugify(company);
-          const today = new Date().toISOString().slice(0, 10);
-          
-          const rlHtmlPath = path.join(root, "output", `ref-letter-${candidateSlug}-${companySlug}-${today}.html`);
-          refLetterPdfPath = rlHtmlPath.replace(".html", ".pdf");
-          
-          fs.writeFileSync(rlHtmlPath, generatedRefLetterHtml, 'utf8');
-          
-          // Generate PDF using generate-pdf.mjs
-          await execFileAsync(
-            process.execPath || "node",
-            [
-              path.join(root, "generate-pdf.mjs"),
-              rlHtmlPath,
-              refLetterPdfPath,
-              "--format=letter",
-              "--report=000"
-            ],
-            { cwd: root, timeout: 30_000, env: { ...process.env, PATH: `${path.dirname(process.execPath)}:${process.env.PATH || ""}` } }
-          );
-          
-          refLetterText = `Reference letter attached as PDF.`;
-        } catch (rlErr: any) {
-          console.warn("[generate-docs] Reference letter PDF generation failed:", rlErr.message);
-          // Fallback text
-          refLetterText = `Taylor Chorley\nDigital Marketing Supervisor, Evolve Marketing\ntaylorchorley@gmail.com | +1 (604) 551-8229\n\nTo Whom It May Concern,\n\nI've worked with Ilse Placencia since January 2024, when she joined Evolve Marketing as a Digital Marketing Assistant, and I'm genuinely glad to write this on her behalf.\n\nWhat stands out most, honestly, isn't just her skill set, it's how she works. Ilse brings this steady, positive energy to everything, even on the weeks that get hectic. She's the kind of person who checks in on how you're doing before diving into the task list, and that made a real difference on a fully remote team where it's easy to feel disconnected.\n\nThat said, she's also just really good at the job, and not just in one thing either. She's sharp across marketing and AI alike, and she's always finding new tools to make the work faster or better. If a tool she needs doesn't exist yet, she'll just build her own. That kind of resourcefulness isn't something you can teach. She has a genuine feel for what makes people click, and her social content consistently landed on brand, well timed, and built for whatever platform it was going on.\n\nShe's also reliable, something really hard to find nowadays. She meets deadlines, communicates clearly, and shows up prepared to strategy conversations with actual value, not just notes. Her analytics work and customer research made our campaigns improve across the board.\n\nI'd hire Ilse again without hesitation. She's hardworking, kind, easy to work with, and any team would be lucky to have her.\n\nHappy to talk more if it's helpful.\n\nWarmest regards,\nTaylor Chorley`;
-        }
-
-        let refLetterHtmlForDb: string | null = null;
-        try {
-          const candidateSlug = slugify(profileYml.candidate?.full_name || "candidate");
-          const companySlug = slugify(company);
-          const today = new Date().toISOString().slice(0, 10);
-          const rlHtmlPath = path.join(root, "output", `ref-letter-${candidateSlug}-${companySlug}-${today}.html`);
-          if (fs.existsSync(rlHtmlPath)) {
-            refLetterHtmlForDb = fs.readFileSync(rlHtmlPath, "utf8");
-          }
-        } catch (e) {}
 
         const emailBody = (
           `${applyLink}\n\n` +
@@ -723,7 +746,7 @@ export async function POST(req: NextRequest) {
     try {
       await updateInboxJobPipeline(userId, jobId, {
         ...(cvHtml ? { cv_html: cvHtml } : {}),
-        ...(coverLetter ? { cover_letter: coverLetter } : {}),
+        ...(coverLetter && coverLetterIsReal ? { cover_letter: coverLetter } : {}),
         ...(emailDraftText ? { email_draft: emailDraftText } : {}),
         ...(refLetterHtmlForDb ? { reference_letter: refLetterHtmlForDb } : {}),
         ...(gmailDraftId ? { gmail_draft_id: gmailDraftId } : {}),
