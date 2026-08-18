@@ -50,6 +50,17 @@ interface ProfileYml {
 }
 
 // ── Parse cv.md into sections ────────────────────────────────────────────────
+// Strip markdown emphasis and stray leading/trailing punctuation. cv.md writes
+// "- **Languages and Code:** JavaScript | ..." and "**Bachelor of Marketing**",
+// and without this the ** markers print literally in the rendered PDF.
+function demark(value: unknown): string {
+  return String(value == null ? "" : value)
+    .replace(/\*+/g, "")
+    .replace(/^\s*[:,]\s*/, "")
+    .replace(/\s*,\s*$/, "")
+    .trim();
+}
+
 function parseCvMd(cvMd: string) {
   const lines = cvMd.split("\n");
   
@@ -68,12 +79,12 @@ function parseCvMd(cvMd: string) {
     const entries = expText.split(/\n### /).filter(Boolean);
     for (const entry of entries) {
       const entryLines = entry.split("\n").filter(Boolean);
-      const role = entryLines[0]?.replace(/^### /, "").trim() || "";
-      const dates = entryLines[1]?.trim() || "";
+      const role = demark(entryLines[0]?.replace(/^### /, "") || "");
+      const dates = demark(entryLines[1] || "");
       const companyLine = entryLines[2]?.trim() || "";
       const companyParts = companyLine.split("|");
-      const company = companyParts[0]?.trim() || "";
-      const location = companyParts[1]?.trim() || "";
+      const company = demark(companyParts[0] || "");
+      const location = demark(companyParts[1] || "");
       const bullets = entryLines
         .slice(3)
         .filter((l) => l.trim().startsWith("-"))
@@ -93,13 +104,13 @@ function parseCvMd(cvMd: string) {
     for (const line of skillLines) {
       const colonIdx = line.indexOf(":");
       if (colonIdx > 0) {
-        const category = line.slice(1, colonIdx).trim();
-        const items = line.slice(colonIdx + 1).trim();
+        const category = demark(line.slice(1, colonIdx));
+        const items = demark(line.slice(colonIdx + 1));
         skills.push({ category, items });
       } else {
         skills.push({
           category: "",
-          items: line.replace(/^[-•*]\s*/, "").trim()
+          items: demark(line.replace(/^[-•*]\s*/, ""))
         });
       }
     }
@@ -114,16 +125,16 @@ function parseCvMd(cvMd: string) {
       const line = eduLines[i];
       if (line.startsWith("###")) {
         education.push({
-          title: line.replace(/^###\s*/, "").trim(),
-          org: eduLines[i + 1]?.trim() || "",
-          year: eduLines[i + 2]?.trim() || "",
+          title: demark(line.replace(/^###\s*/, "")),
+          org: demark(eduLines[i + 1] || ""),
+          year: demark(eduLines[i + 2] || ""),
         });
       } else if (line.startsWith("-")) {
         const parts = line.replace(/^-\s*/, "").split("|");
         education.push({
-          title: parts[0]?.trim() || line,
-          org: parts[1]?.trim() || "",
-          year: parts[2]?.trim() || "",
+          title: demark(parts[0]) || demark(line),
+          org: demark(parts[1] || ""),
+          year: demark(parts[2] || ""),
         });
       }
     }
@@ -161,14 +172,44 @@ function parseCvMd(cvMd: string) {
     for (const line of certLines) {
       const parts = line.replace(/^-\s*/, "").split("|");
       certifications.push({
-        title: parts[0]?.trim() || line,
-        org: parts[1]?.trim(),
-        year: parts[2]?.trim(),
+        title: demark(parts[0]) || demark(line),
+        org: demark(parts[1] || "") || undefined,
+        year: demark(parts[2] || "") || undefined,
       });
     }
   }
 
-  return { summary, experience, skills, education, projects, certifications, isVolunteer };
+  // Languages. Anchored on a leading newline so it cannot match the Technical
+  // Skills bullet "- **Languages and Code:** ...".
+  const languages: { name: string; level?: string }[] = [];
+  const langSection = cvMd.match(/\n##\s+Languages\s*\n+([\s\S]*?)(?=\n##\s|$)/i);
+  if (langSection) {
+    const langLines = langSection[1].split("\n").filter((l) => l.trim().startsWith("-"));
+    for (const line of langLines) {
+      const raw = line.replace(/^\s*-\s*/, "").replace(/\*+/g, "").trim();
+      if (!raw) continue;
+      const m = raw.match(/^(.*?)\s*\(([^)]*)\)\s*$/);
+      languages.push(m ? { name: m[1].trim(), level: m[2].trim() } : { name: raw });
+    }
+  }
+
+  // References. The name is already bold in cv.md, so use the ** markers as the
+  // delimiter and keep the rest of the line verbatim as the detail.
+  const references: { name: string; detail?: string }[] = [];
+  const refSection = cvMd.match(/\n##\s+References\s*\n+([\s\S]*?)(?=\n##\s|$)/i);
+  if (refSection) {
+    const refLines = refSection[1].split("\n").filter((l) => l.trim().startsWith("-"));
+    for (const line of refLines) {
+      const raw = line.replace(/^\s*-\s*/, "").trim();
+      if (!raw) continue;
+      const m = raw.match(/^\*\*(.+?)\*\*(.*)$/);
+      references.push(m
+        ? { name: m[1].trim(), detail: m[2].trim() }
+        : { name: raw.replace(/\*+/g, "").trim() });
+    }
+  }
+
+  return { summary, experience, skills, education, projects, certifications, isVolunteer, languages, references };
 }
 
 // ── Tailor CV to job description ─────────────────────────────────────────────
@@ -245,6 +286,8 @@ function tailorCvToJd(
     education: parsed.education,
     certifications: parsed.certifications,
     skills: parsed.skills,
+    languages: parsed.languages,
+    references: parsed.references,
     isVolunteer: parsed.isVolunteer,
   };
 }
@@ -298,6 +341,8 @@ function buildCvPayload(
     education: tailored.education,
     certifications: tailored.certifications.length > 0 ? tailored.certifications : undefined,
     skills: tailored.skills,
+    languages: tailored.languages,
+    references: tailored.references,
   };
 }
 
