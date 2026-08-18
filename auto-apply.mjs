@@ -1789,15 +1789,20 @@ Taylor Chorley`;
             // plainly that it is not, at the top where the preview shows it.
 
 
+            const docSlug = String(job.company || 'Application')
+              .replace(/[^a-zA-Z0-9]/g, '') || 'Application';
             const draftResult = await createGmailDraft({
               from: fromEmail,
               to: companyEmail || "",
               subject: approved.subject,
               body: fullEmailBody,
               attachments: [
-                finalCvPath && { path: finalCvPath },
-                finalClPath && { path: finalClPath },
-                finalRlPath && { path: finalRlPath },
+                // Name the files the way the dashboard does. Without an explicit
+                // filename nodemailer uses the on-disk name, which is a dated
+                // slug the recruiter would see on the attachment.
+                finalCvPath && { path: finalCvPath, filename: `${docSlug}_Resume.pdf` },
+                finalClPath && { path: finalClPath, filename: `${docSlug}_Cover_Letter.pdf` },
+                finalRlPath && { path: finalRlPath, filename: `${docSlug}_Reference_Letter.pdf` },
               ].filter(Boolean),
             });
             
