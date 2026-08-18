@@ -1,26 +1,31 @@
 <!--
-  experience.html — section partial for Work Experience (#2183).
+  experience.html — section partial for Professional Experience (#2183).
 
   Field placeholders filled per entry:
     COMPANY          — employer name
     PERIOD           — date range
     ROLE             — job title
     BULLETS          — rendered <li> tags
-    LOCATION_BLOCK   — conditional: .job-location div when location present; omitted when absent
+    LOCATION_BLOCK   — conditional: appended to the company line when a location
+                       is present; omitted entirely when absent
+
+  Locked to the approved reference CV layout: the pink ROLE sits on the header
+  line with the dates right-aligned, and an italic "Company | Location" line
+  runs beneath it. This mirrors lib/cv-generator.mjs so the dashboard and the
+  pipeline produce visually identical documents.
 
   Template packs: edit tag names, class names, and field order freely inside the ENTRY zone.
 -->
 <!--ENTRY-->
 <div class="job">
   <div class="job-header">
-    <span class="job-company">{{COMPANY}}</span>
+    <span class="job-role">{{ROLE}}</span>
     <span class="job-period">{{PERIOD}}</span>
   </div>
-  <div class="job-role">{{ROLE}}</div>
-  {{LOCATION_BLOCK}}
+  <div class="job-company"><em>{{COMPANY}}{{LOCATION_BLOCK}}</em></div>
   <ul>
     {{BULLETS}}
   </ul>
 </div>
-<!--LOCATION_BLOCK--><div class="job-location">{{LOCATION}}</div><!--/LOCATION_BLOCK-->
+<!--LOCATION_BLOCK--> | {{LOCATION}}<!--/LOCATION_BLOCK-->
 <!--/ENTRY-->
